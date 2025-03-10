@@ -7,5 +7,10 @@ Sqlite DLLs into Plugins directory: https://www.youtube.com/watch?v=8bpYHCKdZno
  - Mono.Data.Sqlite.dll
  - sqlite3.dll
  - sqlite3.def
+  
+ Adding Fluent Assertions !!
+ https://github.com/BoundfoxStudios/fluentassertions-unity.git#upm
  
+ GitHub Repo setup and cofiguration
+ including : git config --global core.autocrlf true
 

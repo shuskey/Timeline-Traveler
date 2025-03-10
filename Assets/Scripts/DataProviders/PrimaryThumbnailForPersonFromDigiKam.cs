@@ -197,31 +197,31 @@ namespace Assets.Scripts.DataProviders
             int faceCenterY = (int)(faceRegion.y + faceHeight / 2);
 
             // Use the larger dimension to get maximum square size
-            int squareSize = Math.Max(faceWidth, faceHeight);
+            int desiredSquareSize = Math.Max(faceWidth, faceHeight);
      
             // Calculate the square region coordinates, keeping it centered
-            int halfSquare = squareSize / 2;
-            int squareX = faceCenterX - halfSquare;
-            int squareY = faceCenterY - halfSquare;
+            int desiredHalfSquare = desiredSquareSize / 2;
+            int initialTrySquareX = faceCenterX - desiredHalfSquare;
+            int initialTrySquareY = faceCenterY - desiredHalfSquare;
 
             // Calculate how much the face region extends beyond texture bounds
-            int tooLongX = squareX + squareSize - fullTexture.width;
+            int tooLongX = initialTrySquareX + desiredSquareSize - fullTexture.width;
             if (tooLongX < 0) tooLongX = 0;        
-            if (squareX < 0) tooLongX -= squareX;  // Account for negative starting position
+            if (initialTrySquareX < 0) tooLongX -= initialTrySquareX;  // Account for negative starting position
             
-            int tooLongY = squareY + squareSize - fullTexture.height;
+            int tooLongY = initialTrySquareY + desiredSquareSize - fullTexture.height;
             if (tooLongY < 0) tooLongY = 0;        
-            if (squareY < 0) tooLongY -= squareY;  // Account for negative starting position
+            if (initialTrySquareY < 0) tooLongY -= initialTrySquareY;  // Account for negative starting position
 
             // Find the maximum amount we need to crop from both sides
             int mustCropBothSides = Math.Max(tooLongX, tooLongY);
-
+    
             // Adjust square size if it extends beyond texture bounds
             if (mustCropBothSides > 0) {
-                squareSize -= mustCropBothSides;
-                halfSquare = squareSize / 2;
+                desiredSquareSize -= mustCropBothSides * 2;
+                desiredHalfSquare = desiredSquareSize / 2;
             }
-            return new RectInt(faceCenterX - halfSquare, faceCenterY - halfSquare, squareSize, squareSize);
+            return new RectInt(faceCenterX - desiredHalfSquare, faceCenterY - desiredHalfSquare, desiredSquareSize, desiredSquareSize);
         }
     }
 }
