@@ -1,0 +1,11 @@
+Setup New Project
+Placed in a folder with access to GitHub
+Get VisualStudio Code working as an external tool
+Special github cursor editor package: https://github.com/boxqkrtm/com.unity.ide.cursor.git
+Switch to eternal tool cursor in preferences
+Sqlite DLLs into Plugins directory: https://www.youtube.com/watch?v=8bpYHCKdZno
+ - Mono.Data.Sqlite.dll
+ - sqlite3.dll
+ - sqlite3.def
+ 
+
