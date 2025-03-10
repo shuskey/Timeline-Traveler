@@ -43,6 +43,54 @@ public class DataProvidersTestScripts
     }
 
     [Test]
+    public void GetSquareFaceRegionRectInt_HappyPath_FaceRegionSameSizeAsTexture_AndSquare()
+    {
+        // Arrange
+        var provider = new PrimaryThumbnailForPersonFromDigiKam("dummy.db", "dummy_digikam.db");
+        var texture = new Texture2D(1000, 1000);
+        var faceRegion = new Rect(0, 0, 1000, 1000); // Already square, no cropping needed
+        var expectedResult = new RectInt(0, 0, 1000, 1000);
+
+        // Act
+        RectInt result = provider.GetSquareFaceRegionRectInt(texture, faceRegion);
+
+        // Assert and show which values are different by name x, y, width, height
+        result.Should().BeEquivalentTo(expectedResult);
+    }
+
+    [Test]  
+    public void GetSquareFaceRegionRectInt_HappyPath_FaceRegionSameSizeAsTexture_AndNotSquare_WiderThanTaller()
+    {
+        // Arrange
+        var provider = new PrimaryThumbnailForPersonFromDigiKam("dummy.db", "dummy_digikam.db");
+        var texture = new Texture2D(1000, 800);
+        var faceRegion = new Rect(0, 0, 1000, 800); // Already square, no cropping needed
+        var expectedResult = new RectInt(100, 0, 800, 800);
+
+        // Act
+        RectInt result = provider.GetSquareFaceRegionRectInt(texture, faceRegion);
+
+        // Assert and show which values are different by name x, y, width, height
+        result.Should().BeEquivalentTo(expectedResult);
+    }
+
+    [Test]  
+    public void GetSquareFaceRegionRectInt_HappyPath_FaceRegionSameSizeAsTexture_AndNotSquare_TallerThanWider()
+    {
+        // Arrange
+        var provider = new PrimaryThumbnailForPersonFromDigiKam("dummy.db", "dummy_digikam.db");
+        var texture = new Texture2D(800, 1000);
+        var faceRegion = new Rect(0, 0, 800, 1000); // Already square, no cropping needed
+        var expectedResult = new RectInt(0, 100, 800, 800);
+
+        // Act
+        RectInt result = provider.GetSquareFaceRegionRectInt(texture, faceRegion);
+
+        // Assert and show which values are different by name x, y, width, height
+        result.Should().BeEquivalentTo(expectedResult);
+    }
+
+    [Test]
     public void GetSquareFaceRegionRectInt_OnlyHeightCroppingNeeded()
     {
         // Arrange
@@ -81,14 +129,78 @@ public class DataProvidersTestScripts
         // Arrange
         var provider = new PrimaryThumbnailForPersonFromDigiKam("dummy.db", "dummy_digikam.db");
         var texture = new Texture2D(1000, 1000);
-        var faceRegion = new Rect(900, 500, 100, 200); // Face region too close to right edge
-        var expectedResult = new RectInt(900, 550, 100, 100);
+        var faceRegion = new Rect(900, 500, 100, 300); // Face region too close to right edge
+        var expectedResult = new RectInt(900, 600, 100, 100);
 
         // Act
         RectInt result = provider.GetSquareFaceRegionRectInt(texture, faceRegion);
 
         // Assert and show which values are different by name x, y, width, height
         result.Should().BeEquivalentTo(expectedResult); 
+    }
+
+    [Test]
+    public void GetSquareFaceRegionRectInt_TooCloseToRightEdge_MoreCentered()
+    {
+        // Arrange
+        var provider = new PrimaryThumbnailForPersonFromDigiKam("dummy.db", "dummy_digikam.db");
+        var texture = new Texture2D(1000, 1000);
+        var faceRegion = new Rect(800, 500, 100, 400); // Face region too close to right edge
+        var expectedResult = new RectInt(700, 550, 300, 300);
+
+        // Act
+        RectInt result = provider.GetSquareFaceRegionRectInt(texture, faceRegion);
+
+        // Assert and show which values are different by name x, y, width, height
+        result.Should().BeEquivalentTo(expectedResult);
+    }
+
+    [Test]
+    public void GetSquareFaceRegionRectInt_TooCloseToLeftEdge()
+    {
+        // Arrange
+        var provider = new PrimaryThumbnailForPersonFromDigiKam("dummy.db", "dummy_digikam.db");
+        var texture = new Texture2D(1000, 1000);    
+        var faceRegion = new Rect(0, 500, 100, 200); // Face region too close to left edge
+        var expectedResult = new RectInt(0, 550, 100, 100);
+
+        // Act
+        RectInt result = provider.GetSquareFaceRegionRectInt(texture, faceRegion);  
+
+        // Assert and show which values are different by name x, y, width, height
+        result.Should().BeEquivalentTo(expectedResult);
+    }
+
+    [Test]
+    public void GetSquareFaceRegionRectInt_TooCloseToTopEdge()
+    {
+        // Arrange
+        var provider = new PrimaryThumbnailForPersonFromDigiKam("dummy.db", "dummy_digikam.db");
+        var texture = new Texture2D(1000, 1000);    
+        var faceRegion = new Rect(500, 900, 200, 100); // Face region too close to top edge
+        var expectedResult = new RectInt(550, 900, 100, 100);
+
+        // Act
+        RectInt result = provider.GetSquareFaceRegionRectInt(texture, faceRegion);
+
+        // Assert and show which values are different by name x, y, width, height
+        result.Should().BeEquivalentTo(expectedResult);
+        }
+
+    [Test]
+    public void GetSquareFaceRegionRectInt_TooCloseToBottomEdge()
+    {
+        // Arrange
+        var provider = new PrimaryThumbnailForPersonFromDigiKam("dummy.db", "dummy_digikam.db");
+        var texture = new Texture2D(1000, 1000);    
+        var faceRegion = new Rect(500, 0, 200, 100); // Face region too close to bottom edge
+        var expectedResult = new RectInt(550, 0, 100, 100); 
+
+        // Act
+        RectInt result = provider.GetSquareFaceRegionRectInt(texture, faceRegion);
+
+        // Assert and show which values are different by name x, y, width, height
+        result.Should().BeEquivalentTo(expectedResult);
     }
 
     [TearDown]

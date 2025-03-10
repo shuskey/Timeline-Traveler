@@ -190,38 +190,45 @@ namespace Assets.Scripts.DataProviders
         // let create a new local function here named GetSquareFaceRegionRect
         public RectInt GetSquareFaceRegionRectInt(Texture2D fullTexture, Rect faceRegion)
         {
-            // Get the face region dimensions and center point
-            int faceWidth = (int)faceRegion.width;
-            int faceHeight = (int)faceRegion.height;
-            int faceCenterX = (int)(faceRegion.x + faceWidth / 2);
-            int faceCenterY = (int)(faceRegion.y + faceHeight / 2);
+            // Calculate center point and initial square size
+            int centerX = (int)(faceRegion.x + faceRegion.width / 2);
+            int centerY = (int)(faceRegion.y + faceRegion.height / 2);
+            int squareSize = Math.Max((int)faceRegion.width, (int)faceRegion.height);
+            int halfSize = squareSize / 2;
 
-            // Use the larger dimension to get maximum square size
-            int desiredSquareSize = Math.Max(faceWidth, faceHeight);
-     
-            // Calculate the square region coordinates, keeping it centered
-            int desiredHalfSquare = desiredSquareSize / 2;
-            int initialTrySquareX = faceCenterX - desiredHalfSquare;
-            int initialTrySquareY = faceCenterY - desiredHalfSquare;
+            // Calculate initial square bounds
+            int left = centerX - halfSize;
+            int right = centerX + halfSize;
+            int top = centerY - halfSize;
+            int bottom = centerY + halfSize;
 
-            // Calculate how much the face region extends beyond texture bounds
-            int tooLongX = initialTrySquareX + desiredSquareSize - fullTexture.width;
-            if (tooLongX < 0) tooLongX = 0;        
-            if (initialTrySquareX < 0) tooLongX -= initialTrySquareX;  // Account for negative starting position
-            
-            int tooLongY = initialTrySquareY + desiredSquareSize - fullTexture.height;
-            if (tooLongY < 0) tooLongY = 0;        
-            if (initialTrySquareY < 0) tooLongY -= initialTrySquareY;  // Account for negative starting position
+            // Count how many sides exceed bounds
+            int sidesExceeded = 0;
+            if (left < 0 ) sidesExceeded++;
+            if (right > fullTexture.width) sidesExceeded++;
+            if (top < 0 ) sidesExceeded++;
+            if (bottom > fullTexture.height) sidesExceeded++;
 
-            // Find the maximum amount we need to crop from both sides
-            int mustCropBothSides = Math.Max(tooLongX, tooLongY);
-    
-            // Adjust square size if it extends beyond texture bounds
-            if (mustCropBothSides > 0) {
-                desiredSquareSize -= mustCropBothSides * 2;
-                desiredHalfSquare = desiredSquareSize / 2;
+            // Calculate required size reduction
+            int horizontalOverflow = Math.Max(0, -left) + Math.Max(0, right - fullTexture.width);
+            int verticalOverflow = Math.Max(0, -top) + Math.Max(0, bottom - fullTexture.height);
+            int maxOverflow = Math.Max(horizontalOverflow, verticalOverflow);
+
+            // Adjust square size if needed (divide by 2 if only one side exceeded)
+            if (maxOverflow > 0)
+            {
+                int reduction = sidesExceeded == 1 ? maxOverflow * 2 : maxOverflow;
+                squareSize -= reduction;
+                halfSize = squareSize / 2;
             }
-            return new RectInt(faceCenterX - desiredHalfSquare, faceCenterY - desiredHalfSquare, desiredSquareSize, desiredSquareSize);
+
+            // Return the final square region
+            return new RectInt(
+                centerX - halfSize,
+                centerY - halfSize,
+                squareSize,
+                squareSize
+            );
         }
     }
 }
