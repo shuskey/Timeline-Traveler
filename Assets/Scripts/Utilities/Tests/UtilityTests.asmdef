@@ -1,11 +1,11 @@
 {
-    "name": "Tests",
+    "name": "UtilityTests",
     "rootNamespace": "",
     "references": [
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
-        "DataProvidersAssembly",
-        "BoundfoxStudios.FluentAssertions"
+        "BoundfoxStudios.FluentAssertions",
+        "UtilitiesAssembly"
     ],
     "includePlatforms": [
         "Editor"
