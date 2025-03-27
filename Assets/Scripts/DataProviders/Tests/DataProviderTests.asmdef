@@ -5,7 +5,8 @@
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner",
         "BoundfoxStudios.FluentAssertions",
-        "DataProvidersAssembly"
+        "DataProvidersAssembly",
+        "GUID:8efbf3eb5741f0d4a9a1531d2f9dedf1"
     ],
     "includePlatforms": [
         "Editor"

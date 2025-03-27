@@ -10,7 +10,7 @@ using System.Xml;
 
 namespace Assets.Scripts.DataProviders
 {
-    class DigiKamConnector : DataProviderBase
+    public class DigiKamConnector : DataProviderBase
     {
         public List<DigiKamFaceTag> faceTagList;
         private string _rootsMagicDataBaseFileNameWithFullPath;  // usually *.rmtree, *.rmgc, or *.sqlite
