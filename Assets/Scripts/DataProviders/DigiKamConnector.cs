@@ -13,6 +13,7 @@ namespace Assets.Scripts.DataProviders
     public class DigiKamConnector : DataProviderBase
     {
         public List<DigiKamFaceTag> faceTagList;
+        private Dictionary<int, int> _ownerIdToTagIdMap;
         private string _rootsMagicDataBaseFileNameWithFullPath;  // usually *.rmtree, *.rmgc, or *.sqlite
         private string _digiKamDataBaseFileNameWithFullPath;     // usually digikam4.db
         private string _rootsMagicToDigiKamDataBaseFileNameWithFullPath;  // usually rootsmagic-digikam.db
@@ -29,24 +30,40 @@ namespace Assets.Scripts.DataProviders
             _rootsMagicToDigiKamDataBaseFileNameWithFullPath = justThePath + "\\" + RootsMagic_DigiKam_DataBaseFileNameOnly;
             _digiKamThumbnailsDataBaseFileNameWithFullPath = justThePath + "\\" + DigiKam_Thumbnails_DataBaseFileNameOnly;
             faceTagList = new List<DigiKamFaceTag>();
+            _ownerIdToTagIdMap = new Dictionary<int, int>();
+            BuildOwnerIdToTagIdMap();
         }
 
-        public void GetListOfFaceTagIdsFromDataBase()
+        private void BuildOwnerIdToTagIdMap()
         {
-            var justThePath = System.IO.Path.GetDirectoryName(_digiKamDataBaseFileNameWithFullPath);
-            var pathtoRootsMagicToDigiKamDatabaseFile = justThePath + "\\rootsmagic-digikam.db";
-            using (var conn = new SqliteConnection("URI=file:" + pathtoRootsMagicToDigiKamDatabaseFile)) {
+            using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
+            {
                 conn.Open();
-                using (var cmd = conn.CreateCommand()) {
-                    cmd.CommandText = "SELECT * FROM PersonDigiKamTag";
-                    using (var reader = cmd.ExecuteReader()) {
-                        while (reader.Read()) {
-                            DigiKamFaceTag faceTag = new DigiKamFaceTag(reader.GetInt32(0), reader.GetInt32(1), reader.GetString(2));                                                       
-                            faceTagList.Add(faceTag);
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        SELECT t.id as tagId, 
+                               CAST(p.value as INTEGER) as ownerId
+                        FROM Tags t
+                        JOIN TagProperties p ON t.id = p.tagid
+                        WHERE p.property = 'rootsmagic_owner_id'";
+                    
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            int tagId = reader.GetInt32(0);
+                            int ownerId = reader.GetInt32(1);
+                            _ownerIdToTagIdMap[ownerId] = tagId;
                         }
                     }
                 }
             }
+        }
+
+        public int GetTagIdForOwnerId(int ownerId)
+        {
+            return _ownerIdToTagIdMap.TryGetValue(ownerId, out int tagId) ? tagId : -1;
         }
 
         public bool AreAllDatabaseFilesPresent()
@@ -57,10 +74,6 @@ namespace Assets.Scripts.DataProviders
             }
             if (!System.IO.File.Exists(_digiKamDataBaseFileNameWithFullPath)) {
                 Debug.Log($"Base DigiKam database file not found. {_digiKamDataBaseFileNameWithFullPath}");
-                return false;
-            }
-            if (!DoesThisDBFileExistInDigiKamFolder(RootsMagic_DigiKam_DataBaseFileNameOnly)) {
-                Debug.Log($"RootsMagic To DigiKam database file not found. {RootsMagic_DigiKam_DataBaseFileNameOnly}");
                 return false;
             }
             if (!DoesThisDBFileExistInDigiKamFolder(DigiKam_Thumbnails_DataBaseFileNameOnly)) {
@@ -77,9 +90,35 @@ namespace Assets.Scripts.DataProviders
             return System.IO.File.Exists(filenameToCheck);
         }
 
+        private void AttachThumbnailsDatabase(IDbCommand dbcmd)
+        {
+            // First check if already attached
+            dbcmd.CommandText = "SELECT name FROM pragma_database_list WHERE name = 'thumbnails-digikam';";
+            bool isAlreadyAttached = false;
+            using (var reader = dbcmd.ExecuteReader())
+            {
+                isAlreadyAttached = reader.Read();
+            }
+
+            // Attach the thumbnails database if not already attached
+            if (!isAlreadyAttached)
+            {
+                dbcmd.CommandText = $"ATTACH DATABASE '{_digiKamThumbnailsDataBaseFileNameWithFullPath}' as 'thumbnails-digikam';";
+                dbcmd.ExecuteNonQuery();
+            }
+        }
+
         public byte[] GetPrimaryThumbnailForPersonFromDataBase(int ownerId)
-       {
+        {
             byte[] imageToReturn = null;
+
+            // Get the tag ID for this owner ID
+            int tagId = GetTagIdForOwnerId(ownerId);
+            if (tagId == -1)
+            {
+                Debug.LogWarning($"No tag found for owner ID {ownerId}");
+                return null;
+            }
 
             int limitListSizeTo = 1;
             string conn = "URI=file:" + _digiKamDataBaseFileNameWithFullPath;
@@ -87,21 +126,22 @@ namespace Assets.Scripts.DataProviders
             dbconn = (IDbConnection)new SqliteConnection(conn);
             dbconn.Open();
             IDbCommand dbcmd = dbconn.CreateCommand();
+
+            AttachThumbnailsDatabase(dbcmd);
+
             string QUERYTHUMBNAILS =
-                "SELECT r2d.PersonID, r2d.tagid, tags.name, paths.thumbId, images.id as \"imageId\",\n" +
+                "SELECT tags.id as tagId, tags.name, paths.thumbId, images.id as \"imageId\",\n" +
                 "tnails.type, tnails.modificationDate, tnails.orientationHint,\n" +
-                "\"C:\" || (SELECT specificPath FROM digikam4.AlbumRoots WHERE digikam4.AlbumRoots.label = \"Pictures\") ||\n" +
-                "albums.relativePath || \"/\" || images.name as \"fullPathToFileName\",\n" +
+                "\"C:\" || (SELECT specificPath FROM AlbumRoots WHERE AlbumRoots.label = \"Photos\") ||\n" +
+                "albums.relativePath || images.name as \"fullPathToFileName\",\n" +
                 "region.value as \"region\", tnails.data as 'PGFImageData'\n" +
-                "FROM PersonDigiKamTag r2d \n" +
-                "JOIN digikam4.Tags tags ON r2d.tagid = tags.id\n" +
-                "LEFT JOIN digikam4.Images images ON tags.icon = images.id\n" +
-                "LEFT JOIN digikam4.Albums albums ON images.album = albums.id\n" +
-                "LEFT JOIN digikam4.ImageTagProperties region ON tags.icon = region.imageid AND tags.id = region.tagid\n" +
+                "FROM Tags tags\n" +
+                "LEFT JOIN Images images ON tags.icon = images.id\n" +
+                "LEFT JOIN Albums albums ON images.album = albums.id\n" +
+                "LEFT JOIN ImageTagProperties region ON tags.icon = region.imageid AND tags.id = region.tagid\n" +
                 "INNER JOIN [thumbnails-digikam].FilePaths paths ON fullPathToFileName = paths.path\n" +
-                "INNER JOIN [thumbnails-digikam].Thumbnails tnails ON paths.thumbId = tnails.id\n";
-            QUERYTHUMBNAILS +=
-                $"WHERE r2d.PersonID = \"{ownerId}\" AND images.album IS NOT NULL;";
+                "INNER JOIN [thumbnails-digikam].Thumbnails tnails ON paths.thumbId = tnails.id\n" +
+                $"WHERE tags.id = {tagId} AND images.album IS NOT NULL;";
 
             string sqlQuery = QUERYTHUMBNAILS;
             dbcmd.CommandText = sqlQuery;
@@ -134,11 +174,11 @@ namespace Assets.Scripts.DataProviders
                         Texture2D fullTexture = new Texture2D(2, 2);
                         fullTexture.LoadImage(fullImageBytes);
                         
-                        // Calculate pixel coordinates from normalized coordinates
-                        int x = Mathf.RoundToInt(faceRegion.x * fullTexture.width);
-                        int y = Mathf.RoundToInt(faceRegion.y * fullTexture.height);
-                        int width = Mathf.RoundToInt(faceRegion.width * fullTexture.width);
-                        int height = Mathf.RoundToInt(faceRegion.height * fullTexture.height);
+                        // convert float actual values to integer
+                        int x = Mathf.RoundToInt(faceRegion.x);
+                        int y = Mathf.RoundToInt(faceRegion.y);
+                        int width = Mathf.RoundToInt(faceRegion.width);
+                        int height = Mathf.RoundToInt(faceRegion.height);
                         
                         // Create a new texture for the cropped region
                         Texture2D croppedTexture = new Texture2D(width, height);
@@ -152,8 +192,16 @@ namespace Assets.Scripts.DataProviders
                         imageToReturn = croppedTexture.EncodeToPNG();
                         
                         // Clean up
-                        UnityEngine.Object.Destroy(fullTexture);
-                        UnityEngine.Object.Destroy(croppedTexture);
+                        if (Application.isPlaying)
+                        {
+                            UnityEngine.Object.Destroy(fullTexture);
+                            UnityEngine.Object.Destroy(croppedTexture);
+                        }
+                        else
+                        {
+                            UnityEngine.Object.DestroyImmediate(fullTexture);
+                            UnityEngine.Object.DestroyImmediate(croppedTexture);
+                        }
                     }
                     catch (Exception ex) {
                         Debug.LogError($"Error reading image file {pathToFullResolutionImage}: {ex.Message}");

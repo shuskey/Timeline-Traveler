@@ -13,19 +13,13 @@ namespace Assets.Scripts.DataProviders
 {
     public class PrimaryThumbnailForPersonFromDigiKam : DataProviderBase
     {
-        private string _rootsMagicDataBaseFileName;
         private string _digiKamDataBaseFileName;
-        private string _rootsMagicToDigiKamDataBaseFolderPath;
-     
+        private DigiKamConnector _connector;
 
         public PrimaryThumbnailForPersonFromDigiKam(string DataBaseFileName, string DigiKamFileName)
         {
-            _rootsMagicDataBaseFileName = DataBaseFileName;
             _digiKamDataBaseFileName = DigiKamFileName;
-            // Get path and appent filename of rootsmagic-digikam.db and append the filename  "rootsmagic-digikam.db" with a call to Path.Combine
-            _rootsMagicToDigiKamDataBaseFolderPath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(_digiKamDataBaseFileName), "rootsmagic-digikam.db"  );
-          
-
+            _connector = new DigiKamConnector(DataBaseFileName, DigiKamFileName);
         }
 
         public byte[] GetSquarePrimaryPhotoForPersonFromDataBase(int ownerId)
@@ -35,20 +29,18 @@ namespace Assets.Scripts.DataProviders
 
             try
             {
-                // Verify database files exist
+                // Verify database file exists
                 if (!System.IO.File.Exists(_digiKamDataBaseFileName))
                 {
                     Debug.LogError($"DigiKam database file not found: {_digiKamDataBaseFileName}");
                     return null;
                 }
-                if (!System.IO.File.Exists(_rootsMagicDataBaseFileName))
+
+                // Get the tagId for this ownerId
+                int tagId = _connector.GetTagIdForOwnerId(ownerId);
+                if (tagId == -1)
                 {
-                    Debug.LogError($"RootsMagic database file not found: {_rootsMagicDataBaseFileName}");
-                    return null;
-                }
-                if (!System.IO.File.Exists(_rootsMagicToDigiKamDataBaseFolderPath))
-                {
-                    Debug.LogError($"RootsMagic to DigiKam database file not found: {_rootsMagicToDigiKamDataBaseFolderPath}");
+                    Debug.LogWarning($"No DigiKam tag found for ownerId: {ownerId}");
                     return null;
                 }
 
@@ -58,48 +50,27 @@ namespace Assets.Scripts.DataProviders
                 
                 using (IDbCommand dbcmd = dbconn.CreateCommand())
                 {
-                    // Attach the RootsMagic database and the RootsMagic To DigiKam database    
-                    try
-                    {
-                        dbcmd.CommandText = $"ATTACH DATABASE '{_rootsMagicDataBaseFileName}' AS rootsmagic;";
-                        dbcmd.ExecuteNonQuery();
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogError($"Failed to attach RootsMagic database: {ex.Message}");
-                        return null;
-                    }
-                    try 
-                    {
-                        dbcmd.CommandText  = $"ATTACH DATABASE '{_rootsMagicToDigiKamDataBaseFolderPath}' AS rootsmagictodigikam;";
-                        dbcmd.ExecuteNonQuery();
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogError($"Failed to attach RootsMagic To DigiKam database: {ex.Message}");
-                        return null;
-                    }
-                    //also need to attach the thumbnails-digikam database
-                    string thumbnailsDigiKamDataBaseFolderPath = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(_digiKamDataBaseFileName), "thumbnails-digikam.db"  );
+                    //attach the thumbnails-digikam database
+                    string thumbnailsDigiKamDataBaseFolderPath = System.IO.Path.Combine(
+                        System.IO.Path.GetDirectoryName(_digiKamDataBaseFileName), 
+                        "thumbnails-digikam.db");
                     string attachCmd = $"ATTACH DATABASE '{thumbnailsDigiKamDataBaseFolderPath}' AS thumbnailsdigikam;";
                     dbcmd.CommandText = attachCmd;
                     dbcmd.ExecuteNonQuery();
 
                     string QUERYTHUMBNAILS =
-                        "SELECT r2d.PersonID, r2d.tagid, tags.name, paths.thumbId, images.id as \"imageId\",\n" +
+                        "SELECT tags.name, paths.thumbId, images.id as \"imageId\",\n" +
                         "tnails.type, tnails.modificationDate, tnails.orientationHint,\n" +
                         "\"C:\" || (SELECT specificPath FROM AlbumRoots WHERE AlbumRoots.label = \"Pictures\") ||\n" +
                         "albums.relativePath || \"/\" || images.name as \"fullPathToFileName\",\n" +
                         "region.value as \"region\", tnails.data as 'PGFImageData'\n" +
-                        "FROM rootsmagictodigikam.PersonDigiKamTag r2d \n" +
-                        "JOIN Tags tags ON r2d.tagid = tags.id\n" +
+                        "FROM Tags tags\n" +
                         "LEFT JOIN Images images ON tags.icon = images.id\n" +
                         "LEFT JOIN Albums albums ON images.album = albums.id\n" +
                         "LEFT JOIN ImageTagProperties region ON tags.icon = region.imageid AND tags.id = region.tagid\n" +
                         "INNER JOIN thumbnailsdigikam.FilePaths paths ON fullPathToFileName = paths.path\n" +
-                        "INNER JOIN thumbnailsdigikam.Thumbnails tnails ON paths.thumbId = tnails.id\n";
-                    QUERYTHUMBNAILS +=
-                        $"WHERE r2d.PersonID = \"{ownerId}\" AND images.album IS NOT NULL;";
+                        "INNER JOIN thumbnailsdigikam.Thumbnails tnails ON paths.thumbId = tnails.id\n" +
+                        $"WHERE tags.id = {tagId} AND images.album IS NOT NULL;";
 
                     dbcmd.CommandText = QUERYTHUMBNAILS;
                     
