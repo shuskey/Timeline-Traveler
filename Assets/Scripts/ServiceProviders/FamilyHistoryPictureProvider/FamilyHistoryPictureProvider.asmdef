@@ -1,0 +1,16 @@
+{
+    "name": "FamilyHistoryPictureProvider",
+    "rootNamespace": "",
+    "references": [
+        "GUID:9abb440172bc7ec4488c0cdd5faa9717"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
