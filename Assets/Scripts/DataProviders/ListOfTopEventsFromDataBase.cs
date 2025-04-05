@@ -7,7 +7,7 @@ using Assets.Scripts.Enums;
 
 namespace Assets.Scripts.DataProviders
 {
-    class ListOfTopEventsFromDataBase
+    public class ListOfTopEventsFromDataBase
     {
         public List<TopEvent> topEventsList;
         private string _dataBaseFileName;

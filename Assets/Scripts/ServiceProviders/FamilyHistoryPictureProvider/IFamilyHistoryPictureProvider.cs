@@ -12,6 +12,12 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
         void Initialize(Dictionary<string, string> configuration);
 
         /// <summary>
+        /// Checks if all required database files are present
+        /// </summary>
+        /// <returns>True if all required database files exist, false otherwise</returns>
+        bool AreAllDatabaseFilesPresent();
+
+        /// <summary>
         /// Gets thumbnails for a person in a specific year
         /// </summary>
         /// <param name="personId">The ID of the person</param>

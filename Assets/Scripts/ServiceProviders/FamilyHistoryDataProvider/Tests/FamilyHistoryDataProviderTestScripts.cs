@@ -106,6 +106,60 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider.Tests
         }
 
         [Test]
+        public void GetChildren_WhenFamilyExists_ReturnsChildren()
+        {
+            // Act
+            var mockResult = _mockProvider.GetChildren(1);
+            var realResult = _realProvider.GetChildren(1);
+
+            // Assert
+            mockResult.Should().NotBeNull("because we should always get a list");
+            mockResult.Count.Should().Be(1, "because we expect one child in mock data");
+            mockResult[0].familyId.Should().Be(1, "because we requested family ID 1");
+            mockResult[0].childId.Should().Be(3, "because Bob is the child in mock data");
+
+            realResult.Should().NotBeNull("because we should always get a list");
+            realResult.Count.Should().BeGreaterThan(0, "because we expect some children in the database");
+        }
+
+        [Test]
+        public void GetMarriages_WhenPersonExists_ReturnsMarriages()
+        {
+            // Act
+            var mockResult = _mockProvider.GetMarriages(1);
+            var realResult = _realProvider.GetMarriages(1);
+
+            // Assert
+            mockResult.Should().NotBeNull("because we should always get a list");
+            mockResult.Count.Should().Be(1, "because we expect one marriage in mock data");
+            mockResult[0].familyId.Should().Be(1, "because we requested family ID 1");
+            mockResult[0].husbandId.Should().Be(1, "because John is the husband in mock data");
+            mockResult[0].wifeId.Should().Be(2, "because Jane is the wife in mock data");
+
+            realResult.Should().NotBeNull("because we should always get a list");
+            realResult.Count.Should().BeGreaterThan(0, "because we expect some marriages in the database");
+        }
+
+        [Test]
+        public void GetParents_WhenChildExists_ReturnsParents()
+        {
+            // Act
+            var mockResult = _mockProvider.GetParents(3);
+            var realResult = _realProvider.GetParents(3);
+
+            // Assert
+            mockResult.Should().NotBeNull("because we should always get a list");
+            mockResult.Count.Should().Be(1, "because we expect one set of parents in mock data");
+            mockResult[0].familyId.Should().Be(1, "because we requested family ID 1");
+            mockResult[0].fatherId.Should().Be(1, "because John is the father in mock data");
+            mockResult[0].motherId.Should().Be(2, "because Jane is the mother in mock data");
+            mockResult[0].childId.Should().Be(3, "because Bob is the child in mock data");
+
+            realResult.Should().NotBeNull("because we should always get a list");
+            realResult.Count.Should().BeGreaterThan(0, "because we expect some parents in the database");
+        }
+
+        [Test]
         public void ValidateDatabaseIntegrity_WhenDatabaseExists_ReturnsTrue()
         {
             // Act

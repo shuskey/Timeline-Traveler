@@ -1,70 +1,75 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.IO;
 
 namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
 {
     public class MockFamilyHistoryPictureProvider : IFamilyHistoryPictureProvider
     {
         private Dictionary<string, string> _configuration;
-        private bool _isInitialized;
+        private string _rootsMagicDbPath;
+        private string _digiKamDbPath;
+        private string _digiKamFolder;
 
         public void Initialize(Dictionary<string, string> configuration)
         {
             _configuration = configuration;
-            _isInitialized = true;
+            if (!configuration.TryGetValue("RootsMagicDbPath", out _rootsMagicDbPath))
+            {
+                Debug.LogError("RootsMagicDbPath not found in configuration");
+            }
+            if (!configuration.TryGetValue("DigiKamDbPath", out _digiKamDbPath))
+            {
+                Debug.LogError("DigiKamDbPath not found in configuration");
+            }
+            _digiKamFolder = Path.GetDirectoryName(_digiKamDbPath);
+        }
+
+        public bool AreAllDatabaseFilesPresent()
+        {
+            // Mock implementation always returns true
+            return true;
         }
 
         public List<Texture2D> GetThumbnailForPerson(int personId, int year)
         {
-            if (!_isInitialized)
+            // Create a mock texture
+            var texture = new Texture2D(100, 100);
+            var colors = new Color[100 * 100];
+            for (int i = 0; i < colors.Length; i++)
             {
-                Debug.LogError("MockFamilyHistoryPictureProvider not initialized");
-                return new List<Texture2D>();
+                colors[i] = Color.gray;
             }
-
-            // Create a mock thumbnail (2x2 checkerboard)
-            var mockThumbnail = new Texture2D(2, 2);
-            mockThumbnail.SetPixel(0, 0, Color.white);
-            mockThumbnail.SetPixel(0, 1, Color.black);
-            mockThumbnail.SetPixel(1, 0, Color.black);
-            mockThumbnail.SetPixel(1, 1, Color.white);
-            mockThumbnail.Apply();
-
-            return new List<Texture2D> { mockThumbnail };
+            texture.SetPixels(colors);
+            texture.Apply();
+            return new List<Texture2D> { texture };
         }
 
         public List<(Texture2D Photo, Dictionary<string, string> Metadata)> GetPhotoListForPerson(int personId, int year)
         {
-            if (!_isInitialized)
+            var result = new List<(Texture2D Photo, Dictionary<string, string> Metadata)>();
+            
+            // Create a mock texture
+            var texture = new Texture2D(800, 600);
+            var colors = new Color[800 * 600];
+            for (int i = 0; i < colors.Length; i++)
             {
-                Debug.LogError("MockFamilyHistoryPictureProvider not initialized");
-                return new List<(Texture2D, Dictionary<string, string>)>();
+                colors[i] = Color.gray;
             }
-
-            // Create a mock photo (4x4 checkerboard)
-            var mockPhoto = new Texture2D(4, 4);
-            for (int x = 0; x < 4; x++)
-            {
-                for (int y = 0; y < 4; y++)
-                {
-                    mockPhoto.SetPixel(x, y, ((x + y) % 2 == 0) ? Color.white : Color.black);
-                }
-            }
-            mockPhoto.Apply();
+            texture.SetPixels(colors);
+            texture.Apply();
 
             // Create mock metadata
-            var mockMetadata = new Dictionary<string, string>
+            var metadata = new Dictionary<string, string>
             {
                 { "Date", $"{year}-01-01" },
                 { "Location", "Mock Location" },
-                { "Description", "Mock photo description" },
-                { "Tags", "Family,Portrait" }
+                { "Description", "Mock Description" },
+                { "Source", "Mock Source" }
             };
 
-            return new List<(Texture2D, Dictionary<string, string>)> 
-            { 
-                (mockPhoto, mockMetadata) 
-            };
+            result.Add((texture, metadata));
+            return result;
         }
     }
 } 

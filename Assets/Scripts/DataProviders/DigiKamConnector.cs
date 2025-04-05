@@ -16,10 +16,7 @@ namespace Assets.Scripts.DataProviders
         private Dictionary<int, int> _ownerIdToTagIdMap;
         private string _rootsMagicDataBaseFileNameWithFullPath;  // usually *.rmtree, *.rmgc, or *.sqlite
         private string _digiKamDataBaseFileNameWithFullPath;     // usually digikam4.db
-        private string _rootsMagicToDigiKamDataBaseFileNameWithFullPath;  // usually rootsmagic-digikam.db
         private string _digiKamThumbnailsDataBaseFileNameWithFullPath;  // usually thumbnails-digikam.db
-
-        static string RootsMagic_DigiKam_DataBaseFileNameOnly = "rootsmagic-digikam.db";
         static string DigiKam_Thumbnails_DataBaseFileNameOnly = "thumbnails-digikam.db";
 
         public DigiKamConnector(string RootMagicDataBaseFileName, string DigiKamDataBaseFileName)           
@@ -27,7 +24,6 @@ namespace Assets.Scripts.DataProviders
             _rootsMagicDataBaseFileNameWithFullPath = RootMagicDataBaseFileName;
             _digiKamDataBaseFileNameWithFullPath = DigiKamDataBaseFileName;
             var justThePath = System.IO.Path.GetDirectoryName(_digiKamDataBaseFileNameWithFullPath);
-            _rootsMagicToDigiKamDataBaseFileNameWithFullPath = justThePath + "\\" + RootsMagic_DigiKam_DataBaseFileNameOnly;
             _digiKamThumbnailsDataBaseFileNameWithFullPath = justThePath + "\\" + DigiKam_Thumbnails_DataBaseFileNameOnly;
             faceTagList = new List<DigiKamFaceTag>();
             _ownerIdToTagIdMap = new Dictionary<int, int>();

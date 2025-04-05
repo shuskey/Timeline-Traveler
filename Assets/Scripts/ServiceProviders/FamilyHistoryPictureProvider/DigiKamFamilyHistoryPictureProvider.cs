@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using Assets.Scripts.DataProviders;
 using System;
+using System.IO;
 
 namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
 {
@@ -11,21 +12,39 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
         private string _digiKamDbPath;
         private DigiKamConnector _connector;
         private bool _isInitialized;
+        private Dictionary<string, string> _configuration;
+        private string _digiKamFolder;
 
         public void Initialize(Dictionary<string, string> configuration)
         {
+            _configuration = configuration;
             if (!configuration.TryGetValue("RootsMagicDbPath", out _rootsMagicDbPath))
             {
-                throw new ArgumentException("RootsMagicDbPath not found in configuration");
+                Debug.LogError("RootsMagicDbPath not found in configuration");
             }
-
             if (!configuration.TryGetValue("DigiKamDbPath", out _digiKamDbPath))
             {
-                throw new ArgumentException("DigiKamDbPath not found in configuration");
+                Debug.LogError("DigiKamDbPath not found in configuration");
             }
+            _digiKamFolder = Path.GetDirectoryName(_digiKamDbPath);
 
             _connector = new DigiKamConnector(_rootsMagicDbPath, _digiKamDbPath);
             _isInitialized = true;
+        }
+
+        public bool AreAllDatabaseFilesPresent()
+        {
+            if (!File.Exists(_rootsMagicDbPath))
+            {
+                Debug.LogError($"RootsMagic database not found at: {_rootsMagicDbPath}");
+                return false;
+            }
+            if (!File.Exists(_digiKamDbPath))
+            {
+                Debug.LogError($"DigiKam database not found at: {_digiKamDbPath}");
+                return false;
+            }
+            return true;
         }
 
         public List<Texture2D> GetThumbnailForPerson(int personId, int year)

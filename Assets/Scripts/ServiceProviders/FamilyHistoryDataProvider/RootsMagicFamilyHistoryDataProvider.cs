@@ -8,203 +8,315 @@ using Assets.Scripts.Enums;
 
 namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
 {
+    /// <summary>
+    /// Implementation of IFamilyHistoryDataProvider that uses the RootsMagic database
+    /// </summary>
     public class RootsMagicFamilyHistoryDataProvider : IFamilyHistoryDataProvider
     {
-        private Dictionary<string, string> _configuration;
-        private string _rootsMagicDbPath;
+        private string _databasePath;
+        private IDbConnection _dbConnection;
 
         public void Initialize(Dictionary<string, string> configuration)
         {
-            _configuration = configuration;
-            if (!configuration.TryGetValue("RootsMagicDbPath", out _rootsMagicDbPath))
+            if (!configuration.TryGetValue("RootsMagicDatabasePath", out _databasePath))
             {
-                Debug.LogError("RootsMagicDbPath not found in configuration");
+                throw new System.ArgumentException("RootsMagicDatabasePath not found in configuration");
             }
+
+            string conn = "URI=file:" + _databasePath;
+            _dbConnection = new SqliteConnection(conn);
+            _dbConnection.Open();
         }
 
         public List<Person> GetPerson(int ownerId, int generation = 0, float xOffset = 0.0f, int spouseNumber = 0)
         {
-            return GetPersonList(1, ownerId, generation, xOffset, spouseNumber);
+            var result = new List<Person>();
+            using (var cmd = _dbConnection.CreateCommand())
+            {
+                cmd.CommandText = @"
+                    SELECT OwnerID, Gender, Given, Surname, BirthMonth, BirthDay, BirthYear,
+                           IsLiving, DeathMonth, DeathDay, DeathYear
+                    FROM NameTable
+                    WHERE OwnerID = @ownerId";
+
+                var param = cmd.CreateParameter();
+                param.ParameterName = "@ownerId";
+                param.Value = ownerId;
+                cmd.Parameters.Add(param);
+
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        result.Add(new Person(
+                            arrayIndex: 0,
+                            ownerId: reader.GetInt32(0),
+                            gender: (PersonGenderType)reader.GetInt32(1),
+                            given: reader.GetString(2),
+                            surname: reader.GetString(3),
+                            isLiving: reader.GetBoolean(7),
+                            birthMonth: reader.GetInt32(4),
+                            birthDay: reader.GetInt32(5),
+                            birthYear: reader.GetInt32(6),
+                            deathMonth: reader.GetInt32(8),
+                            deathDay: reader.GetInt32(9),
+                            deathYear: reader.GetInt32(10),
+                            generation: generation,
+                            xOffset: xOffset,
+                            spouseNumber: spouseNumber
+                        ));
+                    }
+                }
+            }
+            return result;
         }
 
         public List<Person> GetPersonList(int limitListSizeTo, int? justThisOwnerId = null, int generation = 0, float xOffset = 0.0f, int spouseNumber = 0)
         {
             var result = new List<Person>();
-            string conn = "URI=file:" + _rootsMagicDbPath;
-
-            using (IDbConnection dbconn = new SqliteConnection(conn))
+            using (var cmd = _dbConnection.CreateCommand())
             {
-                dbconn.Open();
-                using (IDbCommand dbcmd = dbconn.CreateCommand())
-                {
-                    string query = BuildPersonQuery(justThisOwnerId);
-                    dbcmd.CommandText = query;
+                cmd.CommandText = @"
+                    SELECT OwnerID, Gender, Given, Surname, BirthMonth, BirthDay, BirthYear,
+                           IsLiving, DeathMonth, DeathDay, DeathYear
+                    FROM NameTable
+                    WHERE (@ownerId IS NULL OR OwnerID = @ownerId)
+                    ORDER BY Surname, Given
+                    LIMIT @limit";
 
-                    using (IDataReader reader = dbcmd.ExecuteReader())
+                var ownerParam = cmd.CreateParameter();
+                ownerParam.ParameterName = "@ownerId";
+                ownerParam.Value = justThisOwnerId ?? (object)System.DBNull.Value;
+                cmd.Parameters.Add(ownerParam);
+
+                var limitParam = cmd.CreateParameter();
+                limitParam.ParameterName = "@limit";
+                limitParam.Value = limitListSizeTo;
+                cmd.Parameters.Add(limitParam);
+
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read() && result.Count < limitListSizeTo)
                     {
-                        int currentArrayIndex = 0;
-                        while (reader.Read() && currentArrayIndex < limitListSizeTo)
-                        {
-                            var person = CreatePersonFromReader(reader, currentArrayIndex, generation, xOffset, spouseNumber);
-                            result.Add(person);
-                            currentArrayIndex++;
-                        }
+                        result.Add(new Person(
+                            arrayIndex: result.Count,
+                            ownerId: reader.GetInt32(0),
+                            gender: (PersonGenderType)reader.GetInt32(1),
+                            given: reader.GetString(2),
+                            surname: reader.GetString(3),
+                            isLiving: reader.GetBoolean(7),
+                            birthMonth: reader.GetInt32(4),
+                            birthDay: reader.GetInt32(5),
+                            birthYear: reader.GetInt32(6),
+                            deathMonth: reader.GetInt32(8),
+                            deathDay: reader.GetInt32(9),
+                            deathYear: reader.GetInt32(10),
+                            generation: generation,
+                            xOffset: xOffset,
+                            spouseNumber: spouseNumber
+                        ));
                     }
                 }
             }
-
             return result;
         }
 
         public List<Person> GetPersonListByLastName(string lastNameFilter, int limitListSizeTo, int generation = 0, float xOffset = 0.0f, int spouseNumber = 0)
         {
             var result = new List<Person>();
-            string conn = "URI=file:" + _rootsMagicDbPath;
-
-            using (IDbConnection dbconn = new SqliteConnection(conn))
+            using (var cmd = _dbConnection.CreateCommand())
             {
-                dbconn.Open();
-                using (IDbCommand dbcmd = dbconn.CreateCommand())
-                {
-                    string query = BuildPersonQueryByLastName(lastNameFilter);
-                    dbcmd.CommandText = query;
+                cmd.CommandText = @"
+                    SELECT OwnerID, Gender, Given, Surname, BirthMonth, BirthDay, BirthYear,
+                           IsLiving, DeathMonth, DeathDay, DeathYear
+                    FROM NameTable
+                    WHERE Surname LIKE @lastNameFilter
+                    ORDER BY Surname, Given
+                    LIMIT @limit";
 
-                    using (IDataReader reader = dbcmd.ExecuteReader())
+                var lastNameParam = cmd.CreateParameter();
+                lastNameParam.ParameterName = "@lastNameFilter";
+                lastNameParam.Value = "%" + lastNameFilter + "%";
+                cmd.Parameters.Add(lastNameParam);
+
+                var limitParam = cmd.CreateParameter();
+                limitParam.ParameterName = "@limit";
+                limitParam.Value = limitListSizeTo;
+                cmd.Parameters.Add(limitParam);
+
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read() && result.Count < limitListSizeTo)
                     {
-                        int currentArrayIndex = 0;
-                        while (reader.Read() && currentArrayIndex < limitListSizeTo)
-                        {
-                            var person = CreatePersonFromReader(reader, currentArrayIndex, generation, xOffset, spouseNumber);
-                            result.Add(person);
-                            currentArrayIndex++;
-                        }
+                        result.Add(new Person(
+                            arrayIndex: result.Count,
+                            ownerId: reader.GetInt32(0),
+                            gender: (PersonGenderType)reader.GetInt32(1),
+                            given: reader.GetString(2),
+                            surname: reader.GetString(3),
+                            isLiving: reader.GetBoolean(7),
+                            birthMonth: reader.GetInt32(4),
+                            birthDay: reader.GetInt32(5),
+                            birthYear: reader.GetInt32(6),
+                            deathMonth: reader.GetInt32(8),
+                            deathDay: reader.GetInt32(9),
+                            deathYear: reader.GetInt32(10),
+                            generation: generation,
+                            xOffset: xOffset,
+                            spouseNumber: spouseNumber
+                        ));
                     }
                 }
             }
+            return result;
+        }
 
-            return result.OrderBy(x => x.surName + " " + x.givenName).ToList();
+        public List<Parentage> GetChildren(int familyId)
+        {
+            var result = new List<Parentage>();
+            using (var cmd = _dbConnection.CreateCommand())
+            {
+                cmd.CommandText = @"
+                    SELECT family.FamilyID, family.FatherID, family.MotherID, 
+                           children.ChildID, children.RelFather, children.RelMother
+                    FROM FamilyTable family
+                    JOIN NameTable father ON family.FatherID = father.OwnerID
+                    JOIN NameTable mother ON family.MotherID = mother.OwnerID
+                    JOIN ChildTable children ON family.FamilyID = children.FamilyID
+                    JOIN NameTable child ON children.ChildID = child.OwnerID
+                    WHERE family.FamilyID = @familyId
+                    ORDER BY children.ChildOrder ASC";
+
+                var param = cmd.CreateParameter();
+                param.ParameterName = "@familyId";
+                param.Value = familyId;
+                cmd.Parameters.Add(param);
+
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        result.Add(new Parentage(
+                            familyId: reader.GetInt32(0),
+                            fatherId: reader.GetInt32(1),
+                            motherId: reader.GetInt32(2),
+                            childId: reader.GetInt32(3),
+                            relationToFather: reader.GetInt32(4) == 0 ? ChildRelationshipType.Biological : ChildRelationshipType.Adopted,
+                            relationToMother: reader.GetInt32(5) == 0 ? ChildRelationshipType.Biological : ChildRelationshipType.Adopted
+                        ));
+                    }
+                }
+            }
+            return result;
+        }
+
+        public List<Marriage> GetMarriages(int ownerId, bool useHusbandQuery = true)
+        {
+            var result = new List<Marriage>();
+            using (var cmd = _dbConnection.CreateCommand())
+            {
+                string whereIdTypeToUse = useHusbandQuery ? "FatherID" : "MotherID";
+                cmd.CommandText = $@"
+                    SELECT FM.FamilyID, FM.FatherID AS HusbandID, FM.MotherID AS WifeID,
+                           CASE WHEN SUBSTR(Emar.Date, 8, 2) THEN SUBSTR(Emar.Date, 8, 2) ELSE '0' END AS MarriedMonth,
+                           CASE WHEN SUBSTR(Emar.Date, 10, 2) THEN SUBSTR(Emar.Date, 10, 2) ELSE '0' END AS MarriedDay,
+                           CASE WHEN SUBSTR(Emar.Date, 4, 4) THEN SUBSTR(Emar.Date, 4, 4) ELSE '0' END AS MarriedYear,
+                           CASE WHEN SUBSTR(Eanl.Date, 4, 4) THEN SUBSTR(Eanl.Date, 4, 4) ELSE '0' END AS AnnulledDate,
+                           CASE WHEN SUBSTR(Ediv.Date, 4, 4) THEN SUBSTR(Ediv.Date, 4, 4) ELSE '0' END AS DivorcedDate
+                    FROM FamilyTable FM
+                    LEFT JOIN EventTable Emar ON FM.FamilyID = Emar.OwnerID AND Emar.EventType = 300
+                    LEFT JOIN EventTable Eanl ON FM.FamilyID = Eanl.OwnerID AND Eanl.EventType = 301
+                    LEFT JOIN EventTable Ediv ON FM.FamilyID = Ediv.OwnerID AND Ediv.EventType = 302
+                    WHERE FM.{whereIdTypeToUse} = @ownerId";
+
+                var param = cmd.CreateParameter();
+                param.ParameterName = "@ownerId";
+                param.Value = ownerId;
+                cmd.Parameters.Add(param);
+
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        result.Add(new Marriage(
+                            familyId: reader.GetInt32(0),
+                            husbandId: reader.GetInt32(1),
+                            wifeId: reader.GetInt32(2),
+                            marriageMonth: int.Parse(reader.GetString(3)),
+                            marriageDay: int.Parse(reader.GetString(4)),
+                            marriageYear: int.Parse(reader.GetString(5)),
+                            annulledYear: int.Parse(reader.GetString(6)),
+                            divorcedYear: int.Parse(reader.GetString(7))
+                        ));
+                    }
+                }
+            }
+            return result;
+        }
+
+        public List<Parentage> GetParents(int childId)
+        {
+            var result = new List<Parentage>();
+            using (var cmd = _dbConnection.CreateCommand())
+            {
+                cmd.CommandText = @"
+                    SELECT family.FamilyID, family.FatherID, family.MotherID,
+                           children.ChildID, children.RelFather, children.RelMother
+                    FROM FamilyTable family
+                    JOIN NameTable father ON family.FatherID = father.OwnerID
+                    JOIN NameTable mother ON family.MotherID = mother.OwnerID
+                    JOIN ChildTable children ON family.FamilyID = children.FamilyID
+                    JOIN NameTable child ON children.ChildID = child.OwnerID
+                    WHERE children.ChildID = @childId";
+
+                var param = cmd.CreateParameter();
+                param.ParameterName = "@childId";
+                param.Value = childId;
+                cmd.Parameters.Add(param);
+
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        result.Add(new Parentage(
+                            familyId: reader.GetInt32(0),
+                            fatherId: reader.GetInt32(1),
+                            motherId: reader.GetInt32(2),
+                            childId: reader.GetInt32(3),
+                            relationToFather: reader.GetInt32(4) == 0 ? ChildRelationshipType.Biological : ChildRelationshipType.Adopted,
+                            relationToMother: reader.GetInt32(5) == 0 ? ChildRelationshipType.Biological : ChildRelationshipType.Adopted
+                        ));
+                    }
+                }
+            }
+            return result;
         }
 
         public bool ValidateDatabaseIntegrity()
         {
             try
             {
-                string conn = "URI=file:" + _rootsMagicDbPath;
-                using (IDbConnection dbconn = new SqliteConnection(conn))
+                using (var cmd = _dbConnection.CreateCommand())
                 {
-                    dbconn.Open();
+                    cmd.CommandText = "SELECT COUNT(*) FROM NameTable";
+                    cmd.ExecuteScalar();
                     return true;
                 }
             }
             catch (System.Exception ex)
             {
-                Debug.LogError($"Database integrity check failed: {ex.Message}");
+                Debug.LogError($"Database validation failed: {ex.Message}");
                 return false;
             }
         }
 
-        private string BuildPersonQuery(int? justThisOwnerId = null)
+        ~RootsMagicFamilyHistoryDataProvider()
         {
-            string query = @"
-                SELECT  name.OwnerID 
-                     , case when Sex = 0 then 'M' when Sex = 1 then 'F' else 'U' end 
-                     , name.Given, name.Surname 
-                     , CASE WHEN SUBSTR(eventBirth.Date,8,2) THEN SUBSTR(eventBirth.Date,8,2) ELSE ""0"" END AS BirthMonth 
-                     , CASE WHEN SUBSTR(eventBirth.Date, 10, 2) THEN SUBSTR(eventBirth.Date,10,2) ELSE ""0"" END AS BirthdDay 
-                     , CASE WHEN SUBSTR(eventBirth.Date,4,4) THEN 
-                           CASE WHEN SUBSTR(eventBirth.Date, 4, 4) != ""0"" THEN SUBSTR(eventBirth.Date,4,4) END 
-                           ELSE CAST(name.BirthYear as varchar(10)) END AS BirthYear 
-                     , person.Living 
-                     , CASE WHEN SUBSTR(eventDeath.Date,8,2) THEN SUBSTR(eventDeath.Date,8,2) ELSE ""0"" END AS DeathMonth 
-                     , CASE WHEN SUBSTR(eventDeath.Date,10,2) THEN SUBSTR(eventDeath.Date,10,2) ELSE ""0"" END AS DeathdDay 
-                     , CASE WHEN SUBSTR(eventDeath.Date,4,4) THEN SUBSTR(eventDeath.Date,4,4) ELSE ""0"" END AS DeathYear 
-                FROM NameTable name 
-                JOIN PersonTable person 
-                    ON name.OwnerID = person.PersonID 
-                LEFT JOIN EventTable eventBirth ON name.OwnerID = eventBirth.OwnerID AND eventBirth.EventType = 1 
-                LEFT JOIN EventTable eventDeath 
-                    ON name.OwnerID = eventDeath.OwnerID AND eventDeath.EventType = 2";
-
-            if (justThisOwnerId.HasValue)
+            if (_dbConnection != null && _dbConnection.State == ConnectionState.Open)
             {
-                query += $" WHERE name.OwnerID = \"{justThisOwnerId}\" LIMIT 1;";
+                _dbConnection.Close();
+                _dbConnection.Dispose();
             }
-
-            return query;
-        }
-
-        private string BuildPersonQueryByLastName(string lastNameFilter)
-        {
-            return @"
-                SELECT  name.OwnerID 
-                     , case when Sex = 0 then 'M' when Sex = 1 then 'F' else 'U' end 
-                     , name.Given, name.Surname 
-                     , CAST(name.BirthYear as varchar(10)) AS BirthYear 
-                FROM NameTable name 
-                JOIN PersonTable person 
-                    ON name.OwnerID = person.PersonID" +
-                $" WHERE name.Surname LIKE \"%{lastNameFilter}%\";";
-        }
-
-        private Person CreatePersonFromReader(IDataReader reader, int arrayIndex, int generation, float xOffset, int spouseNumber)
-        {
-            var ownerId = reader.GetInt32(0);
-            var gender = charToPersonGenderType(reader.GetString(1)[0]);
-            var given = reader.GetString(2);
-            var surname = reader.GetString(3);
-
-            // Handle different query results based on the query type
-            if (reader.FieldCount > 5)
-            {
-                // Full person query
-                return new Person(
-                    arrayIndex: arrayIndex,
-                    ownerId: ownerId,
-                    gender: gender,
-                    given: given,
-                    surname: surname,
-                    birthMonth: StringToNumberProtected(reader.GetString(4), $"birthMonth as GetString(4) for OwnerId: {ownerId}."),
-                    birthDay: StringToNumberProtected(reader.GetString(5), $"birthDay as GetString(5) for OwnerId: {ownerId}."),
-                    birthYear: StringToNumberProtected(reader.GetString(6), $"birthYear as GetString(6) for OwnerId: {ownerId}."),
-                    isLiving: reader.GetBoolean(7),
-                    deathMonth: StringToNumberProtected(reader.GetString(8), $"deathMonth as GetString(8) for OwnerId: {ownerId}."),
-                    deathDay: StringToNumberProtected(reader.GetString(9), $"deathDay as GetString(9) for OwnerId: {ownerId}."),
-                    deathYear: StringToNumberProtected(reader.GetString(10), $"deathYear as GetString(10) for OwnerId: {ownerId}."),
-                    generation: generation,
-                    xOffset: xOffset,
-                    spouseNumber: spouseNumber
-                );
-            }
-            else
-            {
-                // Last name filter query
-                return new Person(
-                    arrayIndex: arrayIndex,
-                    ownerId: ownerId,
-                    gender: gender,
-                    given: given,
-                    surname: surname,
-                    birthYear: StringToNumberProtected(reader.GetString(4), $"birthYear as GetString(4) for OwnerId: {ownerId}."),
-                    deathYear: 0,
-                    isLiving: false,
-                    generation: generation,
-                    xOffset: xOffset,
-                    spouseNumber: spouseNumber
-                );
-            }
-        }
-
-        private PersonGenderType charToPersonGenderType(char sex) =>
-            sex.Equals('M') ? PersonGenderType.Male : (sex.Equals('F') ? PersonGenderType.Female : PersonGenderType.NotSet);
-
-        private int StringToNumberProtected(string value, string errorContext)
-        {
-            if (int.TryParse(value, out int result))
-            {
-                return result;
-            }
-            Debug.LogWarning($"Failed to parse number in {errorContext}");
-            return 0;
         }
     }
 } 
