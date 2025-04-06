@@ -22,10 +22,10 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
             {
                 new Person(
                     arrayIndex: 0,
-                    ownerId: 1,
+                    ownerId: 8,
                     gender: PersonGenderType.Male,
                     given: "John",
-                    surname: "Doe",
+                    surname: "Kennedy",
                     isLiving: false,
                     birthMonth: 1,
                     birthDay: 1,
@@ -86,6 +86,9 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
 
         public void Initialize(Dictionary<string, string> configuration)
         {
+            Debug.Log("Initializing Mock Family History Data Provider");
+            // Log how many Persons are in the _mockPersons list
+            Debug.Log($"Number of Persons in _mockPersons: {_mockPersons.Count}");
             _configuration = configuration;
         }
 

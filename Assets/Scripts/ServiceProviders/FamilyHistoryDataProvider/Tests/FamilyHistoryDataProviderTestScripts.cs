@@ -5,6 +5,7 @@ using System.IO;
 using System.Collections.Generic;
 using Assets.Scripts.DataObjects;
 using Assets.Scripts.Enums;
+using Assets.Scripts.ServiceProviders;
 
 namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider.Tests
 {
@@ -26,7 +27,7 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider.Tests
             _mockProvider = new MockFamilyHistoryDataProvider();
             var mockConfig = new Dictionary<string, string>
             {
-                { "RootsMagicDbPath", _rootsMagicDbPath }
+                { PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, _rootsMagicDbPath }
             };
             _mockProvider.Initialize(mockConfig);
 
@@ -34,7 +35,7 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider.Tests
             _realProvider = new RootsMagicFamilyHistoryDataProvider();
             var realConfig = new Dictionary<string, string>
             {
-                { "RootsMagicDbPath", _rootsMagicDbPath }
+                { PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, _rootsMagicDbPath }
             };
             _realProvider.Initialize(realConfig);
         }
@@ -144,7 +145,7 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider.Tests
         public void GetParents_WhenChildExists_ReturnsParents()
         {
             // Act
-            var mockResult = _mockProvider.GetParents(3);
+         var mockResult = _mockProvider.GetParents(3);
             var realResult = _realProvider.GetParents(3);
 
             // Assert

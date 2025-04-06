@@ -54,45 +54,7 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
 
         public List<Person> GetPerson(int ownerId, int generation = 0, float xOffset = 0.0f, int spouseNumber = 0)
         {
-            var result = new List<Person>();
-            using (var cmd = _dbConnection.CreateCommand())
-            {
-                cmd.CommandText = @"
-                    SELECT OwnerID, Gender, Given, Surname, BirthMonth, BirthDay, BirthYear,
-                           IsLiving, DeathMonth, DeathDay, DeathYear
-                    FROM NameTable
-                    WHERE OwnerID = @ownerId";
-
-                var param = cmd.CreateParameter();
-                param.ParameterName = "@ownerId";
-                param.Value = ownerId;
-                cmd.Parameters.Add(param);
-
-                using (var reader = cmd.ExecuteReader())
-                {
-                    if (reader.Read())
-                    {
-                        result.Add(new Person(
-                            arrayIndex: 0,
-                            ownerId: reader.GetInt32(0),
-                            gender: (PersonGenderType)reader.GetInt32(1),
-                            given: reader.GetString(2),
-                            surname: reader.GetString(3),
-                            isLiving: reader.GetBoolean(7),
-                            birthMonth: reader.GetInt32(4),
-                            birthDay: reader.GetInt32(5),
-                            birthYear: reader.GetInt32(6),
-                            deathMonth: reader.GetInt32(8),
-                            deathDay: reader.GetInt32(9),
-                            deathYear: reader.GetInt32(10),
-                            generation: generation,
-                            xOffset: xOffset,
-                            spouseNumber: spouseNumber
-                        ));
-                    }
-                }
-            }
-            return result;
+            return GetPersonList(limitListSizeTo: 1, justThisOwnerId: ownerId, generation, xOffset, spouseNumber);
         }
 
         public List<Person> GetPersonList(int limitListSizeTo, int? justThisOwnerId = null, int generation = 0, float xOffset = 0.0f, int spouseNumber = 0)
@@ -101,40 +63,63 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
             using (var cmd = _dbConnection.CreateCommand())
             {
                 cmd.CommandText = @"
-                    SELECT OwnerID, Gender, Given, Surname, BirthMonth, BirthDay, BirthYear,
-                           IsLiving, DeathMonth, DeathDay, DeathYear
-                    FROM NameTable
-                    WHERE (@ownerId IS NULL OR OwnerID = @ownerId)
-                    ORDER BY Surname, Given
-                    LIMIT @limit";
+                SELECT  name.OwnerID 
+                     , case when Sex = 0 then 'M' when Sex = 1 then 'F' else 'U' end 
+                     , name.Given, name.Surname 
+                     , CASE WHEN SUBSTR(eventBirth.Date,8,2) THEN SUBSTR(eventBirth.Date,8,2) ELSE '0' END AS BirthMonth 
+                     , CASE WHEN SUBSTR(eventBirth.Date, 10, 2) THEN SUBSTR(eventBirth.Date,10,2) ELSE '0' END AS BirthdDay 
+                     , CASE WHEN SUBSTR(eventBirth.Date,4,4) THEN 
+                           CASE WHEN SUBSTR(eventBirth.Date, 4, 4) != '0' THEN SUBSTR(eventBirth.Date,4,4) END 
+                           ELSE CAST(name.BirthYear as varchar(10)) END AS BirthYear 
+                     , person.Living 
+                     , CASE WHEN SUBSTR(eventDeath.Date,8,2) THEN SUBSTR(eventDeath.Date,8,2) ELSE '0' END AS DeathMonth 
+                     , CASE WHEN SUBSTR(eventDeath.Date,10,2) THEN SUBSTR(eventDeath.Date,10,2) ELSE '0' END AS DeathdDay 
+                     , CASE WHEN SUBSTR(eventDeath.Date,4,4) THEN SUBSTR(eventDeath.Date,4,4) ELSE '0' END AS DeathYear 
+                FROM NameTable name 
+                JOIN PersonTable person 
+                    ON name.OwnerID = person.PersonID 
+                LEFT JOIN EventTable eventBirth ON name.OwnerID = eventBirth.OwnerID AND eventBirth.EventType = 1 
+                LEFT JOIN EventTable eventDeath 
+                    ON name.OwnerID = eventDeath.OwnerID AND eventDeath.EventType = 2";
 
-                var ownerParam = cmd.CreateParameter();
-                ownerParam.ParameterName = "@ownerId";
-                ownerParam.Value = justThisOwnerId ?? (object)System.DBNull.Value;
-                cmd.Parameters.Add(ownerParam);
+                if (justThisOwnerId != null)
+                {
+                    cmd.CommandText +=
+                        @"
+                        WHERE name.OwnerID = @justThisOwnerId LIMIT 1;";
 
-                var limitParam = cmd.CreateParameter();
-                limitParam.ParameterName = "@limit";
-                limitParam.Value = limitListSizeTo;
-                cmd.Parameters.Add(limitParam);
+                    var ownerParam = cmd.CreateParameter();
+                    ownerParam.ParameterName = "@justThisOwnerId";
+                    ownerParam.Value = justThisOwnerId;
+                    cmd.Parameters.Add(ownerParam);
+                } else {
+                    cmd.CommandText += @"
+                        LIMIT @limit";
+
+                    var limitParam = cmd.CreateParameter();
+                    limitParam.ParameterName = "@limit";
+                    limitParam.Value = limitListSizeTo;
+                    cmd.Parameters.Add(limitParam);
+                }
 
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read() && result.Count < limitListSizeTo)
                     {
+                        var ownerId = reader.GetInt32(0);
                         result.Add(new Person(
                             arrayIndex: result.Count,
-                            ownerId: reader.GetInt32(0),
-                            gender: (PersonGenderType)reader.GetInt32(1),
+                            ownerId: ownerId,
+                            gender: charToPersonGenderType(reader.GetString(1)[0]),
                             given: reader.GetString(2),
                             surname: reader.GetString(3),
+                            birthMonth: StringToNumberProtected(reader.GetString(4), $"birthMonth as GetString(4) for OwnerId: {ownerId}."),
+                            birthDay: StringToNumberProtected(reader.GetString(5), $"birthDay as GetString(5) for OwnerId: {ownerId}."),
+                            birthYear: StringToNumberProtected(reader.GetString(6), $"birthYear as GetString(6) for OwnerId: {ownerId}."),
                             isLiving: reader.GetBoolean(7),
-                            birthMonth: reader.GetInt32(4),
-                            birthDay: reader.GetInt32(5),
-                            birthYear: reader.GetInt32(6),
-                            deathMonth: reader.GetInt32(8),
-                            deathDay: reader.GetInt32(9),
-                            deathYear: reader.GetInt32(10),
+                            deathMonth: StringToNumberProtected(reader.GetString(8), $"deathmonth as GetString(8) for OwnerId: {ownerId}."),
+                            deathDay: StringToNumberProtected(reader.GetString(9), $"deathday as GetString(9) for OwnerId: {ownerId}."),
+                            deathYear: StringToNumberProtected(reader.GetString(10), $"deathyear as GetString(10) for OwnerId: {ownerId}."),
                             generation: generation,
                             xOffset: xOffset,
                             spouseNumber: spouseNumber
@@ -145,17 +130,6 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
             return result;
         }
 
-        private int StringToNumberProtected(string value, string errorContext)
-        {
-            if (string.IsNullOrEmpty(value) || value == "0")
-                return 0;
-            
-            if (int.TryParse(value, out int result))
-                return result;
-                
-            Debug.LogWarning($"Failed to parse number in {errorContext}. Value: {value}");
-            return 0;
-        }
 
         public List<Person> GetPersonListByLastName(string lastNameFilter, int limitListSizeTo, int generation = 0, float xOffset = 0.0f, int spouseNumber = 0)
         {
@@ -170,8 +144,7 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
                     FROM NameTable name
                     JOIN PersonTable person
                     ON name.OwnerID = person.PersonID
-                    WHERE Surname COLLATE NOCASE LIKE @lastNameFilter
-                    ORDER BY Surname COLLATE NOCASE, Given COLLATE NOCASE
+                    WHERE Surname LIKE @lastNameFilter
                     LIMIT @limit";
 
                 var lastNameParam = cmd.CreateParameter();
@@ -195,7 +168,7 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
                             gender: charToPersonGenderType(reader.GetString(1)[0]),
                             given: reader.GetString(2),
                             surname: reader.GetString(3),
-                            birthYear: StringToNumberProtected(reader.GetString(4), $"birthYear as GetString(4) for OwnerId: {ownerId}."),   
+                            birthYear: StringToNumberProtected(reader.GetString(4), $"birthyear as GetString(4) for OwnerId: {ownerId}."),   
                             deathYear: 0,
                             isLiving: false,
                             generation: generation,
@@ -205,10 +178,6 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
                 }
             }
             return result;
-            
-            PersonGenderType charToPersonGenderType(char sex) =>
-                sex.Equals('M') ? PersonGenderType.Male : (sex.Equals('F') ? PersonGenderType.Female : PersonGenderType.NotSet);
-
         }
 
         public List<Parentage> GetChildren(int familyId)
@@ -216,15 +185,15 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
             var result = new List<Parentage>();
             using (var cmd = _dbConnection.CreateCommand())
             {
+
                 cmd.CommandText = @"
-                    SELECT family.FamilyID, family.FatherID, family.MotherID, 
-                           children.ChildID, children.RelFather, children.RelMother
-                    FROM FamilyTable family
-                    JOIN NameTable father ON family.FatherID = father.OwnerID
-                    JOIN NameTable mother ON family.MotherID = mother.OwnerID
-                    JOIN ChildTable children ON family.FamilyID = children.FamilyID
-                    JOIN NameTable child ON children.ChildID = child.OwnerID
-                    WHERE family.FamilyID = @familyId
+                    SELECT family.FamilyID, family.FatherID, family.MotherID, children.ChildID, children.RelFather, children.RelMother 
+                    FROM FamilyTable family 
+                    JOIN NameTable father ON family.FatherID = father.OwnerID 
+                    JOIN NameTable mother ON family.MotherID = mother.OwnerID 
+                    JOIN ChildTable children ON family.FamilyID = children.FamilyID 
+                    JOIN NameTable child ON children.ChildID = child.OwnerID 
+                    WHERE family.FamilyID = @familyId 
                     ORDER BY children.ChildOrder ASC";
 
                 var param = cmd.CreateParameter();
@@ -278,15 +247,16 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
                 {
                     while (reader.Read())
                     {
+                        var familyId = reader.GetInt32(0);
                         result.Add(new Marriage(
-                            familyId: reader.GetInt32(0),
+                            familyId: familyId,
                             husbandId: reader.GetInt32(1),
                             wifeId: reader.GetInt32(2),
-                            marriageMonth: int.Parse(reader.GetString(3)),
-                            marriageDay: int.Parse(reader.GetString(4)),
-                            marriageYear: int.Parse(reader.GetString(5)),
-                            annulledYear: int.Parse(reader.GetString(6)),
-                            divorcedYear: int.Parse(reader.GetString(7))
+                            marriageMonth: StringToNumberProtected(reader.GetString(3), $"marriageMonth as GetString(3) for OwnerId/FamilyId: {ownerId}/{familyId}."),
+                            marriageDay: StringToNumberProtected(reader.GetString(4), $"marriageDay as GetString(4) for OwnerId/FamilyId: {ownerId}/{familyId}."),
+                            marriageYear: StringToNumberProtected(reader.GetString(5), $"marriageYear as GetString(5) for OwnerId/FamilyId: {ownerId}/{familyId}."),
+                            annulledYear: StringToNumberProtected(reader.GetString(6), $"annulledYear as GetString(6) for OwnerId/FamilyId: {ownerId}/{familyId}."),
+                            divorcedYear: StringToNumberProtected(reader.GetString(7), $"divorcedYear as GetString(7) for OwnerId/FamilyId: {ownerId}/{familyId}.")
                         ));
                     }
                 }
@@ -350,6 +320,21 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
             }
         }
 
+        private int StringToNumberProtected(string value, string errorContext)
+        {
+            if (string.IsNullOrEmpty(value) || value == "0")
+                return 0;
+            
+            if (int.TryParse(value, out int result))
+                return result;
+                
+            Debug.LogWarning($"Failed to parse number in {errorContext}. Value: {value}");
+            return 0;
+        }
+        PersonGenderType charToPersonGenderType(char sex) =>
+                sex.Equals('M') ? PersonGenderType.Male : (sex.Equals('F') ? PersonGenderType.Female : PersonGenderType.NotSet);
+    
+        // This is the destructor for the class
         ~RootsMagicFamilyHistoryDataProvider()
         {
             if (_dbConnection != null && _dbConnection.State == ConnectionState.Open)

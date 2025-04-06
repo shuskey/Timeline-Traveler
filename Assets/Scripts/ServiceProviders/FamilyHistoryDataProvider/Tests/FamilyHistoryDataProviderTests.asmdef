@@ -8,7 +8,8 @@
         "FamilyHistoryPictureProvider",
         "FamilyHistoryDataProvider",
         "DataObjectsAssembly",
-        "EnumsAssembly"
+        "EnumsAssembly",
+        "ServiceProviders"
     ],
     "includePlatforms": [
         "Editor"
