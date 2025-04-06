@@ -6,6 +6,10 @@ using System.Linq;
 using TMPro;
 using UnityEngine;
 using Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider;
+using Assets.Scripts.ServiceProviders;
+using Unity.Cinemachine;
+using StarterAssets;
+using UnityEngine.SceneManagement;
 
 public class PersonNode : MonoBehaviour
 {
@@ -137,12 +141,11 @@ public class PersonNode : MonoBehaviour
         this.rootsMagicFileName = rootsMagicFileName;
         this.digiKamFileName = digiKamFileName;       
         _pictureProvider = new DigiKamFamilyHistoryPictureProvider();
-        var config = new Dictionary<string, string>
+        _pictureProvider.Initialize(new Dictionary<string, string>
         {
-            { "RootsMagicDatabasePath", rootsMagicFileName },
-            { "DigiKamDatabasePath", digiKamFileName }
-        };
-        _pictureProvider.Initialize(config);
+            { PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, rootsMagicFileName },
+            { PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH, digiKamFileName }
+        });
     }
 
     public byte[] GetPrimaryPhoto()

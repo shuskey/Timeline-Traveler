@@ -3,6 +3,10 @@ using UnityEngine;
 using FluentAssertions;
 using System.IO;
 using System.Collections.Generic;
+using System.Collections;
+using Assets.Scripts.ServiceProviders;
+using Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider;
+using System.Linq;
 
 namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
 {
@@ -25,12 +29,12 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
 
             // Create and initialize the provider with sample data
             _provider = new DigiKamFamilyHistoryPictureProvider();
-            var configuration = new Dictionary<string, string>
+            var config = new Dictionary<string, string>
             {
-                { "RootsMagicDbPath", _rootsMagicDbPath },
-                { "DigiKamDbPath", _digiKamDbPath }
+                { PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, _rootsMagicDbPath },
+                { PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH, _digiKamDbPath }
             };
-            _provider.Initialize(configuration);
+            _provider.Initialize(config);
         }
 
         [Test]

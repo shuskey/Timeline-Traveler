@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using Assets.Scripts.DataProviders;
 using System;
 using System.IO;
+using Assets.Scripts.ServiceProviders;
 
 namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
 {
     public class DigiKamFamilyHistoryPictureProvider : IFamilyHistoryPictureProvider
-    {
+    {       
         private string _rootsMagicDbPath;
         private string _digiKamDbPath;
         private DigiKamConnector _connector;
@@ -18,13 +19,13 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
         public void Initialize(Dictionary<string, string> configuration)
         {
             _configuration = configuration;
-            if (!configuration.TryGetValue("RootsMagicDbPath", out _rootsMagicDbPath))
+            if (!configuration.TryGetValue(PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, out _rootsMagicDbPath))
             {
-                Debug.LogError("RootsMagicDbPath not found in configuration");
+                Debug.LogError($"{PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH} not found in configuration");
             }
-            if (!configuration.TryGetValue("DigiKamDbPath", out _digiKamDbPath))
+            if (!configuration.TryGetValue(PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH, out _digiKamDbPath))
             {
-                Debug.LogError("DigiKamDbPath not found in configuration");
+                Debug.LogError($"{PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH} not found in configuration");
             }
             _digiKamFolder = Path.GetDirectoryName(_digiKamDbPath);
 

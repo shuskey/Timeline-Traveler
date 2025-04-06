@@ -2,11 +2,13 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using Assets.Scripts.Enums;
 using System;
 using Random = UnityEngine.Random;
 using Assets.Scripts.DataObjects;
 using Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider;
+using Assets.Scripts.ServiceProviders;
 using Unity.Cinemachine;
 using StarterAssets;
 using UnityEngine.SceneManagement;
@@ -66,7 +68,7 @@ public class Tribe : MonoBehaviour
 		_dataProvider = new RootsMagicFamilyHistoryDataProvider();
 		var config = new Dictionary<string, string>
 		{
-			{ "RootsMagicDatabasePath", rootsMagicFileName }
+			{ PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, rootsMagicFileName }
 		};
 		_dataProvider.Initialize(config);
 
@@ -494,9 +496,8 @@ public class Tribe : MonoBehaviour
 
 	void Update() 
 	{
-
 		//Detect when the F key is pressed down
-		if (Input.GetKeyDown(KeyCode.F))
+		if (Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame)
 		{
 			Debug.Log("F key was pressed.");
 			teleportToNextPersonOfInterest();

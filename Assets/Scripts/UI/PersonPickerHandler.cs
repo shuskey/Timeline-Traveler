@@ -9,6 +9,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider;
+using Assets.Scripts.ServiceProviders;
 
 public class PersonPickerHandler : MonoBehaviour
 {
@@ -56,23 +57,23 @@ public class PersonPickerHandler : MonoBehaviour
         _dataProvider = new RootsMagicFamilyHistoryDataProvider();
         var config = new Dictionary<string, string>
         {
-            { "RootsMagicDatabasePath", Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath }
+            { PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath }
         };
-        
+
+         _dataProvider.Initialize(config);
         // See if we have a previously selected Base PersonId
-        if (CheckIfFileSelectedAndEnableUserInterface()) {
-            _dataProvider.Initialize(config);
-        }
+        CheckIfFileSelectedAndEnableUserInterface();
     }
 
     public bool CheckIfFileSelectedAndEnableUserInterface()
     {
-        if (PlayerPrefs.HasKey("LastUsedRootsMagicDataFilePath")) {
+        if (PlayerPrefs.HasKey(PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH)) {
             lastNameFilterField.interactable = true;
             transform.GetComponent<Dropdown>().interactable = true;
-            if (PlayerPrefs.HasKey("LastSelectedRootsMagicBasePersonId") && PlayerPrefs.HasKey("LastSelectedRootsMagicBasePersonFullName")) {
-                selectedPersonId = PlayerPrefs.GetInt("LastSelectedRootsMagicBasePersonId");
-                selectedPersonFullName = PlayerPrefs.GetString("LastSelectedRootsMagicBasePersonFullName");
+            if (PlayerPrefs.HasKey(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_ID) && 
+                PlayerPrefs.HasKey(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_FULL_NAME)) {
+                selectedPersonId = PlayerPrefs.GetInt(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_ID);
+                selectedPersonFullName = PlayerPrefs.GetString(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_FULL_NAME);
                 Debug.Log("Previously Selected Base PersonId identified");
                 SetStatusTextEnableNext(selectedPersonId, selectedPersonFullName);
                 return true;
@@ -108,8 +109,8 @@ public class PersonPickerHandler : MonoBehaviour
     private void SaveBasePersonIdToPlayerPrefs(int basePersonId, string basePersonFullName)
     {
         Debug.Log("Base PersonId Chosen: " + basePersonFullName);
-        PlayerPrefs.SetInt("LastSelectedRootsMagicBasePersonId", basePersonId);
-        PlayerPrefs.SetString("LastSelectedRootsMagicBasePersonFullName", basePersonFullName);
+        PlayerPrefs.SetInt(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_ID, basePersonId);
+        PlayerPrefs.SetString(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_FULL_NAME, basePersonFullName);
         PlayerPrefs.Save();
         Debug.Log("Game data saved!");
     }

@@ -2,7 +2,8 @@
     "name": "FamilyHistoryPictureProvider",
     "rootNamespace": "",
     "references": [
-        "GUID:9abb440172bc7ec4488c0cdd5faa9717"
+        "GUID:9abb440172bc7ec4488c0cdd5faa9717",
+        "ServiceProviders"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

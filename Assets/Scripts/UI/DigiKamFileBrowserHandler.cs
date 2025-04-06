@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using SimpleFileBrowser;
 using UnityEngine.UI;
 using Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider;
+using Assets.Scripts.ServiceProviders;
+using Assets.Scripts;
 
 public class DigiKamFileBrowserHandler : MonoBehaviour
 {
@@ -45,8 +47,8 @@ public class DigiKamFileBrowserHandler : MonoBehaviour
 		// Path: C:\Users
 		// Icon: default (folder icon)
 		FileBrowser.AddQuickLink("Users", "C:\\Users", null);
-		if (PlayerPrefs.HasKey("LastUsedDigiKamDataFilePath")) {
-			Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath = PlayerPrefs.GetString("LastUsedDigiKamDataFilePath");
+		if (PlayerPrefs.HasKey(PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH)) {
+			Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath = PlayerPrefs.GetString(PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH);
 			initialFilename = Path.GetFileName(Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath);
 			initialPath = Path.GetDirectoryName(Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath);
 			fileSelectedText.text = initialFilename;
@@ -102,7 +104,8 @@ public class DigiKamFileBrowserHandler : MonoBehaviour
 				_pictureProvider = new DigiKamFamilyHistoryPictureProvider();
 				var configuration = new Dictionary<string, string>
 				{
-					{ "DigiKamDbPath", result }
+					{ PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH, result },
+					{ PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, CrossSceneInformation.rootsMagicDataFileNameWithFullPath }
 				};
 				_pictureProvider.Initialize(configuration);
 
@@ -120,7 +123,7 @@ public class DigiKamFileBrowserHandler : MonoBehaviour
                 imageTagDatabasePickerGameObject.GetComponent<ImageTagDatabasePickerHandler>().FileSelectedNowEnableUserInterface(true);
 
                 // Save the path for next time
-                PlayerPrefs.SetString("LastUsedDigiKamDataFilePath", result);
+                PlayerPrefs.SetString(PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH, result);
                 PlayerPrefs.Save();
                 Debug.Log("Game data saved!");
             }

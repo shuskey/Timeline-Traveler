@@ -5,6 +5,7 @@ using System.Data;
 using UnityEngine;
 using Assets.Scripts.DataObjects;
 using Assets.Scripts.Enums;
+using Assets.Scripts.ServiceProviders;
 
 namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
 {
@@ -18,14 +19,37 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
 
         public void Initialize(Dictionary<string, string> configuration)
         {
-            if (!configuration.TryGetValue("RootsMagicDatabasePath", out _databasePath))
+            if (!configuration.TryGetValue(PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, out _databasePath))
             {
-                throw new System.ArgumentException("RootsMagicDatabasePath not found in configuration");
+                throw new System.ArgumentException($"{PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH} not found in configuration");
             }
 
             string conn = "URI=file:" + _databasePath;
             _dbConnection = new SqliteConnection(conn);
             _dbConnection.Open();
+            
+            // Register the RMNOCASE collation
+            RegisterRMNOCASECollation();
+        }
+        
+        private void RegisterRMNOCASECollation()
+        {
+            // Instead of trying to create a custom collation,
+            // we'll modify our queries to use NOCASE collation which is built into SQLite
+            using (var cmd = _dbConnection.CreateCommand())
+            {
+                // Test if we can use NOCASE collation
+                cmd.CommandText = "SELECT 'test' = 'TEST' COLLATE NOCASE";
+                try
+                {
+                    cmd.ExecuteScalar();
+                    Debug.Log("Using built-in NOCASE collation as fallback for RMNOCASE");
+                }
+                catch (SqliteException ex)
+                {
+                    Debug.LogError($"Failed to setup case-insensitive collation: {ex.Message}");
+                }
+            }
         }
 
         public List<Person> GetPerson(int ownerId, int generation = 0, float xOffset = 0.0f, int spouseNumber = 0)
@@ -121,17 +145,33 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
             return result;
         }
 
+        private int StringToNumberProtected(string value, string errorContext)
+        {
+            if (string.IsNullOrEmpty(value) || value == "0")
+                return 0;
+            
+            if (int.TryParse(value, out int result))
+                return result;
+                
+            Debug.LogWarning($"Failed to parse number in {errorContext}. Value: {value}");
+            return 0;
+        }
+
         public List<Person> GetPersonListByLastName(string lastNameFilter, int limitListSizeTo, int generation = 0, float xOffset = 0.0f, int spouseNumber = 0)
         {
             var result = new List<Person>();
             using (var cmd = _dbConnection.CreateCommand())
             {
                 cmd.CommandText = @"
-                    SELECT OwnerID, Gender, Given, Surname, BirthMonth, BirthDay, BirthYear,
-                           IsLiving, DeathMonth, DeathDay, DeathYear
-                    FROM NameTable
-                    WHERE Surname LIKE @lastNameFilter
-                    ORDER BY Surname, Given
+                    SELECT name.OwnerID
+                        , case when Sex = 0 then 'M' when Sex = 1 then 'F' else 'U' end
+                        , name.Given, name.Surname
+                        , CAST(name.BirthYear as varchar(10)) AS BirthYear
+                    FROM NameTable name
+                    JOIN PersonTable person
+                    ON name.OwnerID = person.PersonID
+                    WHERE Surname COLLATE NOCASE LIKE @lastNameFilter
+                    ORDER BY Surname COLLATE NOCASE, Given COLLATE NOCASE
                     LIMIT @limit";
 
                 var lastNameParam = cmd.CreateParameter();
@@ -148,27 +188,27 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
                 {
                     while (reader.Read() && result.Count < limitListSizeTo)
                     {
+                        var ownerId = reader.GetInt32(0);
                         result.Add(new Person(
                             arrayIndex: result.Count,
-                            ownerId: reader.GetInt32(0),
-                            gender: (PersonGenderType)reader.GetInt32(1),
+                            ownerId: ownerId,
+                            gender: charToPersonGenderType(reader.GetString(1)[0]),
                             given: reader.GetString(2),
                             surname: reader.GetString(3),
-                            isLiving: reader.GetBoolean(7),
-                            birthMonth: reader.GetInt32(4),
-                            birthDay: reader.GetInt32(5),
-                            birthYear: reader.GetInt32(6),
-                            deathMonth: reader.GetInt32(8),
-                            deathDay: reader.GetInt32(9),
-                            deathYear: reader.GetInt32(10),
+                            birthYear: StringToNumberProtected(reader.GetString(4), $"birthYear as GetString(4) for OwnerId: {ownerId}."),   
+                            deathYear: 0,
+                            isLiving: false,
                             generation: generation,
                             xOffset: xOffset,
-                            spouseNumber: spouseNumber
-                        ));
+                            spouseNumber: spouseNumber));
                     }
                 }
             }
             return result;
+            
+            PersonGenderType charToPersonGenderType(char sex) =>
+                sex.Equals('M') ? PersonGenderType.Male : (sex.Equals('F') ? PersonGenderType.Female : PersonGenderType.NotSet);
+
         }
 
         public List<Parentage> GetChildren(int familyId)

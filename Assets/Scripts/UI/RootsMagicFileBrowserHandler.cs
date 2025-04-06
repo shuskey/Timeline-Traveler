@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using SimpleFileBrowser;
 using UnityEngine.UI;
 using Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider;
+using Assets.Scripts.ServiceProviders;
 
 public class RootsMagicFileBrowserHandler : MonoBehaviour
 {
@@ -40,9 +41,9 @@ public class RootsMagicFileBrowserHandler : MonoBehaviour
 		// Path: C:\Users
 		// Icon: default (folder icon)
 		FileBrowser.AddQuickLink("Users", "C:\\Users", null);
-		if (PlayerPrefs.HasKey("LastUsedRootsMagicDataFilePath"))
+		if (PlayerPrefs.HasKey(PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH))
 		{
-			Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath = PlayerPrefs.GetString("LastUsedRootsMagicDataFilePath");
+			Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath = PlayerPrefs.GetString(PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH);
 			initialFilename = Path.GetFileName(Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath);
 			initialPath = Path.GetDirectoryName(Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath);
 			fileSelectedText.text = initialFilename;
@@ -105,7 +106,7 @@ public class RootsMagicFileBrowserHandler : MonoBehaviour
 				_dataProvider = new RootsMagicFamilyHistoryDataProvider();
 				var configuration = new Dictionary<string, string>
 				{
-					{ "RootsMagicDbPath", result }
+					{ PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, result }
 				};
 				_dataProvider.Initialize(configuration);
 
@@ -115,7 +116,7 @@ public class RootsMagicFileBrowserHandler : MonoBehaviour
 					Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath = result;
 					fileSelectedText.text = Path.GetFileName(result);
 					Debug.Log("Data File Path Chosen: " + fileSelectedText.text);
-					PlayerPrefs.SetString("LastUsedRootsMagicDataFilePath", Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath);
+					PlayerPrefs.SetString(PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath);
 					PlayerPrefs.Save();
 					Debug.Log("Game data saved!");
 					personPickerDropdownGameObject.GetComponent<PersonPickerHandler>().CheckIfFileSelectedAndEnableUserInterface();
