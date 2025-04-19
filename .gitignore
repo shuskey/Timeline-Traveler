@@ -74,3 +74,4 @@ crashlytics-build.properties
 
 # ALP Assets folder
 /[Aa]ssets/ALP_Assets/
+/[Aa]ssets/ALP_Assets.meta
