@@ -191,6 +191,7 @@ public class PersonNode : MonoBehaviour
     public void SetLifeSpan(int birthDate, float age, bool isLiving)
     {
         var myScaleThisPlatformComponent = gameObject.transform.GetChild(ScaleThisChildIndex);
+        // We want to scale the platform to the age of the person
         myScaleThisPlatformComponent.transform.localScale = new Vector3(1.0f, 1.0f, Mathf.Max(0.01f, age * 5));
         //myPlatformComponent.transform.localPosition = new Vector3(0, 0, age / 2f);
         lifeSpan = age;
@@ -200,11 +201,14 @@ public class PersonNode : MonoBehaviour
 
         var rendererParent = gameObject.GetComponentInChildren<Renderer>();
         var platforms = rendererParent.GetComponentsInChildren<Renderer>();
+        // We want to color the platform based on whether the person is living or not
+        // We also need to fix up the Texture Scale to match the platform size
         foreach (var renderer in platforms)
-        {
-            renderer.material.SetColor("_Color", livingOrNotPlatformColors[isLiving ? 1 : 0]);
+        {  
+            renderer.material.mainTextureScale = new Vector2( renderer.bounds.size.x,  renderer.bounds.size.z);
+            renderer.material.SetColor("_BaseColor", livingOrNotPlatformColors[isLiving ? 1 : 0]);
         }
-        
+            
     }
 
     public void AddDateQualityInformation((int updated, int original) birthDateQuality, (int updated, int original) deathDateQuality, string dateQualityInformationString)
@@ -220,7 +224,7 @@ public class PersonNode : MonoBehaviour
 
         var birthConnection = Instantiate(this.bubblePrefabObject, Vector3.zero, Quaternion.identity);  //GameObject.CreatePrimitive(PrimitiveType.Sphere);
         var colorToSet = personDateQualityColors[birthDateQuality.original == birthDateQuality.updated ? 0 : 1];
-        birthConnection.GetComponentInChildren<Renderer>().material.SetColor("_Color", colorToSet);
+        birthConnection.GetComponentInChildren<Renderer>().material.SetColor("_BaseColor", colorToSet);
 
         birthConnection.transform.localScale = Vector3.one * 1.5f;
         birthConnection.transform.parent = myScaleThisPlatformTransform;
@@ -230,9 +234,9 @@ public class PersonNode : MonoBehaviour
     public void SetPersonGender(PersonGenderType personGender)
     {
         this.personGender = personGender;
-        //  var renderer = gameObject.GetComponentsInChildren<Renderer>().Where(r => r.CompareTag("GenderColor")).ToArray()[0];
-        var renderer = gameObject.GetComponentInChildren<Renderer>();
-        renderer.material.SetColor("_Color", personGenderPlatformColors[(int)personGender]);
+        var renderer = gameObject.GetComponentsInChildren<Renderer>().Where(r => r.CompareTag("GenderColor")).ToArray()[0];
+        // set the color of the renderer
+        renderer.material.SetColor("_BaseColor", personGenderPlatformColors[(int)personGender]);
     }
 
     public void AddBirthEdge(PersonNode childPersonNode, float myAgeConnectionPointPercent = 0f,
@@ -260,7 +264,7 @@ public class PersonNode : MonoBehaviour
             Instantiate(this.parentPlatformBirthBubble, Vector3.zero, Quaternion.identity);
         //TODO Twins born at the same time are not handled well if one is a boy and the other a girl
         var renderer = parentBirthConnectionPoint.GetComponentInChildren<Renderer>(); //.Where(r => r.CompareTag("GenderColor")).ToArray()[0];
-        renderer.material.SetColor("_Color",
+        renderer.material.SetColor("_BaseColor",
             personGenderCapsuleBubbleColors[(int)childPersonNode.personGender]);
 
         //parentBirthConnectionPoint.transform.localScale = new Vector3(2.0f, 2.0f, 2.0f);
@@ -283,7 +287,7 @@ public class PersonNode : MonoBehaviour
         childBirthConnectionPoint = //GameObject.CreatePrimitive(PrimitiveType.Sphere);
             Instantiate(this.bubblePrefabObject, Vector3.zero, Quaternion.identity);
         renderer = childBirthConnectionPoint.GetComponentInChildren<Renderer>(); //.Where(r => r.CompareTag("GenderColor")).ToArray()[0];
-        renderer.material.SetColor("_Color", clearWhite);
+        renderer.material.SetColor("_BaseColor", clearWhite);
         childBirthConnectionPoint.transform.localScale = Vector3.one * 2f;
         childBirthConnectionPoint.transform.parent = childPlatformTransform.GetChild(0); // Point to the ScaleThis Section
         childBirthConnectionPoint.transform.localPosition = new Vector3(0, 0, childAgeConnectionPointPercent);
@@ -294,7 +298,7 @@ public class PersonNode : MonoBehaviour
             returnToFatherBirthConnectionPoint =
                 Instantiate(this.childPlatformReturnToParent, Vector3.zero, Quaternion.identity);
             var returnToFatherRenderer = returnToFatherBirthConnectionPoint.GetComponentInChildren<Renderer>(); 
-            returnToFatherRenderer.material.SetColor("_Color", blue);
+            returnToFatherRenderer.material.SetColor("_BaseColor", blue);
             var triggerTeleportToFatherScript = returnToFatherBirthConnectionPoint.transform.GetChild(0).GetComponent<TriggerTeleportToChild>();
             triggerTeleportToFatherScript.teleportTargetChild = parentPlatformTransform;
             triggerTeleportToFatherScript.teleportOffset = new Vector3(-3f, 2.5f, myAgeConnectionPointPercent * this.lifeSpan * 5);
@@ -310,7 +314,7 @@ public class PersonNode : MonoBehaviour
             returnToMotherBirthConnectionPoint =
                 Instantiate(this.childPlatformReturnToParent, Vector3.zero, Quaternion.identity);
             var returnToMotherRenderer = returnToMotherBirthConnectionPoint.GetComponentInChildren<Renderer>();
-            returnToMotherRenderer.material.SetColor("_Color", pink);
+            returnToMotherRenderer.material.SetColor("_BaseColor", pink);
             var triggerTeleportToMotherScript = returnToMotherBirthConnectionPoint.transform.GetChild(0).GetComponent<TriggerTeleportToChild>();
             triggerTeleportToMotherScript.teleportTargetChild = parentPlatformTransform;
             triggerTeleportToMotherScript.teleportOffset = new Vector3(3f, 2.5f, myAgeConnectionPointPercent * this.lifeSpan * 5);
@@ -326,7 +330,7 @@ public class PersonNode : MonoBehaviour
         edge.name = $"Birth {birthDate} {childPersonNode.name}";
         edge.GetComponent<Edge>().CreateEdge(parentBirthConnectionPoint, childBirthConnectionPoint);
 
-        edge.transform.GetChild(ScaleThisChildIndex).GetComponent<Renderer>().material.SetColor("_Color",
+        edge.transform.GetChild(ScaleThisChildIndex).GetComponent<Renderer>().material.SetColor("_BaseColor",
             childRelationshipColors[(int)childRelationshipType]);
 
         edge.transform.parent = transform;
@@ -353,25 +357,24 @@ public class PersonNode : MonoBehaviour
             sj.maxDistance = 80.0f;
         }
         parentBirthConnectionPoint = new GameObject(); // GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        //leftConnection.GetComponent<Renderer>().material.SetColor("_Color", Color.yellow);
+        //leftConnection.GetComponent<Renderer>().material.SetColor("_BaseColor", Color.yellow);
 
         parentBirthConnectionPoint.transform.localScale = Vector3.one * 2f;
         parentBirthConnectionPoint.transform.parent = myPositionThisPlatformTransform.GetChild(0);  // Point to the ScaleThis Section
         parentBirthConnectionPoint.transform.localPosition = new Vector3(0, 0, myAgeConnectionPointPercent);
 
         childBirthConnectionPoint = new GameObject(); // GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        //rightConnection.GetComponent<Renderer>().material.SetColor("_Color", Color.yellow);
+        //rightConnection.GetComponent<Renderer>().material.SetColor("_BaseColor", Color.yellow);
         childBirthConnectionPoint.transform.localScale = Vector3.one * 2f;
         childBirthConnectionPoint.transform.parent = spousePositionThisPlatformTransform.GetChild(0);  // Point to the ScaleThis Section
         childBirthConnectionPoint.transform.localPosition = new Vector3(0, 0, spouseAgeConnectionPointPercent);
-        //
 
         GameObject edge = Instantiate(this.marriageConnectionPrefabObject, Vector3.zero, Quaternion.identity);
         edge.name = $"Marriage {marriageEventDate}, to {spousePersonNode.name}, duration {marriageLength}.";
         edge.GetComponent<Edge>().CreateEdge(parentBirthConnectionPoint, childBirthConnectionPoint);
         edge.GetComponent<Edge>().SetEdgeEventLength(marriageLength * 5, marriageConnectionXScale);
         var material = edge.transform.GetChild(0).GetComponent<Renderer>().material;
-        material.SetColor("_Color", new Color(1.0f, 0.92f, 0.01f, 0.6f));
+        material.SetColor("_BaseColor", new Color(1.0f, 0.92f, 0.01f, 0.6f));
         //material.SetOverrideTag("RenderMode", "Transparent");
 
         edge.transform.parent = myPositionThisPlatformTransform;

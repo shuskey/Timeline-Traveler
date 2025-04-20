@@ -2,6 +2,7 @@
 #if ENABLE_INPUT_SYSTEM
 using UnityEngine.InputSystem;
 #endif
+using UnityEngine.Events;
 
 /* Note: animations are called via the controller for both the character and capsule using animator null checks
  */
@@ -122,6 +123,12 @@ namespace StarterAssets
             }
         }
 
+        [Header("Events")]
+        public UnityEvent onMenuPressed;
+        public UnityEvent onStartPressed;
+        public UnityEvent<int> onZCoordinateChanged;  // int for the full value
+
+        private int lastZIntValue = -1;
 
         private void Awake()
         {
@@ -159,6 +166,15 @@ namespace StarterAssets
             JumpAndGravity();
             GroundedCheck();
             Move();
+            MenuAndStart();
+            
+            // Check for z-coordinate change
+            int currentZIntValue = Mathf.FloorToInt(transform.position.z);
+            if (currentZIntValue != lastZIntValue)
+            {
+                lastZIntValue = currentZIntValue;
+                onZCoordinateChanged?.Invoke(currentZIntValue);
+            }
         }
 
         private void LateUpdate()
@@ -278,7 +294,23 @@ namespace StarterAssets
                 _animator.SetFloat(_animIDMotionSpeed, inputMagnitude);
             }
         }
+		
+        private void MenuAndStart()
+		{
+            if (_input.menu)
+            {
+                Debug.Log("ThirdPersonController: Menu Pressed");
+				_input.menu = false;
+                onMenuPressed?.Invoke();
+            }
 
+            if (_input.start)
+            {
+                Debug.Log("ThirdPersonController: Start Pressed");
+				_input.start = false;
+                onStartPressed?.Invoke();
+            }
+        }
         private void JumpAndGravity()
         {
             if (Grounded)

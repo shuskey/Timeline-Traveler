@@ -22,6 +22,9 @@ public class Tribe : MonoBehaviour
 	private int updateFramesToWaist = 120;
 	private int startingIdForTree;
 	private int numberOfGenerations = 5;
+	private PersonDetailsHandler personDetailsHandlerScript;
+	private Transform lastTeleportTransform;
+	private Vector3 lastTeleportOffset;
 	[SerializeField]
 	[Tooltip("Time Barrier year, 0 for current year")]
 	private int timeBarrierYear = 0;
@@ -51,8 +54,21 @@ public class Tribe : MonoBehaviour
 	private int personOfInterestIndexInList = 0;
 
 	const int PlatformChildIndex = 0;
-	private StarterAssets.ThirdPersonController thirdPersonContollerScript;
-	private StarterAssetsInputs _input;
+
+	private ThirdPersonController thirdPersonController;
+	private bool controllerSubscribed = false;
+
+	// A note about PlayerInput:
+	// Unity'y PlayerInput is persnickety about shared input devices and I can not use PlayerIntput here because it will cause problems for the ThirdPersonController.
+	// For example, the PlaerInput on the ThirdPersonController is configured to use the Gamepad input device as well as the UI/Keyboard device.
+	// Adding a playerInput to the Tribe GameObject that connects via the UI/Keyboard device will cause the Keyboard input to be ignored
+	// by the ThirdPersonController.
+	// This is why I am not using PlayerInput for the Tribe GameObject.
+	//  I need Gamepad input and Keyboaed to be able to send messages to the ThirdPerson Controller as well as the Trabe Object
+	// OnMenu and OnStart are both have amppings for the Gamepad and Keyboard.
+	// I will have the ThirdPerson Controller forward the OnMenu and OnStart events to the Tribe GameObject.
+
+	// ** Also note that the ThirdPersonContoller uses the StarterAssetsInputs which are NOT the same as the system wide default
 
 	void Start()
 	{
@@ -63,7 +79,7 @@ public class Tribe : MonoBehaviour
 		startingIdForTree = Assets.Scripts.CrossSceneInformation.startingDataBaseId;
 		rootsMagicFileName = Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath;
 		digiKamFileName = Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath;
-
+		
 		// Initialize the data provider
 		_dataProvider = new RootsMagicFamilyHistoryDataProvider();
 		var config = new Dictionary<string, string>
@@ -74,7 +90,7 @@ public class Tribe : MonoBehaviour
 
 		if (tribeType == TribeType.MadeUpData || rootsMagicFileName == null)
 		{
-			var adam = CreatePersonGameObject("Adam", PersonGenderType.Male, 1400, false,1500, xOffset:10, generation: 0);
+			var adam = CreatePersonGameObject("Adam", PersonGenderType.Male, 1400, false, 1500, xOffset: 10, generation: 0);
 
 			//SetDemoMotionMode(adam);
 
@@ -82,22 +98,22 @@ public class Tribe : MonoBehaviour
 
 			var eve = CreatePersonGameObject("Eve", PersonGenderType.Female, 1410, false, 1520, xOffset: 30, generation: 0);
 
-            CreateMarriage(eve, adam, 1430);
+			CreateMarriage(eve, adam, 1430);
 			dataLoadComplete = true;
       
         } 		
 	}
 
 	void NewUpEnoughListOfPersonsPerGeneration(int numberOfGenerations)
-    {
-		for(var depth = 0; depth <= numberOfGenerations; depth++)
-        {
+	{
+		for (var depth = 0; depth <= numberOfGenerations; depth++)
+		{
 			listOfPersonsPerGeneration[depth] = new List<Person>();
-        }
-    }
+		}
+	}
 
 	void PositionTimeBarrier()
-    {
+	{
 		var timeBarrierObject = GameObject.FindGameObjectsWithTag("TimeBarrier")[0];
 		if (timeBarrierYear == 0)
 			timeBarrierYear = DateTime.Now.Year;
@@ -105,13 +121,15 @@ public class Tribe : MonoBehaviour
 		timeBarrierObject.transform.localScale = new Vector3((maximumNumberOfPeopleInAGeneration * personSpacing * 10f), 0.1f, (maximumNumberOfPeopleInAGeneration * personSpacing * 10f));
 	}
 
-	private IEnumerator GetNextLevelOfAncestryForThisPersonIdDataBaseOnlyAsync(int personId, int depth, float xOffSet, float xRange)
+	private IEnumerator GetNextLevelOfAncestryForThisPersonIdDataBaseOnlyAsync(int personId, int depth, float xOffSet, float xRange, bool pleaseSkipStartingPerson = false)
 	{
 		var personList = _dataProvider.GetPerson(personId, generation: depth, xOffSet + xRange / 2, spouseNumber: 0);
 		if (personList.Count > 0)
 		{
 			var personWeAreAdding = personList[0];
-			listOfPersonsPerGeneration[depth].Add(personWeAreAdding);
+			//only add the person if we are not skipping the starting person and the person is not the starting person
+			if (!(pleaseSkipStartingPerson && personWeAreAdding.dataBaseOwnerId == startingIdForTree))
+				listOfPersonsPerGeneration[depth].Add(personWeAreAdding);
 
 			var listOfFamilyIds = AddParentsAndFixUpDates(personWeAreAdding);
 			if (depth > 0)
@@ -123,7 +141,7 @@ public class Tribe : MonoBehaviour
 					var newRange = xRange / parentCount;
 					var newOffset = xOffSet + parentIndex * newRange;
 
-					StartCoroutine(GetNextLevelOfAncestryForThisPersonIdDataBaseOnlyAsync(familyId, depth - 1, newOffset, newRange));
+					StartCoroutine(GetNextLevelOfAncestryForThisPersonIdDataBaseOnlyAsync(familyId, depth - 1, newOffset, newRange, pleaseSkipStartingPerson));
 					parentIndex++;
 				}
 			}
@@ -165,7 +183,7 @@ public class Tribe : MonoBehaviour
 	{
 		var listOfPersonIdsToReturn = new List<int>();
 		var parentsList = _dataProvider.GetParents(forThisPerson.dataBaseOwnerId);
-		
+
 		foreach (var parentage in parentsList)
 		{
 			if (parentage.fatherId != 0 && !listOfPersonIdsToReturn.Contains(parentage.fatherId))
@@ -180,7 +198,7 @@ public class Tribe : MonoBehaviour
 	{
 		var listOfFamilyIdsToReturn = new List<int>();
 		bool thisIsAHusbandQuery = (forThisPerson.gender == PersonGenderType.Male);
-		
+
 		var marriages = _dataProvider.GetMarriages(forThisPerson.dataBaseOwnerId, useHusbandQuery: thisIsAHusbandQuery);
 		int spouseNumber = 1;
 
@@ -194,11 +212,11 @@ public class Tribe : MonoBehaviour
 			{
 				var spousePersonWeAreAdding = spouseList[0];
 				listOfPersonsPerGeneration[depth].Add(spousePersonWeAreAdding);
-				
+
 				forThisPerson.FixUpDatesForViewingWithMarriageDate(marriage.marriageYear, spousePersonWeAreAdding);
 				spousePersonWeAreAdding.FixUpDatesForViewingWithMarriageDate(marriage.marriageYear, forThisPerson);
 			}
-			
+
 			listOfFamilyIdsToReturn.Add(marriage.familyId);
 			spouseNumber++;
 		}
@@ -206,14 +224,14 @@ public class Tribe : MonoBehaviour
 	}
 
 	void FixUpDatesBasedOffMarriageDates()
-    {
+	{
 		for (var depth = 0; depth <= numberOfGenerations; depth++)
 		{
 			foreach (var potentialMarriedPerson in listOfPersonsPerGeneration[depth])
 			{
-				var marriages = _dataProvider.GetMarriages(potentialMarriedPerson.dataBaseOwnerId, 
+				var marriages = _dataProvider.GetMarriages(potentialMarriedPerson.dataBaseOwnerId,
 					useHusbandQuery: potentialMarriedPerson.gender == PersonGenderType.Male);
-				
+
 				foreach (var marriage in marriages)
 				{
 					var spouseId = potentialMarriedPerson.gender == PersonGenderType.Male ? marriage.wifeId : marriage.husbandId;
@@ -312,9 +330,9 @@ public class Tribe : MonoBehaviour
 		int originalBirthDate = 0, int originalDeathDate = 0, string dateQualityInformationString = "",
 		int databaseOwnerArry = 0, int tribeArrayIndex = 0, GlobalSpringType globalSpringType = GlobalSpringType.Normal,
 		Person person = null)
-    {
+	{
 		var currentYear = DateTime.Now.Year;
-	
+
 		var age = isLiving ? currentYear - birthEventDate : deathEventDate - birthEventDate;
 
 		// old way    var x = xOffset * (maximumNumberOfPeopleInAGeneration * personSpacing);
@@ -343,25 +361,25 @@ public class Tribe : MonoBehaviour
 	}
 
 	void SetDemoMotionMode(GameObject personGameObject)
-    {
+	{
 		personGameObject.GetComponent<PersonNode>().SetDebugAddMotionSetting(true);
 	}
 
 	GameObject CreatePlayerOnThisPersonObject(GameObject personGameObject)
-    {
+	{
 		personGameObject.GetComponent<Rigidbody>().isKinematic = true;  // Lets make this one stay put
 
 		GameObject playerGameObject = Instantiate(playerControllerPrefab);
 
-		//playerGameObject.transform.SetParent(personGameObject.transform, false);
+		playerGameObject.transform.SetParent(personGameObject.transform, false);
 		
-		//playerGameObject.transform.position = new Vector3(0f, 1f, 0f);
+		playerGameObject.transform.position = new Vector3(0f, 1f, 0f);
 
-		//playerGameObject.transform.localPosition = new Vector3(0f, 0f, 0f);
+		playerGameObject.transform.localPosition = new Vector3(0f, 0f, 0f);
 
 		GameObject[] targets = GameObject.FindGameObjectsWithTag("CinemachineTarget");
 		GameObject target = targets.FirstOrDefault(t => t.transform.IsChildOf(playerGameObject.transform));
-		
+
 		CreatePlayerFollowCameraObject(target);
 
 		// We need a better pattern for this.
@@ -373,7 +391,7 @@ public class Tribe : MonoBehaviour
 		StartCoroutine(hallOfHistoryGameObject.GetComponent<HallOfHistory>().SetFocusPersonNode(personObjectScript));
 		
 		return playerGameObject;
-    }
+	}
 
 	private void teleportToNextPersonOfInterest()
 	{
@@ -417,14 +435,14 @@ public class Tribe : MonoBehaviour
 		vCam.LookAt = target.transform;
 		vCam.Target.TrackingTarget = target.transform;
 
-/* Third Person Follow Distance Modifier is not needed for Unity 2024.1 MAYBE???
-		var vDistanceModifier = playerFollowCameraGameObject.GetComponent<ThirdPersonFollowDistanceModifier>();
-		if (vDistanceModifier == null)
-			Debug.Log("The Player Follow Camera Prefab needs the Third Person Follow Distance Monifier script added.");
-		vDistanceModifier.SetFollow();
-*/
+		/* Third Person Follow Distance Modifier is not needed for Unity 2024.1 MAYBE???
+				var vDistanceModifier = playerFollowCameraGameObject.GetComponent<ThirdPersonFollowDistanceModifier>();
+				if (vDistanceModifier == null)
+					Debug.Log("The Player Follow Camera Prefab needs the Third Person Follow Distance Monifier script added.");
+				vDistanceModifier.SetFollow();
+		*/
 	}
-		
+
 
 	GameObject CreatePersonGameObject(Person person, GlobalSpringType globalSpringType = GlobalSpringType.Normal)
 	{
@@ -437,8 +455,8 @@ public class Tribe : MonoBehaviour
 			person);
 	}
 
-	void CreateMarriage(GameObject wifePerson, GameObject husbandPerson, int marriageEventDate, bool divorcedFlag= false,int divorcedEventDate=0)
-    {
+	void CreateMarriage(GameObject wifePerson, GameObject husbandPerson, int marriageEventDate, bool divorcedFlag = false, int divorcedEventDate = 0)
+	{
 		// We may not have loaded a full set of family information
 		// If the husband or wife is not found, skip the marriage
 		if (ReferenceEquals(wifePerson, null)
@@ -449,7 +467,7 @@ public class Tribe : MonoBehaviour
 		var wifeAge = wifePersonNode.lifeSpan;
 
 		// We have some married people with no birthdates
-		var wifeAgeAtMarriage = (float)(marriageEventDate - wifePersonNode.birthDate);	
+		var wifeAgeAtMarriage = (float)(marriageEventDate - wifePersonNode.birthDate);
 		var husbandAge = husbandPersonNode.lifeSpan;
 		// We have some married people with no birthdates
 		var husbandAgeAtMarriage = (float)(marriageEventDate - husbandPersonNode.birthDate);
@@ -461,12 +479,12 @@ public class Tribe : MonoBehaviour
 			marriageLength = 1;
 
 		var wifeMarriageConnectionPointPercent = wifeAge != 0f ? wifeAgeAtMarriage / wifeAge : 0.5f;
-		var husbandMarriageConnectionPointPercent = husbandAge != 0f ? husbandAgeAtMarriage / husbandAge: 0.5f; 
-		
+		var husbandMarriageConnectionPointPercent = husbandAge != 0f ? husbandAgeAtMarriage / husbandAge : 0.5f;
+
 		wifePersonNode.AddMarriageEdge(
-			husbandPersonNode, 
-			wifeMarriageConnectionPointPercent, 
-			husbandMarriageConnectionPointPercent, 
+			husbandPersonNode,
+			wifeMarriageConnectionPointPercent,
+			husbandMarriageConnectionPointPercent,
 			marriageEventDate,
 			marriageLength);
 	}
@@ -474,7 +492,7 @@ public class Tribe : MonoBehaviour
 	void AssignParents(GameObject childPerson, GameObject motherPerson, GameObject fatherPerson,
 		ChildRelationshipType motherChildRelationshipType = ChildRelationshipType.Biological,
 		ChildRelationshipType fatherChildRelationshipType = ChildRelationshipType.Biological)
-    {
+	{
 		var childPersonNode = childPerson.GetComponent<PersonNode>();
 
 		if (motherPerson != null && !motherPerson.Equals(null))
@@ -494,8 +512,17 @@ public class Tribe : MonoBehaviour
 		}
 	}
 
-	void Update() 
+	void Update()
 	{
+		if (!controllerSubscribed)
+		{
+			thirdPersonController = FindFirstObjectByType<ThirdPersonController>();
+			if (thirdPersonController != null)
+			{
+				SubscribeToControllerEvents();
+			}
+		}
+
 		//Detect when the F key is pressed down
 		if (Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame)
 		{
@@ -512,9 +539,9 @@ public class Tribe : MonoBehaviour
 		if (tribeType == TribeType.Ancestry)
 		{
 			NewUpEnoughListOfPersonsPerGeneration(numberOfGenerations);
-			StartCoroutine(GetNextLevelOfAncestryForThisPersonIdDataBaseOnlyAsync(startingIdForTree, numberOfGenerations, xOffSet: 0.0f, xRange: 1.0f));			
+			StartCoroutine(GetNextLevelOfAncestryForThisPersonIdDataBaseOnlyAsync(startingIdForTree, numberOfGenerations, xOffSet: 0.0f, xRange: 1.0f));
 			//Debug.Log("We are done with Ancestry Recurrsion.");
-			
+
 			FixUpDatesBasedOffMarriageDates();
 			//Debug.Log("We are done with Fix Up Dates Based off marriage.");
 
@@ -554,13 +581,14 @@ public class Tribe : MonoBehaviour
 			dataLoadComplete = true;
 		}
 		else if (tribeType == TribeType.Centered)
-        {
+		{
 			// Lets do a 5/5 split 5 generations of Ancsecters and 5 generations of Descendants
 			var generationsOnEachSide = 10;
 			numberOfGenerations = generationsOnEachSide + generationsOnEachSide + 1;
 			NewUpEnoughListOfPersonsPerGeneration(numberOfGenerations);
 			StartCoroutine(GetNextLevelOfDescendancyForThisPersonIdDataBaseOnlyAsync(startingIdForTree, generationsOnEachSide, xOffSet: 0.0f, xRange: 1.0f, centerByThisOffset: 1));
-			StartCoroutine(GetNextLevelOfAncestryForThisPersonIdDataBaseOnlyAsync(startingIdForTree, generationsOnEachSide, xOffSet: 0.0f, xRange: 1.0f));
+			// With the centered tribe, we want to skip the starting person on the ancestry side
+			StartCoroutine(GetNextLevelOfAncestryForThisPersonIdDataBaseOnlyAsync(startingIdForTree, generationsOnEachSide, xOffSet: 0.0f, xRange: 1.0f, pleaseSkipStartingPerson:true));
 
 			//Debug.Log("We are done with Ancestry Recurrsion.");
 
@@ -580,5 +608,47 @@ public class Tribe : MonoBehaviour
 
 			dataLoadComplete = true;
 		}
+	}
+
+	private void SubscribeToControllerEvents()
+	{
+		if (thirdPersonController != null && !controllerSubscribed)
+		{
+			thirdPersonController.onMenuPressed.AddListener(OnMenu);
+			thirdPersonController.onStartPressed.AddListener(OnStart);
+			controllerSubscribed = true;
+		}
+	}
+
+	void OnDestroy()
+	{
+		if (thirdPersonController != null)
+		{
+			thirdPersonController.onMenuPressed.RemoveListener(OnMenu);
+			thirdPersonController.onStartPressed.RemoveListener(OnStart);
+		}
+	}
+
+	private void OnMenu()
+	{
+		Debug.Log("Tribe: OnMenu called - primary trigger");
+		SceneManager.LoadScene("aaStart RootsMagicNamePicker");
+	}
+
+	private void OnStart()
+	{
+		Debug.Log("Tribe: OnStart called - primary trigger");
+		if (personDetailsHandlerScript != null)
+			personDetailsHandlerScript.OnStartInputAction();
+	}
+
+	private void OnMenuCanceled()
+	{
+		Debug.Log("OnMenu canceled");
+	}
+
+	private void OnStartCanceled()
+	{
+		Debug.Log("OnStart canceled");
 	}
 }

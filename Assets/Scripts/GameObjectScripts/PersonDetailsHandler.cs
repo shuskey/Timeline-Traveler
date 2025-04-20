@@ -25,10 +25,41 @@ public class PersonDetailsHandler : MonoBehaviour
     public GameObject recordIdGameObject;
 
     private StarterAssetsInputs _input;
+    private ThirdPersonController thirdPersonController;
+    private bool controllerSubscribed = false;
 
     void Start()
     {
         _input = GetComponent<StarterAssetsInputs>();
+    }
+
+    void Update()
+    {
+        if (!controllerSubscribed)
+        {
+            thirdPersonController = FindFirstObjectByType<ThirdPersonController>();
+            if (thirdPersonController != null)
+            {
+                SubscribeToControllerEvents();
+            }
+        }
+    }
+
+    private void SubscribeToControllerEvents()
+    {
+        if (thirdPersonController != null && !controllerSubscribed)
+        {
+            thirdPersonController.onZCoordinateChanged.AddListener(UpdateCurrentDate);
+            controllerSubscribed = true;
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (thirdPersonController != null)
+        {
+            thirdPersonController.onZCoordinateChanged.RemoveListener(UpdateCurrentDate);
+        }
     }
 
     public void ClearPersonDisplay()
@@ -94,9 +125,5 @@ public class PersonDetailsHandler : MonoBehaviour
     {
         Debug.Log("Got to OnStartInputAction inside PersonDetailsHandler.");
         resetSceneToThisRootPerson();
-    }
-
-    void Update()
-    {
     }
 } 

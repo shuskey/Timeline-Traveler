@@ -52,8 +52,8 @@ public class HallOfHistory : MonoBehaviour
                     newPanel.transform.parent = transform;
                     newPanel.name = $"HistoryPanelfor{year}";
 
-                    var topEventHallPanelScript = newPanel.GetComponent<TopEventHallPanel>();
-                    topEventHallPanelScript.LoadTopEventsForYear_fromDataBase(year);
+                   // var topEventHallPanelScript = newPanel.GetComponent<TopEventHallPanel>();
+                   // topEventHallPanelScript.LoadTopEventsForYear_fromDataBase(year);
 
                     eventPanelDictionary.Add(year, newPanel);
                     yield return null;

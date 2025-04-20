@@ -5,6 +5,9 @@ using UnityEngine.InputSystem;
 
 namespace StarterAssets
 {
+	// NOTE: (SDH) I added the menu and start inputs to the StarterAssetsInputs class
+	// because the ThirdPersonController uses the StarterAssetsInputs class and I need to be able to send messages to the Tribe GameObject
+	// from the ThirdPersonController.
 	public class StarterAssetsInputs : MonoBehaviour
 	{
 		[Header("Character Input Values")]
@@ -12,6 +15,8 @@ namespace StarterAssets
 		public Vector2 look;
 		public bool jump;
 		public bool sprint;
+		public bool menu;
+		public bool start;
 
 		[Header("Movement Settings")]
 		public bool analogMovement;
@@ -42,6 +47,16 @@ namespace StarterAssets
 		public void OnSprint(InputValue value)
 		{
 			SprintInput(value.isPressed);
+		}
+
+		public void OnMenu(InputValue value)
+		{
+			MenuInput(value.isPressed);
+		}
+
+		public void OnStart(InputValue value)
+		{
+			StartInput(value.isPressed);
 		}
 #endif
 
@@ -74,6 +89,16 @@ namespace StarterAssets
 		private void SetCursorState(bool newState)
 		{
 			Cursor.lockState = newState ? CursorLockMode.Locked : CursorLockMode.None;
+		}
+
+		private void MenuInput(bool newMenuState)
+		{
+			menu = newMenuState;
+		}
+
+		private void StartInput(bool newStartState)
+		{
+			start = newStartState;
 		}
 	}
 	
