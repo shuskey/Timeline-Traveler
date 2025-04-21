@@ -92,6 +92,10 @@ namespace StarterAssets
         private float _jumpTimeoutDelta;
         private float _fallTimeoutDelta;
 
+        // Update restriction
+        private bool _noUpdatesThisTick = false;
+        private int _tickCountWithNoUpdates = 0;
+
         // animation IDs
         private int _animIDSpeed;
         private int _animIDGrounded;
@@ -161,6 +165,16 @@ namespace StarterAssets
 
         private void Update()
         {
+            // Check if updates are restricted
+            if (_noUpdatesThisTick)
+            {
+                if (_tickCountWithNoUpdates-- <= 0)
+                {
+                    _noUpdatesThisTick = false;
+                }
+                return;
+            }
+
             _hasAnimator = TryGetComponent(out _animator);
 
             JumpAndGravity();
@@ -419,6 +433,12 @@ namespace StarterAssets
             {
                 AudioSource.PlayClipAtPoint(LandingAudioClip, transform.TransformPoint(_controller.center), FootstepAudioVolume);
             }
+        }
+
+        public void RestrictUpdates(int ticksToHold)
+        {
+            _noUpdatesThisTick = true;
+            _tickCountWithNoUpdates = ticksToHold;
         }
     }
 }

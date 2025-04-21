@@ -382,9 +382,8 @@ public class Tribe : MonoBehaviour
 
 		CreatePlayerFollowCameraObject(target);
 
-		// We need a better pattern for this.
-		// thirdPersonContollerScript = playerGameObject.GetComponent<StarterAssets.ThirdPersonController>();
-		// thirdPersonContollerScript.TeleportTo(personGameObject.transform, new Vector3(0,0.5f,0), ticksToHoldHere: 25);
+		var teleporter = playerGameObject.GetComponent<ThirdPersonTeleporter>();
+		teleporter.TeleportTo(personGameObject.transform, new Vector3(0,0.5f,0), ticksToHoldHere: 25);
 
 		var personObjectScript = personGameObject.GetComponent<PersonNode>();
 
@@ -395,6 +394,7 @@ public class Tribe : MonoBehaviour
 
 	private void teleportToNextPersonOfInterest()
 	{
+		var teleporter = FindFirstObjectByType<ThirdPersonTeleporter>();
 		personOfInterestIndexInList++;
 		for (var depth = personOfInterestDepth; depth <= numberOfGenerations; depth++)
 		{
@@ -404,8 +404,7 @@ public class Tribe : MonoBehaviour
 				{
 					personOfInterestDepth = depth;
 					personOfInterestIndexInList = index;
-					// We need a better pattern for this.
-					//thirdPersonContollerScript.TeleportTo(listOfPersonsPerGeneration[depth][index].personNodeGameObject.transform, new Vector3(0, 0.5f, 0), ticksToHoldHere: 25);
+					teleporter.TeleportTo(listOfPersonsPerGeneration[depth][index].personNodeGameObject.transform, new Vector3(0, 0.5f, 0), ticksToHoldHere: 25);
 					var personObjectScript = listOfPersonsPerGeneration[depth][index].personNodeGameObject.GetComponent<PersonNode>();
 
 					StartCoroutine(hallOfHistoryGameObject.GetComponent<HallOfHistory>().SetFocusPersonNode(personObjectScript));
@@ -418,8 +417,7 @@ public class Tribe : MonoBehaviour
 
 		if (listOfPersonsPerGeneration[personOfInterestDepth]?.Count > personOfInterestIndexInList)
 		{
-			// We need a better pattern for this.
-			//thirdPersonContollerScript.TeleportTo(listOfPersonsPerGeneration[personOfInterestDepth][personOfInterestIndexInList].personNodeGameObject.transform, new Vector3(0, 0.5f, 0), ticksToHoldHere: 25);
+			teleporter.TeleportTo(listOfPersonsPerGeneration[personOfInterestDepth][personOfInterestIndexInList].personNodeGameObject.transform, new Vector3(0, 0.5f, 0), ticksToHoldHere: 25);
 			var personObjectScript = listOfPersonsPerGeneration[personOfInterestDepth][personOfInterestIndexInList].personNodeGameObject.GetComponent<PersonNode>();
 
 			StartCoroutine(hallOfHistoryGameObject.GetComponent<HallOfHistory>().SetFocusPersonNode(personObjectScript));

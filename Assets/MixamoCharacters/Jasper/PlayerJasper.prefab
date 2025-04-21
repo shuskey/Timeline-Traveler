@@ -814,6 +814,7 @@ GameObject:
   - component: {fileID: 8521152937104539795}
   - component: {fileID: 8916545566975811900}
   - component: {fileID: -3255266203251106704}
+  - component: {fileID: 1333330615125456910}
   m_Layer: 8
   m_Name: PlayerJasper
   m_TagString: Player
@@ -1087,6 +1088,19 @@ MonoBehaviour:
   analogMovement: 0
   cursorLocked: 1
   cursorInputForLook: 1
+--- !u!114 &1333330615125456910
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1436149188537377315}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e8439874208f78c4ea26e95c2e581590, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  depthOfFallWhenIDie: -30
 --- !u!1 &1465847704762027382
 GameObject:
   m_ObjectHideFlags: 0

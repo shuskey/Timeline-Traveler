@@ -16,13 +16,12 @@ public class TriggerTeleportToChild : MonoBehaviour
         {
             var playerObject = other.gameObject;
 
-            var thirdPersonContollerScript = other.GetComponent<StarterAssets.ThirdPersonController>();
-            // We need a better pattern for this.
-            // thirdPersonContollerScript.TeleportTo(teleportTargetChild, teleportOffset, 25);
-            // var personObjectScript = teleportTargetChild.GetComponent<PersonNode>();
+            var thirdPersonTeleporterScript = other.GetComponent<ThirdPersonTeleporter>();
+            thirdPersonTeleporterScript.TeleportTo(teleportTargetChild, teleportOffset, 25);
+            var personObjectScript = teleportTargetChild.GetComponent<PersonNode>();
 
-            // StartCoroutine(hallOfHistoryGameObject.GetComponent<HallOfHistory>().SetFocusPersonNode(personObjectScript));
-            // StartCoroutine(hallOfFamilyPhotosGameObject.GetComponent<HallOfFamilyPhotos>().SetFocusPersonNode(personObjectScript));
+            StartCoroutine(hallOfHistoryGameObject.GetComponent<HallOfHistory>().SetFocusPersonNode(personObjectScript));
+            StartCoroutine(hallOfFamilyPhotosGameObject.GetComponent<HallOfFamilyPhotos>().SetFocusPersonNode(personObjectScript));
         }
     }
 } 
