@@ -79,7 +79,7 @@ public class Tribe : MonoBehaviour
 		startingIdForTree = Assets.Scripts.CrossSceneInformation.startingDataBaseId;
 		rootsMagicFileName = Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath;
 		digiKamFileName = Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath;
-		
+
 		// Initialize the data provider
 		_dataProvider = new RootsMagicFamilyHistoryDataProvider();
 		var config = new Dictionary<string, string>
@@ -87,6 +87,13 @@ public class Tribe : MonoBehaviour
 			{ PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, rootsMagicFileName }
 		};
 		_dataProvider.Initialize(config);
+
+		// Find the PersonDetailsHandler component
+		personDetailsHandlerScript = FindFirstObjectByType<PersonDetailsHandler>();
+		if (personDetailsHandlerScript == null)
+		{
+			Debug.LogWarning("No PersonDetailsHandler component found in the scene. Some functionality may be limited.");
+		}
 
 		if (tribeType == TribeType.MadeUpData || rootsMagicFileName == null)
 		{
@@ -521,13 +528,6 @@ public class Tribe : MonoBehaviour
 			}
 		}
 
-		//Detect when the F key is pressed down
-		if (Keyboard.current != null && Keyboard.current.fKey.wasPressedThisFrame)
-		{
-			Debug.Log("F key was pressed.");
-			teleportToNextPersonOfInterest();
-		}
-
 		if (dataLoadComplete)
 			return;
 
@@ -614,6 +614,7 @@ public class Tribe : MonoBehaviour
 		{
 			thirdPersonController.onMenuPressed.AddListener(OnMenu);
 			thirdPersonController.onStartPressed.AddListener(OnStart);
+			thirdPersonController.onDebugNextPersonOfInterest.AddListener(OnDebugNextPersonOfInterest);
 			controllerSubscribed = true;
 		}
 	}
@@ -639,6 +640,13 @@ public class Tribe : MonoBehaviour
 		if (personDetailsHandlerScript != null)
 			personDetailsHandlerScript.OnStartInputAction();
 	}
+
+	private void OnDebugNextPersonOfInterest()
+	{
+		Debug.Log("Tribe: OnDebugNextPersonOfInterest called - primary trigger");
+		teleportToNextPersonOfInterest();
+	}
+
 
 	private void OnMenuCanceled()
 	{

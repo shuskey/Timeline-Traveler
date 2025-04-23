@@ -97,9 +97,9 @@
                 },
                 {
                     "name": "Sprint",
-                    "type": "Button",
+                    "type": "PassThrough",
                     "id": "641cd816-40e6-41b4-8c3d-04687c349290",
-                    "expectedControlType": "Button",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
@@ -265,7 +265,7 @@
                     "id": "c1f7a91b-d0fd-4a62-997e-7fb9b69bf235",
                     "path": "<Gamepad>/rightStick",
                     "interactions": "",
-                    "processors": "",
+                    "processors": "InvertVector2(invertX=false),StickDeadzone,ScaleVector2(x=90,y=90)",
                     "groups": ";Gamepad",
                     "action": "Look",
                     "isComposite": false,
@@ -276,7 +276,7 @@
                     "id": "8c8e490b-c610-4785-884f-f04217b23ca4",
                     "path": "<Pointer>/delta",
                     "interactions": "",
-                    "processors": "",
+                    "processors": "ScaleVector2(x=6,y=6),InvertVector2(invertX=false)",
                     "groups": ";Keyboard&Mouse;Touch",
                     "action": "Look",
                     "isComposite": false,
@@ -395,7 +395,7 @@
                 {
                     "name": "",
                     "id": "8cbb2f4b-a784-49cc-8d5e-c010b8c7f4e6",
-                    "path": "<Gamepad>/leftStickPress",
+                    "path": "<Gamepad>/leftTrigger",
                     "interactions": "",
                     "processors": "",
                     "groups": "Gamepad",
@@ -622,6 +622,15 @@
                     "name": "Start",
                     "type": "Button",
                     "id": "1d8bd8b1-1795-48fc-a246-20bee1f48563",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "debugNextPersonOfInterest",
+                    "type": "Button",
+                    "id": "bf3ae1b1-6816-4a22-8040-8a41916b3e7e",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -1066,6 +1075,17 @@
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
                     "action": "Start",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "5a791a9f-0343-4b49-b797-74f0e1cceffd",
+                    "path": "<Keyboard>/f",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "debugNextPersonOfInterest",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

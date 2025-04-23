@@ -17,6 +17,7 @@ namespace StarterAssets
 		public bool sprint;
 		public bool menu;
 		public bool start;
+		public bool debugNextPersonOfInterest;
 
 		[Header("Movement Settings")]
 		public bool analogMovement;
@@ -57,6 +58,11 @@ namespace StarterAssets
 		public void OnStart(InputValue value)
 		{
 			StartInput(value.isPressed);
+		}
+
+		public void OnDebugNextPersonOfInterest(InputValue value)
+		{
+			DebugNextPersonOfInterestInput(value.isPressed);
 		}
 #endif
 
@@ -100,6 +106,12 @@ namespace StarterAssets
 		{
 			start = newStartState;
 		}
+
+		private void DebugNextPersonOfInterestInput(bool newDebugNextPersonOfInterestState)
+		{
+			debugNextPersonOfInterest = newDebugNextPersonOfInterestState;
+		}
+		
 	}
 	
 }

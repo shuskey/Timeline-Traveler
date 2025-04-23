@@ -130,6 +130,7 @@ namespace StarterAssets
         [Header("Events")]
         public UnityEvent onMenuPressed;
         public UnityEvent onStartPressed;
+        public UnityEvent onDebugNextPersonOfInterest;
         public UnityEvent<int> onZCoordinateChanged;  // int for the full value
 
         private int lastZIntValue = -1;
@@ -323,6 +324,12 @@ namespace StarterAssets
                 Debug.Log("ThirdPersonController: Start Pressed");
 				_input.start = false;
                 onStartPressed?.Invoke();
+            }
+            if (_input.debugNextPersonOfInterest)
+            {
+                Debug.Log("ThirdPersonController: Debug Next Person of Interest Pressed");
+                _input.debugNextPersonOfInterest = false;
+                onDebugNextPersonOfInterest?.Invoke();
             }
         }
         private void JumpAndGravity()
