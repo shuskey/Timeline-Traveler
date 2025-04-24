@@ -7,6 +7,7 @@ using UnityEngine;
 using Assets.Scripts.Enums;
 using System;
 using System.Xml;
+using Assets.Scripts.Utilities;
 
 namespace Assets.Scripts.DataProviders
 {
@@ -170,18 +171,20 @@ namespace Assets.Scripts.DataProviders
                         Texture2D fullTexture = new Texture2D(2, 2);
                         fullTexture.LoadImage(fullImageBytes);
                         
-                        // convert float actual values to integer
-                        int x = Mathf.RoundToInt(faceRegion.x);
-                        int y = Mathf.RoundToInt(faceRegion.y);
-                        int width = Mathf.RoundToInt(faceRegion.width);
-                        int height = Mathf.RoundToInt(faceRegion.height);
+                        // Get a square bounded region for the face
+                        RectInt squareRegion = ImageUtils.GetSquareBoundedRegion(fullTexture, faceRegion);
                         
-                        // Create a new texture for the cropped region
-                        Texture2D croppedTexture = new Texture2D(width, height);
+                        // Create a new texture for the square cropped region
+                        Texture2D croppedTexture = new Texture2D(squareRegion.width, squareRegion.height);
+
+                        //We need to flip the image vertically because the coo
+
+                        int flippedY = fullTexture.height - (squareRegion.y + squareRegion.height);
                         
-                        // Copy the pixels from the region we want
-                        Color[] pixels = fullTexture.GetPixels(x, y, width, height);
-                        croppedTexture.SetPixels(0, 0, width, height, pixels);
+                        // Copy the pixels from the square region
+                        Color[] pixels = fullTexture.GetPixels(squareRegion.x, flippedY, 
+                                                             squareRegion.width, squareRegion.height);
+                        croppedTexture.SetPixels(0, 0, squareRegion.width, squareRegion.height, pixels);
                         croppedTexture.Apply();
                         
                         // Convert back to bytes
