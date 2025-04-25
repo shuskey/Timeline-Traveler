@@ -399,36 +399,45 @@ public class Tribe : MonoBehaviour
 		return playerGameObject;
 	}
 
-	private void teleportToNextPersonOfInterest()
+	private void OnDebugNextPersonOfInterest()
+	{
+		Debug.Log("Tribe: OnDebugNextPersonOfInterest called - primary trigger");
+		teleportToPersonOfInterest(1); // 1 for forward
+	}
+
+	private void OnDebugPreviousPersonOfInterest()
+	{
+		Debug.Log("Tribe: OnDebugPreviousPersonOfInterest called - primary trigger");
+		teleportToPersonOfInterest(-1); // -1 for backward
+	}
+
+	private void teleportToPersonOfInterest(int direction)
 	{
 		var teleporter = FindFirstObjectByType<ThirdPersonTeleporter>();
-		personOfInterestIndexInList++;
-		for (var depth = personOfInterestDepth; depth <= numberOfGenerations; depth++)
+		var personNodeGameObjects = new List<GameObject>();
+		
+		// Get all personNodeGameObjects that are direct children of the tribe
+		foreach (Transform child in transform)
 		{
-			for (var index = personOfInterestIndexInList; index < listOfPersonsPerGeneration[depth]?.Count; index++)
+			if (child.GetComponent<PersonNode>() != null)
 			{
-				if (listOfPersonsPerGeneration[depth][index].dateQualityInformationString != "")
-				{
-					personOfInterestDepth = depth;
-					personOfInterestIndexInList = index;
-					teleporter.TeleportTo(listOfPersonsPerGeneration[depth][index].personNodeGameObject.transform, new Vector3(0, 0.5f, 0), ticksToHoldHere: 25);
-					var personObjectScript = listOfPersonsPerGeneration[depth][index].personNodeGameObject.GetComponent<PersonNode>();
-
-					StartCoroutine(hallOfHistoryGameObject.GetComponent<HallOfHistory>().SetFocusPersonNode(personObjectScript));
-					return;
-				}
+				personNodeGameObjects.Add(child.gameObject);
 			}
-			personOfInterestIndexInList = 0;
 		}
-		personOfInterestDepth = 0;
 
-		if (listOfPersonsPerGeneration[personOfInterestDepth]?.Count > personOfInterestIndexInList)
-		{
-			teleporter.TeleportTo(listOfPersonsPerGeneration[personOfInterestDepth][personOfInterestIndexInList].personNodeGameObject.transform, new Vector3(0, 0.5f, 0), ticksToHoldHere: 25);
-			var personObjectScript = listOfPersonsPerGeneration[personOfInterestDepth][personOfInterestIndexInList].personNodeGameObject.GetComponent<PersonNode>();
+		if (personNodeGameObjects.Count == 0)
+			return;
 
-			StartCoroutine(hallOfHistoryGameObject.GetComponent<HallOfHistory>().SetFocusPersonNode(personObjectScript));
-		}
+		// Handle wrap around
+		personOfInterestIndexInList = (personOfInterestIndexInList + direction) % personNodeGameObjects.Count;
+		if (personOfInterestIndexInList < 0)
+			personOfInterestIndexInList = personNodeGameObjects.Count - 1;
+
+		// Teleport to the selected person
+		var targetPerson = personNodeGameObjects[personOfInterestIndexInList];
+		teleporter.TeleportTo(targetPerson.transform, new Vector3(0, 0.5f, 0), ticksToHoldHere: 25);
+		var personObjectScript = targetPerson.GetComponent<PersonNode>();
+		StartCoroutine(hallOfHistoryGameObject.GetComponent<HallOfHistory>().SetFocusPersonNode(personObjectScript));
 	}
 
 	private void CreatePlayerFollowCameraObject(GameObject target)
@@ -615,6 +624,7 @@ public class Tribe : MonoBehaviour
 			thirdPersonController.onMenuPressed.AddListener(OnMenu);
 			thirdPersonController.onStartPressed.AddListener(OnStart);
 			thirdPersonController.onDebugNextPersonOfInterest.AddListener(OnDebugNextPersonOfInterest);
+			thirdPersonController.onDebugPreviousPersonOfInterest.AddListener(OnDebugPreviousPersonOfInterest);
 			controllerSubscribed = true;
 		}
 	}
@@ -625,6 +635,8 @@ public class Tribe : MonoBehaviour
 		{
 			thirdPersonController.onMenuPressed.RemoveListener(OnMenu);
 			thirdPersonController.onStartPressed.RemoveListener(OnStart);
+			thirdPersonController.onDebugNextPersonOfInterest.RemoveListener(OnDebugNextPersonOfInterest);
+			thirdPersonController.onDebugPreviousPersonOfInterest.RemoveListener(OnDebugPreviousPersonOfInterest);
 		}
 	}
 
@@ -640,13 +652,6 @@ public class Tribe : MonoBehaviour
 		if (personDetailsHandlerScript != null)
 			personDetailsHandlerScript.OnStartInputAction();
 	}
-
-	private void OnDebugNextPersonOfInterest()
-	{
-		Debug.Log("Tribe: OnDebugNextPersonOfInterest called - primary trigger");
-		teleportToNextPersonOfInterest();
-	}
-
 
 	private void OnMenuCanceled()
 	{

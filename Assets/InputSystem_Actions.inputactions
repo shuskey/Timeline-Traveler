@@ -635,6 +635,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "debugPreviousPersonOfInterest",
+                    "type": "Button",
+                    "id": "7b480cb0-fb1f-425b-955a-7ea2bde43017",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -1084,8 +1093,19 @@
                     "path": "<Keyboard>/f",
                     "interactions": "",
                     "processors": "",
-                    "groups": "",
+                    "groups": ";Keyboard&Mouse",
                     "action": "debugNextPersonOfInterest",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "82a05de5-cd1d-49f8-b204-f7d33693f63a",
+                    "path": "<Keyboard>/g",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "debugPreviousPersonOfInterest",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
