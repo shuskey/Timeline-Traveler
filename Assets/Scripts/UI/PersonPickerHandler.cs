@@ -87,7 +87,10 @@ public class PersonPickerHandler : MonoBehaviour
                 return true;
             }
             else
+            {
+                ClearStatusTextAndDisableNext();
                 Debug.Log("There is no previously selected Base PersonId save data!");
+            }
         } else {
             lastNameFilterField.interactable = false;
             transform.GetComponent<Dropdown>().interactable = false;
@@ -202,6 +205,13 @@ public class PersonPickerHandler : MonoBehaviour
         selectedPersonFullName = basePersonFullName;
         searchStatusText.text = $"Selected: {basePersonFullName}. Press Next, or Choose another.";
         nextButton.interactable = true;
+    }
+
+    // FUnction to clear the Status Text and disable the Next Button
+    void ClearStatusTextAndDisableNext()
+    {
+        searchStatusText.text = "";
+        nextButton.interactable = false;
     }
 
     void PopulateDropDownWithMyTribeSubSet(string filterText)

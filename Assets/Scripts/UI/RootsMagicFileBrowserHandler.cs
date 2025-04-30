@@ -113,12 +113,25 @@ public class RootsMagicFileBrowserHandler : MonoBehaviour
 				// Verify database integrity
 				if (_dataProvider.ValidateDatabaseIntegrity())
 				{
+					string previousPath = Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath;
 					Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath = result;
 					fileSelectedText.text = Path.GetFileName(result);
 					Debug.Log("Data File Path Chosen: " + fileSelectedText.text);
-					PlayerPrefs.SetString(PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath);
-					PlayerPrefs.Save();
-					Debug.Log("Game data saved!");
+					
+					if (previousPath != result)
+					{
+						PlayerPrefs.SetString(PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath);
+						// Remove the old base person selection since it's from a different file
+						PlayerPrefs.DeleteKey(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_ID);
+						PlayerPrefs.DeleteKey(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_FULL_NAME);
+						PlayerPrefs.Save();
+						Debug.Log("Game data saved! RootsMagic File Selection Changed! Old base person selection cleared.");
+					}
+					else
+					{
+						Debug.Log("RootsMagic File Selection Unchanged - same file selected");
+					}
+					
 					personPickerDropdownGameObject.GetComponent<PersonPickerHandler>().CheckIfFileSelectedAndEnableUserInterface();
 				}
 				else
