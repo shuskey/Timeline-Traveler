@@ -125,20 +125,41 @@ namespace Assets.Scripts.DataProviders
             IDbCommand dbcmd = dbconn.CreateCommand();
 
             AttachThumbnailsDatabase(dbcmd);
-
-            string QUERYTHUMBNAILS =
-                "SELECT tags.id as tagId, tags.name, paths.thumbId, images.id as \"imageId\",\n" +
-                "tnails.type, tnails.modificationDate, tnails.orientationHint,\n" +
-                "\"C:\" || (SELECT specificPath FROM AlbumRoots WHERE AlbumRoots.label = \"Photos\") ||\n" +
-                "albums.relativePath || images.name as \"fullPathToFileName\",\n" +
-                "region.value as \"region\", tnails.data as 'PGFImageData'\n" +
-                "FROM Tags tags\n" +
-                "LEFT JOIN Images images ON tags.icon = images.id\n" +
-                "LEFT JOIN Albums albums ON images.album = albums.id\n" +
-                "LEFT JOIN ImageTagProperties region ON tags.icon = region.imageid AND tags.id = region.tagid\n" +
-                "INNER JOIN [thumbnails-digikam].FilePaths paths ON fullPathToFileName = paths.path\n" +
-                "INNER JOIN [thumbnails-digikam].Thumbnails tnails ON paths.thumbId = tnails.id\n" +
-                $"WHERE tags.id = {tagId} AND images.album IS NOT NULL;";
+            // A note about AlbumRoots:
+            // My usage of DigiKam I have seen the label be "Photos" as well as "Pictures"
+            // So, I will just use the id of 1 for the AlbumRoot
+            string QUERYTHUMBNAILS = $@"
+                SELECT 
+                    tags.id as tagId,
+                    tags.name,
+                    paths.thumbId,
+                    images.id as ""imageId"",
+                    tnails.type,
+                    tnails.modificationDate,
+                    tnails.orientationHint,
+                    'C:' || 
+                    (SELECT specificPath FROM AlbumRoots WHERE AlbumRoots.id = 1) ||
+                        CASE
+                            WHEN albums.relativePath = '/' THEN '/'
+                            ELSE albums.relativePath || '/'
+                        END || 
+                    TRIM(images.name, '/') as ""fullPathToFileName"",
+                    region.value as ""region"",
+                    tnails.data as 'PGFImageData'
+                FROM Tags tags
+                LEFT JOIN Images images 
+                    ON tags.icon = images.id
+                LEFT JOIN Albums albums 
+                    ON images.album = albums.id
+                LEFT JOIN ImageTagProperties region 
+                    ON tags.icon = region.imageid 
+                    AND tags.id = region.tagid
+                INNER JOIN [thumbnails-digikam].FilePaths paths 
+                    ON fullPathToFileName = paths.path
+                INNER JOIN [thumbnails-digikam].Thumbnails tnails 
+                    ON paths.thumbId = tnails.id
+                WHERE tags.id = {tagId} 
+                    AND images.album IS NOT NULL;";
 
             string sqlQuery = QUERYTHUMBNAILS;
             dbcmd.CommandText = sqlQuery;

@@ -7,6 +7,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider;
+using Assets.Scripts.ServiceProviders;
 
 public class PersonDetailsHandler : MonoBehaviour
 {
@@ -27,10 +29,26 @@ public class PersonDetailsHandler : MonoBehaviour
     private StarterAssetsInputs _input;
     private ThirdPersonController thirdPersonController;
     private bool controllerSubscribed = false;
+    private IFamilyHistoryPictureProvider _pictureProvider;
 
     void Start()
     {
         _input = GetComponent<StarterAssetsInputs>();
+        InitializePictureProvider();
+    }
+
+    private void InitializePictureProvider()
+    {
+        if (PlayerPrefs.HasKey(PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH) && 
+            PlayerPrefs.HasKey(PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH))
+        {
+            _pictureProvider = new DigiKamFamilyHistoryPictureProvider();
+            _pictureProvider.Initialize(new Dictionary<string, string>
+            {
+                { PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, PlayerPrefs.GetString(PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH) },
+                { PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH, PlayerPrefs.GetString(PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH) }
+            });
+        }
     }
 
     void Update()
@@ -81,7 +99,7 @@ public class PersonDetailsHandler : MonoBehaviour
         UpdateCurrentDate(currentDate);
         dateQualityInformationGameObject.GetComponent<Text>().text = (personObject == null) ? "" : personObject.dateQualityInformationString;
         recordIdGameObject.GetComponent<Text>().text = (personObject == null) ? "" : $"RootsMagic DB ID: {personObject.dataBaseOwnerId}";
-        var myProfileImage = personObject?.personNodeGameObject.GetComponent<PersonNode>().GetPrimaryPhoto();
+        var myProfileImage = personObject?.personNodeGameObject.GetComponent<PersonNode>().GetPrimaryPhoto(_pictureProvider);
         if (myProfileImage != null)
         {
             Debug.Log("We got an image!");

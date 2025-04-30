@@ -50,7 +50,6 @@ public class Tribe : MonoBehaviour
 	private int maximumNumberOfPeopleInAGeneration = 0;
 	private IFamilyHistoryDataProvider _dataProvider;
 	private List<Person>[] listOfPersonsPerGeneration = new List<Person>[25];
-	private int personOfInterestDepth = 0;
 	private int personOfInterestIndexInList = 0;
 
 	const int PlatformChildIndex = 0;
@@ -358,7 +357,7 @@ public class Tribe : MonoBehaviour
 		personObjectScript.SetEdgePrefab(birthConnectionPrefab, marriageConnectionPrefab, bubblepf, parentPlatformBirthBubble, childPlatformReturnToParent, marriageEdgepfXScale);
 		personObjectScript.addMyBirthQualityBubble();
 		personObjectScript.SetGlobalSpringType(globalSpringType);
-		personObjectScript.SetThumbnailForPerson(rootsMagicFileName, digiKamFileName);
+		//personObjectScript.SetThumbnailForPerson(rootsMagicFileName, digiKamFileName);
 		personObjectScript.SetHallOfHistoryGameObject(hallOfHistoryGameObject);
 		personObjectScript.SetHallOfFamilyPhotosGameObject(hallOfFamilyPhotosGameObject);
 
@@ -514,6 +513,13 @@ public class Tribe : MonoBehaviour
 			var motherPersonNode = motherPerson.GetComponent<PersonNode>();
 			var motherAge = motherPersonNode.lifeSpan;
 			var motherAgeAtChildBirth = (float)(childPersonNode.birthDate - motherPersonNode.birthDate);
+			if (motherAgeAtChildBirth == 0) {
+				Debug.LogWarning($"OwnerId={motherPersonNode.dataBaseOwnerID} Name={motherPersonNode.name} Mother age at child birth is zero, setting to 13");
+				motherAgeAtChildBirth = 13;
+			}
+			// protect against motherAge being zero
+			if (motherAge == 0)
+				motherAge = motherAgeAtChildBirth;
 			motherPersonNode.AddBirthEdge(childPersonNode, motherAgeAtChildBirth / motherAge, motherChildRelationshipType, childPersonNode.birthDate);
 		}
 
@@ -522,6 +528,13 @@ public class Tribe : MonoBehaviour
 			var fatherPersonNode = fatherPerson.GetComponent<PersonNode>();
 			var fatherAge = fatherPersonNode.lifeSpan;
 			var fatherAgeAtChildBirth = (float)(childPersonNode.birthDate - fatherPersonNode.birthDate);
+			if (fatherAgeAtChildBirth == 0) {
+				Debug.LogWarning($"OwnerId={fatherPersonNode.dataBaseOwnerID} Name={fatherPersonNode.name} Father age at child birth is zero, setting to 13");
+				fatherAgeAtChildBirth = 13;
+			}
+			// protect against fatherAge being zero
+			if (fatherAge == 0)
+				fatherAge = fatherAgeAtChildBirth;
 			fatherPersonNode.AddBirthEdge(childPersonNode, fatherAgeAtChildBirth / fatherAge, fatherChildRelationshipType, childPersonNode.birthDate);
 		}
 	}

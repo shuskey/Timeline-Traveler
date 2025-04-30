@@ -68,6 +68,14 @@ public class PersonPickerHandler : MonoBehaviour
     public bool CheckIfFileSelectedAndEnableUserInterface()
     {
         if (PlayerPrefs.HasKey(PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH)) {
+            // Reinitialize the data provider with the latest path
+            _dataProvider = new RootsMagicFamilyHistoryDataProvider();
+            var config = new Dictionary<string, string>
+            {
+                { PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, PlayerPrefs.GetString(PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH) }
+            };
+            _dataProvider.Initialize(config);
+            
             lastNameFilterField.interactable = true;
             transform.GetComponent<Dropdown>().interactable = true;
             if (PlayerPrefs.HasKey(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_ID) && 
@@ -79,11 +87,10 @@ public class PersonPickerHandler : MonoBehaviour
                 return true;
             }
             else
-                Debug.Log("There is no previously selected Base PerdonId save data!");
+                Debug.Log("There is no previously selected Base PersonId save data!");
         } else {
             lastNameFilterField.interactable = false;
             transform.GetComponent<Dropdown>().interactable = false;
-
             Debug.Log("There is no RootsMagic DataFile Path save data!");
         }
         return false;

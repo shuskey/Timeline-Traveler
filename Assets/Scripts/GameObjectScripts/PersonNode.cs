@@ -18,7 +18,6 @@ public class PersonNode : MonoBehaviour
     private GlobalSpringType globalSpringType;
     private string rootsMagicFileName;
     private string digiKamFileName;
-    private IFamilyHistoryPictureProvider _pictureProvider;
     //private PrimaryPhotoForPersonRM primaryPhotoForPersonRM;
 
     
@@ -136,21 +135,9 @@ public class PersonNode : MonoBehaviour
         this.hallOfFamilyPhotosGameObject = hallOfFamilyPhotos;
     }
 
-    public void SetThumbnailForPerson(string rootsMagicFileName, string digiKamFileName)
+    public byte[] GetPrimaryPhoto(IFamilyHistoryPictureProvider pictureProvider)
     {
-        this.rootsMagicFileName = rootsMagicFileName;
-        this.digiKamFileName = digiKamFileName;       
-        _pictureProvider = new DigiKamFamilyHistoryPictureProvider();
-        _pictureProvider.Initialize(new Dictionary<string, string>
-        {
-            { PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, rootsMagicFileName },
-            { PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH, digiKamFileName }
-        });
-    }
-
-    public byte[] GetPrimaryPhoto()
-    {
-        var thumbnails = _pictureProvider.GetThumbnailForPerson(this.dataBaseOwnerID, 2024);
+        var thumbnails = pictureProvider.GetThumbnailForPerson(this.dataBaseOwnerID, 2024);
         if (thumbnails == null || thumbnails.Count == 0)
             return null;
             
