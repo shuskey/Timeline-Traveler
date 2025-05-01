@@ -13,6 +13,18 @@ namespace Assets.Scripts.DataProviders
 {
     public class DigiKamConnector : DataProviderBase
     {
+        public class PhotoInfo
+        {
+            public string FullPathToFileName { get; set; }
+            public string Region { get; set; }
+
+            public PhotoInfo(string fullPathToFileName, string region)
+            {
+                FullPathToFileName = fullPathToFileName;
+                Region = region;
+            }
+        }
+
         public List<DigiKamFaceTag> faceTagList;
         private Dictionary<int, int> _ownerIdToTagIdMap;
         private string _rootsMagicDataBaseFileNameWithFullPath;  // usually *.rmtree, *.rmgc, or *.sqlite
@@ -242,6 +254,155 @@ namespace Assets.Scripts.DataProviders
             dbconn.Close();
             dbconn = null;
             return imageToReturn;
+        }
+
+        public List<PhotoInfo> GetPhotoListForPersonFromDataBase(int ownerId)
+        {
+            List<PhotoInfo> photoList = new List<PhotoInfo>();
+
+            // Get the tag ID for this owner ID
+            int tagId = GetTagIdForOwnerId(ownerId);
+            if (tagId == -1)
+            {
+                Debug.LogWarning($"No tag found for owner ID {ownerId}");
+                return photoList;
+            }
+
+            string conn = "URI=file:" + _digiKamDataBaseFileNameWithFullPath;
+            using (IDbConnection dbconn = new SqliteConnection(conn))
+            {
+                dbconn.Open();
+                using (IDbCommand dbcmd = dbconn.CreateCommand())
+                {
+                    string sqlQuery = $@"
+                        SELECT 
+                            ""C:"" || (
+                            SELECT specificPath 
+                            FROM AlbumRoots 
+                            WHERE id = 1)
+                              || 
+                              CASE
+                                  WHEN albums.relativePath = '/' THEN '/'
+                                  ELSE albums.relativePath || '/'
+                              END
+                              || images.name 
+                            as ""fullPathToFileName"",
+                        region.value as ""region""
+                      FROM ImageTags imagetags
+                      LEFT JOIN Images images ON imagetags.imageid = images.id
+                      LEFT JOIN Albums albums ON images.album = albums.id
+                      LEFT JOIN ImageTagProperties region ON imagetags.imageid = region.imageid AND imagetags.tagid = region.tagid 
+                      WHERE imagetags.tagid={tagId}";
+
+                    dbcmd.CommandText = sqlQuery;
+                    using (IDataReader reader = dbcmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            string fullPathToFileName = reader["fullPathToFileName"] as string;
+                            string region = reader["region"] as string;
+                            
+                            if (!string.IsNullOrEmpty(fullPathToFileName))
+                            {
+                                photoList.Add(new PhotoInfo(fullPathToFileName, region));
+                            }
+                        }
+                    }
+                }
+            }
+
+            return photoList;
+        }
+
+        public static Texture2D CreateThumbnailTexture2D(string pathToFullResolutionImage, string regionXml)
+        {
+            if (!System.IO.File.Exists(pathToFullResolutionImage))
+            {
+                Debug.LogWarning($"Image file not found: {pathToFullResolutionImage}");
+                return null;
+            }
+
+            try
+            {
+                // Parse XML string for region
+                XmlDocument doc = new XmlDocument();
+                doc.LoadXml(regionXml);
+                var rectElement = doc.DocumentElement;
+
+                // Create Rect from XML attributes
+                Rect faceRegion = new Rect(
+                    float.Parse(rectElement.GetAttribute("x")),
+                    float.Parse(rectElement.GetAttribute("y")),
+                    float.Parse(rectElement.GetAttribute("width")),
+                    float.Parse(rectElement.GetAttribute("height"))
+                );
+
+                // Load the full image into a byte array
+                byte[] fullImageBytes = System.IO.File.ReadAllBytes(pathToFullResolutionImage);
+                
+                // Create a texture from the bytes
+                Texture2D fullTexture = new Texture2D(2, 2);
+                fullTexture.LoadImage(fullImageBytes);
+                
+                // Get a square bounded region for the face
+                RectInt squareRegion = ImageUtils.GetSquareBoundedRegion(fullTexture, faceRegion);
+                
+                // Create a new texture for the square cropped region
+                Texture2D croppedTexture = new Texture2D(squareRegion.width, squareRegion.height);
+
+                // Flip the image vertically
+                int flippedY = fullTexture.height - (squareRegion.y + squareRegion.height);
+                
+                // Copy the pixels from the square region
+                Color[] pixels = fullTexture.GetPixels(squareRegion.x, flippedY, 
+                                                     squareRegion.width, squareRegion.height);
+                croppedTexture.SetPixels(0, 0, squareRegion.width, squareRegion.height, pixels);
+                croppedTexture.Apply();
+                
+                // Clean up
+                if (Application.isPlaying)
+                {
+                    UnityEngine.Object.Destroy(fullTexture);
+                }
+                else
+                {
+                    UnityEngine.Object.DestroyImmediate(fullTexture);
+                }
+
+                return croppedTexture;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Error processing image file {pathToFullResolutionImage}: {ex.Message}");
+                return null;
+            }
+        }
+
+        public static Texture2D CreateFullImageTexture2D(string pathToFullResolutionImage)
+        {
+            if (!System.IO.File.Exists(pathToFullResolutionImage))
+            {
+                Debug.LogWarning($"Image file not found: {pathToFullResolutionImage}");
+                return null;
+            }
+
+            try
+            {
+                // Load the full image into a byte array
+                byte[] fullImageBytes = System.IO.File.ReadAllBytes(pathToFullResolutionImage);
+                
+                // Create a texture from the bytes
+                Texture2D texture = new Texture2D(2, 2);
+                texture.LoadImage(fullImageBytes);
+                texture.Apply();
+                
+                return texture;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Error processing image file {pathToFullResolutionImage}: {ex.Message}");
+                return null;
+            }
         }
     }
 }

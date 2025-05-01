@@ -31,6 +31,6 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
         /// <param name="personId">The ID of the person</param>
         /// <param name="year">The year to get photos for</param>
         /// <returns>List of tuples containing the photo texture and its associated metadata</returns>
-        List<(Texture2D Photo, Dictionary<string, string> Metadata)> GetPhotoListForPerson(int personId, int year);
+        List<(string FullPathToFileName, Dictionary<string, string> Metadata)> GetPhotoListForPerson(int personId, int year);
     }
 } 

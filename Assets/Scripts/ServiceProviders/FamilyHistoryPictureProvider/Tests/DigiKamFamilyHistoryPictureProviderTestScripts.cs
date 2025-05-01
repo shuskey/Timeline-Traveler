@@ -68,20 +68,20 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
         }
 
         [Test]
-        public void GetPhotoListForPerson_WhenPersonExists_ReturnsMockData()
+        public void GetPhotoListForPerson_WhenPersonExists_ReturnsSampleData()
         {
             // Act
             var result = _provider.GetPhotoListForPerson(_ownerIDForJFK, 1963);
 
             // Assert
             result.Should().NotBeNull("because we should always get a list");
-            result.Count.Should().Be(1, "because we expect one mock photo");
+            result.Count.Should().Be(3, "because we expect 3 sample photos photo");
             
             var (photo, metadata) = result[0];
             photo.Should().NotBeNull("because we should have a valid photo");
             metadata.Should().NotBeNull("because we should have metadata");
-            metadata.Count.Should().Be(4, "because we expect 4 metadata fields");
-            metadata["Date"].Should().Be("1963-01-01", "because the year should be reflected in the date");
+            metadata.Count.Should().Be(1, "because we expect 1 metadata field to be Region");
+            metadata["Region"].Should().NotBeNull("because we expect a region to be defined");
         }
 
         [TearDown]

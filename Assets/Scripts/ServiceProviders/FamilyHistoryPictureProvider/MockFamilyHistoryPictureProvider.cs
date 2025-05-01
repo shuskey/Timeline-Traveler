@@ -45,19 +45,10 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
             return new List<Texture2D> { texture };
         }
 
-        public List<(Texture2D Photo, Dictionary<string, string> Metadata)> GetPhotoListForPerson(int personId, int year)
+        public List<(string FullPathToFileName, Dictionary<string, string> Metadata)> GetPhotoListForPerson(int personId, int year)
         {
-            var result = new List<(Texture2D Photo, Dictionary<string, string> Metadata)>();
+            var result = new List<(string FullPathToFileName, Dictionary<string, string> Metadata)>();
             
-            // Create a mock texture
-            var texture = new Texture2D(800, 600);
-            var colors = new Color[800 * 600];
-            for (int i = 0; i < colors.Length; i++)
-            {
-                colors[i] = Color.gray;
-            }
-            texture.SetPixels(colors);
-            texture.Apply();
 
             // Create mock metadata
             var metadata = new Dictionary<string, string>
@@ -68,7 +59,7 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
                 { "Source", "Mock Source" }
             };
 
-            result.Add((texture, metadata));
+            result.Add(("MockPhoto.jpg", metadata));
             return result;
         }
     }

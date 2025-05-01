@@ -42,20 +42,48 @@ public class FamilyPhotoHallPanel : MonoBehaviour
         familyPhotoDetailsHandlerScript = familyPhotoDetailsPanel[0].transform.GetComponent<FamilyPhotoDetailsHandler>();        
     }
 
-    public void LoadFamilyPhotosForYearAndPerson(int personOwnerID, int year, string photoArchiveDrivePath, string thumbnailSubFolderName)
+    public void LoadFamilyPhotosForYearAndPerson(int personOwnerID, int year, string fileNameString)
     {
         this.year = year;
-        var filteredFiles = Directory.GetFiles(photoArchiveDrivePath, "*.*", SearchOption.AllDirectories)
-                .Where(file => file.ToLower().EndsWith("jpg") || file.ToLower().EndsWith("gif")
-                || file.ToLower().EndsWith("png") || file.ToLower().EndsWith("bmp")).ToList();
-
-        onlyThumbnails = filteredFiles.Where(file => file.ToLower().Contains(thumbnailSubFolderName.ToLower())).ToList();
-
-        var fileToUse = onlyThumbnails[Random.Range(0, onlyThumbnails.Count)];
-        var fileNameString =  Path.GetFileName(fileToUse);
-        var familyPhoto = new FamilyPhoto(this.year.ToString(), fileNameString, fileToUse, "temp Description", "temp Locations", "temp Countries", "", "", "");
+        
+        var familyPhoto = new FamilyPhoto(this.year.ToString(), fileNameString, fileNameString, "temp Description", "temp Locations", "temp Countries", "", "", "");
         familyPhotos.Add(familyPhoto);
         numberOfEvents = 1;
+        DisplayHallPanelImageTexture();
+        dateTextFieldName.text = year.ToString();
+        titleTextFieldName.text = currentlySelectedEventTitle();
+    }
+
+    // I need a call that will clear the familyPhotos list
+    public void ClearFamilyPhotos()
+    {
+        familyPhotos.Clear();
+        numberOfEvents = 0;
+        DisplayHallPanelImageTexture();
+    }
+
+    public void LoadFamilyPhotosForYearAndPerson(List<(Texture2D Photo, Dictionary<string, string> Metadata)> photos)
+    {
+        familyPhotos.Clear();
+        
+        foreach (var photo in photos)
+        {
+            var region = photo.Metadata.TryGetValue("Region", out string regionValue) ? regionValue : "";
+            var familyPhoto = new FamilyPhoto(
+                year.ToString(),
+                "DigiKam Photo",
+                "DigiKam Photo",
+                "Photo from DigiKam",
+                "",
+                "",
+                "",
+                "",
+                region
+            );
+            familyPhotos.Add(familyPhoto);
+        }
+        
+        numberOfEvents = familyPhotos.Count;
         DisplayHallPanelImageTexture();
         dateTextFieldName.text = year.ToString();
         titleTextFieldName.text = currentlySelectedEventTitle();
@@ -152,28 +180,35 @@ public class FamilyPhotoHallPanel : MonoBehaviour
 
     void setPanelTexture(Texture textureToSet, bool crop = true)
     {
-        RenderTexture tempTex;
-
-        RenderTexture rTex = RenderTexture.GetTemporary(textureToSet.width, textureToSet.height, 24, RenderTextureFormat.Default);
-        Graphics.Blit(textureToSet, rTex);
-        if (crop)
+        try
         {
-            var cropSize = Math.Min(textureToSet.width, textureToSet.height);
-            var xStart = (textureToSet.width - cropSize) / 2;
-            var yStart = (textureToSet.height - cropSize) / 2;
+            RenderTexture tempTex;
 
-            tempTex = RenderTexture.GetTemporary(cropSize, cropSize, 24, RenderTextureFormat.Default);
+            RenderTexture rTex = RenderTexture.GetTemporary(textureToSet.width, textureToSet.height, 24, RenderTextureFormat.Default);
+            Graphics.Blit(textureToSet, rTex);
+            if (crop)
+            {
+                var cropSize = Math.Min(textureToSet.width, textureToSet.height);
+                var xStart = (textureToSet.width - cropSize) / 2;
+                var yStart = (textureToSet.height - cropSize) / 2;
 
-            Graphics.CopyTexture(rTex, 0, 0, xStart, yStart, cropSize, cropSize, tempTex, 0, 0, 0, 0);
+                tempTex = RenderTexture.GetTemporary(cropSize, cropSize, 24, RenderTextureFormat.Default);
 
-            RenderTexture.ReleaseTemporary(rTex);
-            rTex = RenderTexture.GetTemporary(cropSize, cropSize, 24, RenderTextureFormat.Default);
-            Graphics.Blit(tempTex, rTex);
-            RenderTexture.ReleaseTemporary(tempTex);
+                Graphics.CopyTexture(rTex, 0, 0, xStart, yStart, cropSize, cropSize, tempTex, 0, 0, 0, 0);
+
+                RenderTexture.ReleaseTemporary(rTex);
+                rTex = RenderTexture.GetTemporary(cropSize, cropSize, 24, RenderTextureFormat.Default);
+                Graphics.Blit(tempTex, rTex);
+                RenderTexture.ReleaseTemporary(tempTex);
+            }
+
+            this.gameObject.transform.Find("ImagePanel").GetComponent<Renderer>().material.mainTexture = rTex;
+            this.familyPhotoImage_Texture = (Texture2D)textureToSet;
         }
-
-        this.gameObject.transform.Find("ImagePanel").GetComponent<Renderer>().material.mainTexture = rTex;
-        this.familyPhotoImage_Texture = (Texture2D)textureToSet;
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"Error in setPanelTexture: {ex.Message}, for Title: {titleTextFieldName.text}, and Date: {dateTextFieldName.text}");
+        }
     }
 
     void setPanelTextureOld(Texture textureToSet)

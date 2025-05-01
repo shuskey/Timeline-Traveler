@@ -69,37 +69,25 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
             return thumbnails;
         }
 
-        public List<(Texture2D Photo, Dictionary<string, string> Metadata)> GetPhotoListForPerson(int personId, int year)
+        public List<(string FullPathToFileName, Dictionary<string, string> Metadata)> GetPhotoListForPerson(int personId, int year)
         {
             if (!_isInitialized)
             {
                 Debug.LogError("DigiKamFamilyHistoryPictureProvider not initialized");
-                return new List<(Texture2D, Dictionary<string, string>)>();
+                return new List<(string FullPathToFileName, Dictionary<string, string> Metadata)>();
             }
+            //ok lets call the connector to get the photo list
+            var photoInfoList = _connector.GetPhotoListForPersonFromDataBase(personId);
 
-            // For now, return mock data as requested
-            var mockPhoto = new Texture2D(4, 4);
-            for (int x = 0; x < 4; x++)
+            // Lets prepare to return a list of Texture2D and Meta Data dictionary For each PhotoInfo record create either a thumbnail or the full image based on the returnThumbnails flag
+            // Also the region information will become a new metadata field called Region
+            var photoMetaDataList = new List<(string FullPathToFileName, Dictionary<string, string> Metadata)>();
+
+            foreach (var photoInfo in photoInfoList)
             {
-                for (int y = 0; y < 4; y++)
-                {
-                    mockPhoto.SetPixel(x, y, ((x + y) % 2 == 0) ? Color.white : Color.black);
-                }
+                photoMetaDataList.Add((photoInfo.FullPathToFileName, new Dictionary<string, string> { { "Region", photoInfo.Region } }));
             }
-            mockPhoto.Apply();
-
-            var mockMetadata = new Dictionary<string, string>
-            {
-                { "Date", $"{year}-01-01" },
-                { "Location", "Mock Location" },
-                { "Description", "Mock photo description" },
-                { "Tags", "Family,Portrait" }
-            };
-
-            return new List<(Texture2D, Dictionary<string, string>)> 
-            { 
-                (mockPhoto, mockMetadata) 
-            };
+            return photoMetaDataList;   
         }
     }
 } 
