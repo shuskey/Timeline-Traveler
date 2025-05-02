@@ -26,6 +26,10 @@ public class FamilyPhotoHallPanel : MonoBehaviour
     private FamilyPhotoDetailsHandler familyPhotoDetailsHandlerScript;
     private Texture2D familyPhotoImage_Texture;    
 
+    // --- ADDED FIELDS FOR CLEANUP ---
+    private RenderTexture currentRenderTexture; // Track the current RenderTexture
+    private Texture2D currentDownloadedTexture; // Track the current downloaded Texture2D
+
     // Awake is called when instantiated
     void Awake()
     {
@@ -164,7 +168,17 @@ public class FamilyPhotoHallPanel : MonoBehaviour
         if (request.result == UnityWebRequest.Result.ProtocolError)
             Debug.Log(request.error);
         else
-            setPanelTexture(((DownloadHandlerTexture)request.downloadHandler).texture);
+        {
+            // Clean up previous downloaded texture
+            if (currentDownloadedTexture != null)
+            {
+                Destroy(currentDownloadedTexture);
+                currentDownloadedTexture = null;
+            }
+            Texture2D downloaded = ((DownloadHandlerTexture)request.downloadHandler).texture as Texture2D;
+            setPanelTexture(downloaded);
+            currentDownloadedTexture = downloaded;
+        }
     }
 
     // an overload to GetPhotoFromPhotoArchive that takes a DigiKam thumbnailId
@@ -182,6 +196,13 @@ public class FamilyPhotoHallPanel : MonoBehaviour
     {
         try
         {
+            // Release previous RenderTexture if any
+            if (currentRenderTexture != null)
+            {
+                RenderTexture.ReleaseTemporary(currentRenderTexture);
+                currentRenderTexture = null;
+            }
+
             RenderTexture tempTex;
 
             RenderTexture rTex = RenderTexture.GetTemporary(textureToSet.width, textureToSet.height, 24, RenderTextureFormat.Default);
@@ -204,6 +225,9 @@ public class FamilyPhotoHallPanel : MonoBehaviour
 
             this.gameObject.transform.Find("ImagePanel").GetComponent<Renderer>().material.mainTexture = rTex;
             this.familyPhotoImage_Texture = (Texture2D)textureToSet;
+
+            // Track the current RenderTexture for cleanup
+            currentRenderTexture = rTex;
         }
         catch (Exception ex)
         {
@@ -215,5 +239,21 @@ public class FamilyPhotoHallPanel : MonoBehaviour
     {
         this.gameObject.transform.Find("ImagePanel").GetComponent<Renderer>().material.mainTexture = textureToSet;
         familyPhotoImage_Texture = (Texture2D)textureToSet;
+    }
+
+    void OnDestroy()
+    {
+        // Cleanup RenderTexture
+        if (currentRenderTexture != null)
+        {
+            RenderTexture.ReleaseTemporary(currentRenderTexture);
+            currentRenderTexture = null;
+        }
+        // Cleanup downloaded Texture2D
+        if (currentDownloadedTexture != null)
+        {
+            Destroy(currentDownloadedTexture);
+            currentDownloadedTexture = null;
+        }
     }
 }
