@@ -85,7 +85,12 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
 
             foreach (var photoInfo in photoInfoList)
             {
-                photoMetaDataList.Add((photoInfo.FullPathToFileName, new Dictionary<string, string> { { "Region", photoInfo.Region } }));
+                var metadata = new Dictionary<string, string>
+                {
+                    { "Region", photoInfo.Region },
+                    { "Orientation", photoInfo.Orientation.ToString() }
+                };
+                photoMetaDataList.Add((photoInfo.FullPathToFileName, metadata));
             }
             return photoMetaDataList;   
         }

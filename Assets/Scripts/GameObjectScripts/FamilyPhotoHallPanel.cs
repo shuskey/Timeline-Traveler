@@ -1,5 +1,5 @@
 using Assets.Scripts.DataObjects;
-//using Assets.Scripts.DataProviders;
+using Assets.Scripts.Enums;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -23,9 +23,7 @@ public class FamilyPhotoHallPanel : MonoBehaviour
     private int numberOfEvents = 0;
     private TextMeshPro dateTextFieldName;
     private TextMeshPro titleTextFieldName;
-    private FamilyPhotoDetailsHandler familyPhotoDetailsHandlerScript;
     private Texture2D familyPhotoImage_Texture;    
-
     // --- ADDED FIELDS FOR CLEANUP ---
     private RenderTexture currentRenderTexture; // Track the current RenderTexture
     private Texture2D currentDownloadedTexture; // Track the current downloaded Texture2D
@@ -42,15 +40,24 @@ public class FamilyPhotoHallPanel : MonoBehaviour
 
     private void Start()
     {
-        GameObject[] familyPhotoDetailsPanel = GameObject.FindGameObjectsWithTag("FamilyPhotoDetailsPanel");
-        familyPhotoDetailsHandlerScript = familyPhotoDetailsPanel[0].transform.GetComponent<FamilyPhotoDetailsHandler>();        
+      
     }
 
-    public void LoadFamilyPhotosForYearAndPerson(int personOwnerID, int year, string fileNameString)
+    public void LoadFamilyPhotosForYearAndPerson(int personOwnerID, int year, string fileNameString, ExifOrientation orientation = ExifOrientation.TopLeft)
     {
         this.year = year;
         
-        var familyPhoto = new FamilyPhoto(this.year.ToString(), fileNameString, fileNameString, "temp Description", "temp Locations", "temp Countries", "", "", "");
+        var familyPhoto = new FamilyPhoto(
+            year: this.year.ToString(), 
+            itemLabel: $"Orientation: {orientation} Filename: {Path.GetFileName(fileNameString)}", 
+            picturePathInArchive: fileNameString, 
+            description: "temp Description", 
+            locations: "temp Locations", 
+            countries: "temp Countries", 
+            pointInTime: "", 
+            eventStartDate: "", 
+            eventEndDate: "", 
+            orientation: orientation);
         familyPhotos.Add(familyPhoto);
         numberOfEvents = 1;
         DisplayHallPanelImageTexture();
@@ -66,46 +73,6 @@ public class FamilyPhotoHallPanel : MonoBehaviour
         DisplayHallPanelImageTexture();
     }
 
-    public void LoadFamilyPhotosForYearAndPerson(List<(Texture2D Photo, Dictionary<string, string> Metadata)> photos)
-    {
-        familyPhotos.Clear();
-        
-        foreach (var photo in photos)
-        {
-            var region = photo.Metadata.TryGetValue("Region", out string regionValue) ? regionValue : "";
-            var familyPhoto = new FamilyPhoto(
-                year.ToString(),
-                "DigiKam Photo",
-                "DigiKam Photo",
-                "Photo from DigiKam",
-                "",
-                "",
-                "",
-                "",
-                region
-            );
-            familyPhotos.Add(familyPhoto);
-        }
-        
-        numberOfEvents = familyPhotos.Count;
-        DisplayHallPanelImageTexture();
-        dateTextFieldName.text = year.ToString();
-        titleTextFieldName.text = currentlySelectedEventTitle();
-    }
-
-    public void DisplayDetailsInFamilyPhotoDetailsPanel()
-    {
-        familyPhotoDetailsHandlerScript.DisplayThisEvent(familyPhotos[currentEventIndex],
-                                                   currentEventIndex,
-                                                   numberOfEvents,
-                                                   familyPhotoImage_Texture);
-    }
-
-    public void ClearEventDetailsPanel()
-    {
-        familyPhotoDetailsHandlerScript.ClearEventDisplay();
-    }
-
     public void DisplayHallPanelImageTexture()
     {
         if (numberOfEvents == 0)
@@ -113,13 +80,13 @@ public class FamilyPhotoHallPanel : MonoBehaviour
             setPanelTexture(noPhotosThisYear_Texture);
             return;
         }
-        var eventToShow = familyPhotos[currentEventIndex];
-        if (string.IsNullOrEmpty(eventToShow.picturePathInArchive))
+        var familPhotoToShow = familyPhotos[currentEventIndex];
+        if (string.IsNullOrEmpty(familPhotoToShow.picturePathInArchive))
         {
             setPanelTexture(noImageThisEvent_Texture);
             return;
         }
-        StartCoroutine(GetPhotoFromPhotoArchive(eventToShow.picturePathInArchive));
+        StartCoroutine(GetPhotoFromPhotoArchive(familPhotoToShow.picturePathInArchive, familPhotoToShow.orientation));
     }
 
     public string currentlySelectedEventTitle()
@@ -132,41 +99,16 @@ public class FamilyPhotoHallPanel : MonoBehaviour
         return stringToReturn[0].ToString().ToUpper() + stringToReturn.Substring(1);
     }
 
-    public void NextEventInPanel()
-    {
-        currentEventIndex++;
-        if (currentEventIndex >= numberOfEvents)
-            currentEventIndex = 0;
-        DisplayHallPanelImageTexture();
-        titleTextFieldName.text = currentlySelectedEventTitle();
-    }
 
-    public void InteractWithPanel()
-    {
-        // What would this be? perhaps a full screen - zoomable/pannable image viewer ??
-    }
-
-    public void PreviousEventInPanel()
-    {
-        currentEventIndex--;
-        if (currentEventIndex < 0)
-            currentEventIndex = numberOfEvents - 1;
-        DisplayHallPanelImageTexture();
-        titleTextFieldName.text = currentlySelectedEventTitle();
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-
-    }
-
-    IEnumerator GetPhotoFromPhotoArchive(string fullPathtoPhotoInArchive)
+    IEnumerator GetPhotoFromPhotoArchive(string fullPathtoPhotoInArchive, ExifOrientation orientation = ExifOrientation.TopLeft)
     {        
         UnityWebRequest request = UnityWebRequestTexture.GetTexture(fullPathtoPhotoInArchive);
         yield return request.SendWebRequest();
         if (request.result == UnityWebRequest.Result.ProtocolError)
-            Debug.Log(request.error);
+        {
+            Debug.Log($"Error downloading photo:{fullPathtoPhotoInArchive} error: {request.error}");
+            currentDownloadedTexture = noImageThisEvent_Texture;
+        }
         else
         {
             // Clean up previous downloaded texture
@@ -176,69 +118,137 @@ public class FamilyPhotoHallPanel : MonoBehaviour
                 currentDownloadedTexture = null;
             }
             Texture2D downloaded = ((DownloadHandlerTexture)request.downloadHandler).texture as Texture2D;
-            setPanelTexture(downloaded);
+            if (downloaded == null)
+            {
+                Debug.Log($"Error downloading photo:{fullPathtoPhotoInArchive} error: downloaded is null");
+                Debug.Log("Will use placeholder texture");  
+                downloaded = noImageThisEvent_Texture;
+                orientation = ExifOrientation.TopLeft;
+            }
+            setPanelTexture(downloaded, orientation);
             currentDownloadedTexture = downloaded;
         }
     }
 
-    // an overload to GetPhotoFromPhotoArchive that takes a DigiKam thumbnailId
-    IEnumerator GetPhotoFromPhotoArchive(int thumbnailId)
+    private (Rect spriteRect, float rotation) GetSpriteRectAndRotationForOrientation(Texture2D texture, ExifOrientation orientation)
     {
-        UnityWebRequest request = UnityWebRequestTexture.GetTexture($"http://localhost:8080/thumbnail/{thumbnailId}");
-        yield return request.SendWebRequest();
-        if (request.result == UnityWebRequest.Result.ProtocolError)
-            Debug.Log(request.error);
-        else
-            setPanelTexture(((DownloadHandlerTexture)request.downloadHandler).texture);
+        switch (orientation)
+        {
+            case ExifOrientation.TopLeft:     // Normal
+                return (new Rect(0, 0, texture.width, texture.height), 0f);
+            case ExifOrientation.TopRight:    // Mirrored
+                return (new Rect(0, 0, -texture.width, texture.height), 0f);
+            case ExifOrientation.BottomRight: // Rotated 180
+                return (new Rect(0, 0, -texture.width, -texture.height), 0f);
+            case ExifOrientation.BottomLeft:  // Mirrored and rotated 180
+                return (new Rect(0, 0, texture.width, -texture.height), 0f);
+            case ExifOrientation.LeftTop:     // Mirrored and rotated 270
+                return (new Rect(0, 0, texture.height, texture.width), -270f);
+            case ExifOrientation.RightTop:    // Rotated 90
+                return (new Rect(0, 0, texture.height, texture.width), -90f);
+            case ExifOrientation.RightBottom: // Mirrored and rotated 90
+                return (new Rect(0, 0, -texture.height, texture.width), -90f);
+            case ExifOrientation.LeftBottom:  // Rotated 270
+                return (new Rect(0, 0, texture.height, texture.width), 270f);
+            default:
+                return (new Rect(0, 0, texture.width, texture.height), 0f);
+        }
     }
 
-    void setPanelTexture(Texture textureToSet, bool crop = true)
+    private Texture2D ResizeTexture(Texture2D source, int targetWidth)
+    {
+        // Calculate height maintaining aspect ratio
+        float aspectRatio = (float)source.height / source.width;
+        int targetHeight = Mathf.RoundToInt(targetWidth * aspectRatio);
+
+        // Create a new texture with the target dimensions
+        Texture2D resized = new Texture2D(targetWidth, targetHeight, source.format, false);
+        
+        // Create a temporary RenderTexture to do the resizing
+        RenderTexture rt = new RenderTexture(targetWidth, targetHeight, 0, RenderTextureFormat.ARGB32);
+        rt.Create();
+
+        // Store the current render texture
+        RenderTexture previous = RenderTexture.active;
+        RenderTexture.active = rt;
+
+        // Copy the source texture to the render texture
+        Graphics.Blit(source, rt);
+
+        // Read the pixels from the render texture
+        resized.ReadPixels(new Rect(0, 0, targetWidth, targetHeight), 0, 0);
+        resized.Apply();
+
+        // Restore the previous render texture
+        RenderTexture.active = previous;
+        rt.Release();
+
+        return resized;
+    }
+
+    void setPanelTexture(Texture2D textureToSet, ExifOrientation orientation = ExifOrientation.TopLeft, bool crop = true)
     {
         try
         {
-            // Release previous RenderTexture if any
-            if (currentRenderTexture != null)
+            // Resize the texture if it's too large (e.g., if width > 1024)
+            const int MAX_TEXTURE_SIZE = 780;
+            Texture2D finalTexture = textureToSet;
+            
+            if (textureToSet.width > MAX_TEXTURE_SIZE || textureToSet.height > MAX_TEXTURE_SIZE)
             {
-                RenderTexture.ReleaseTemporary(currentRenderTexture);
-                currentRenderTexture = null;
+                //Debug.Log($"Resizing texture from {textureToSet.width}x{textureToSet.height} to max dimension {MAX_TEXTURE_SIZE}");
+                finalTexture = ResizeTexture(textureToSet, MAX_TEXTURE_SIZE);
             }
 
-            RenderTexture tempTex;
-
-            RenderTexture rTex = RenderTexture.GetTemporary(textureToSet.width, textureToSet.height, 24, RenderTextureFormat.Default);
-            Graphics.Blit(textureToSet, rTex);
             if (crop)
             {
-                var cropSize = Math.Min(textureToSet.width, textureToSet.height);
-                var xStart = (textureToSet.width - cropSize) / 2;
-                var yStart = (textureToSet.height - cropSize) / 2;
+                int cropSize = Math.Min(finalTexture.width, finalTexture.height);
+                int xStart = (finalTexture.width - cropSize) / 2;
+                int yStart = (finalTexture.height - cropSize) / 2;
 
-                tempTex = RenderTexture.GetTemporary(cropSize, cropSize, 24, RenderTextureFormat.Default);
+                Color[] pixels = finalTexture.GetPixels(xStart, yStart, cropSize, cropSize);
+                finalTexture = new Texture2D(cropSize, cropSize, finalTexture.format, false);
+                finalTexture.SetPixels(pixels);
+                finalTexture.Apply();
+            }
+            // Get sprite rect and rotation based on orientation
+            var (spriteRect, rotation) = GetSpriteRectAndRotationForOrientation(finalTexture, orientation);
 
-                Graphics.CopyTexture(rTex, 0, 0, xStart, yStart, cropSize, cropSize, tempTex, 0, 0, 0, 0);
+            // Create sprite with the adjusted rect that may mirror the image based on orientation  
+            Sprite sprite = Sprite.Create(finalTexture, spriteRect, new Vector2(0.5f, 0.5f), 100f);
 
-                RenderTexture.ReleaseTemporary(rTex);
-                rTex = RenderTexture.GetTemporary(cropSize, cropSize, 24, RenderTextureFormat.Default);
-                Graphics.Blit(tempTex, rTex);
-                RenderTexture.ReleaseTemporary(tempTex);
+            // Step 1: Find the Canvas child
+            Transform canvasTransform = this.gameObject.transform.Find("Canvas");
+            if (canvasTransform == null)
+            {
+                Debug.LogWarning("Canvas child not found!");
+                return;
             }
 
-            this.gameObject.transform.Find("ImagePanel").GetComponent<Renderer>().material.mainTexture = rTex;
-            this.familyPhotoImage_Texture = (Texture2D)textureToSet;
+            // Step 2: Find the ImagePanel child under Canvas
+            Transform imagePanelTransform = canvasTransform.Find("ImagePanel");
+            if (imagePanelTransform == null)
+            {
+                Debug.LogWarning("ImagePanel child not found under Canvas!");
+                return;
+            }
 
-            // Track the current RenderTexture for cleanup
-            currentRenderTexture = rTex;
+
+            // Get the Image component from the found transform
+            UnityEngine.UI.Image image = imagePanelTransform.GetComponent<UnityEngine.UI.Image>();
+            if (image == null)
+            {
+                Debug.LogWarning("Image component not found on ImagePanel!");
+                return;
+            }
+            image.sprite = sprite; 
+            // Apply the sprite and rotation
+            image.transform.localRotation = Quaternion.Euler(0, 0, rotation);      
         }
         catch (Exception ex)
         {
             Debug.LogWarning($"Error in setPanelTexture: {ex.Message}, for Title: {titleTextFieldName.text}, and Date: {dateTextFieldName.text}");
         }
-    }
-
-    void setPanelTextureOld(Texture textureToSet)
-    {
-        this.gameObject.transform.Find("ImagePanel").GetComponent<Renderer>().material.mainTexture = textureToSet;
-        familyPhotoImage_Texture = (Texture2D)textureToSet;
     }
 
     void OnDestroy()

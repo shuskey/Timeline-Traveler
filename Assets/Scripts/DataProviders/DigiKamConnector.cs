@@ -17,11 +17,13 @@ namespace Assets.Scripts.DataProviders
         {
             public string FullPathToFileName { get; set; }
             public string Region { get; set; }
+            public int? Orientation { get; set; }
 
-            public PhotoInfo(string fullPathToFileName, string region)
+            public PhotoInfo(string fullPathToFileName, string region, int? orientation)
             {
                 FullPathToFileName = fullPathToFileName;
                 Region = region;
+                Orientation = orientation;
             }
         }
 
@@ -287,9 +289,11 @@ namespace Assets.Scripts.DataProviders
                               END
                               || images.name 
                             as ""fullPathToFileName"",
-                        region.value as ""region""
+                            region.value as ""region"",
+                        info.orientation as ""orientation""
                       FROM ImageTags imagetags
                       LEFT JOIN Images images ON imagetags.imageid = images.id
+                      LEFT JOIN ImageInformation info ON imagetags.imageid = info.imageid 
                       LEFT JOIN Albums albums ON images.album = albums.id
                       LEFT JOIN ImageTagProperties region ON imagetags.imageid = region.imageid AND imagetags.tagid = region.tagid 
                       WHERE imagetags.tagid={tagId}";
@@ -297,14 +301,35 @@ namespace Assets.Scripts.DataProviders
                     dbcmd.CommandText = sqlQuery;
                     using (IDataReader reader = dbcmd.ExecuteReader())
                     {
+                        // Log the schema (column names and types)
+                        var schema = reader.GetSchemaTable();
+                        Debug.Log("SQL Schema:");
+                        foreach (DataRow row in schema.Rows)
+                        {
+                            Debug.Log($"Column: {row["ColumnName"]}, Type: {row["DataType"]}");
+                        }
+
                         while (reader.Read())
                         {
+                            // Log all column values
+                            Debug.Log("SQL Row Data:");
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                var value = reader.GetValue(i);
+                                Debug.Log($"Column {i} ({reader.GetName(i)}): {value} (Type: {value?.GetType()})");
+                            }
+
                             string fullPathToFileName = reader["fullPathToFileName"] as string;
                             string region = reader["region"] as string;
-                            
+                            var orient64 = reader["orientation"] as Int64?;
+                            // orientation is an INT64 in the DB
+                            int orientation = (int)orient64;
+                            // I want to bound the orientation to a valid ExifOrientation enum value
+                            orientation = (int)Mathf.Clamp(orientation, 1, 8);  
+                           
                             if (!string.IsNullOrEmpty(fullPathToFileName))
                             {
-                                photoList.Add(new PhotoInfo(fullPathToFileName, region));
+                                photoList.Add(new PhotoInfo(fullPathToFileName, region, orientation));
                             }
                         }
                     }

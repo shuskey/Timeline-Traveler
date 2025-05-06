@@ -12,12 +12,13 @@ namespace Assets.Scripts.DataObjects
         public string countries;
         public string pointInTime;
         public string eventStartDate;
-        public string eventEndDate;       
+        public string eventEndDate;
+        public ExifOrientation orientation;
 
         public FamilyPhoto(string year,
             string itemLabel, string picturePathInArchive, string description,
             string locations, string countries, string pointInTime,
-            string eventStartDate, string eventEndDate)
+            string eventStartDate, string eventEndDate, ExifOrientation orientation = ExifOrientation.TopLeft)
         {
             this.year = year; 
             this.itemLabel = itemLabel;
@@ -28,6 +29,7 @@ namespace Assets.Scripts.DataObjects
             this.pointInTime = pointInTime;
             this.eventStartDate = eventStartDate;
             this.eventEndDate = eventEndDate;
+            this.orientation = orientation;
         }
     }
 }
