@@ -308,8 +308,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3c140c5beaf95e24c9d5e0ac72949fa0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  noPhotosThisYear_Texture: {fileID: 2800000, guid: 0def5601b571a2d4b82331a2e4cf4ab1, type: 3}
-  noImageThisEvent_Texture: {fileID: 2800000, guid: 52354bec263b01440b942f1fabffe968, type: 3}
+  noPhotosThisYear_Texture: {fileID: 2800000, guid: a19033eacaa300547874972238263402, type: 3}
+  noImageThisEvent_Texture: {fileID: 2800000, guid: a19033eacaa300547874972238263402, type: 3}
 --- !u!1 &3201876246623728654
 GameObject:
   m_ObjectHideFlags: 0
