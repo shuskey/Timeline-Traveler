@@ -42,9 +42,18 @@ public class ThirdPersonTeleporter : MonoBehaviour
         transform.SetParent(lastTeleportTransform, false);
         transform.localPosition = lastTeleportOffset;
 
+        // VERY IMPORTANT: This is needed to enable transport to work.
         if (_controller != null)
-        {
             _controller.RestrictUpdates(ticksToHoldHere);
+        var animator = GetComponent<Animator>();
+        if (animator != null)
+        {
+            // animator.SetFloat("Speed", 0f); // This usually triggers Idle
+            // animator.SetFloat("MotionSpeed", 0f); // Optional, if used for idle
+            // If you have a specific Idle trigger, use:
+            // animator.SetTrigger("Idle");
         }
+
+        
     }
 }
