@@ -82,19 +82,16 @@ public class PersonPickerHandler : MonoBehaviour
                 PlayerPrefs.HasKey(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_FULL_NAME)) {
                 selectedPersonId = PlayerPrefs.GetInt(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_ID);
                 selectedPersonFullName = PlayerPrefs.GetString(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_FULL_NAME);
-                Debug.Log("Previously Selected Base PersonId identified");
                 SetStatusTextEnableNext(selectedPersonId, selectedPersonFullName);
                 return true;
             }
             else
             {
                 ClearStatusTextAndDisableNext();
-                Debug.Log("There is no previously selected Base PersonId save data!");
             }
         } else {
             lastNameFilterField.interactable = false;
             transform.GetComponent<Dropdown>().interactable = false;
-            Debug.Log("There is no RootsMagic DataFile Path save data!");
         }
         return false;
     }
@@ -118,11 +115,9 @@ public class PersonPickerHandler : MonoBehaviour
 
     private void SaveBasePersonIdToPlayerPrefs(int basePersonId, string basePersonFullName)
     {
-        Debug.Log("Base PersonId Chosen: " + basePersonFullName);
         PlayerPrefs.SetInt(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_ID, basePersonId);
         PlayerPrefs.SetString(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_FULL_NAME, basePersonFullName);
         PlayerPrefs.Save();
-        Debug.Log("Game data saved!");
     }
 
     void ToggleControl(Toggle toggleThatToggled)
@@ -169,7 +164,6 @@ public class PersonPickerHandler : MonoBehaviour
     {
         if (input.text.Length > 0)
         {
-            Debug.Log($"Text: {input.text} has been entered");
             PopulateDropDownWithMyTribeSubSet(input.text);
             var dropdown = transform.GetComponent<Dropdown>();
 

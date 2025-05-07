@@ -80,15 +80,15 @@ namespace Assets.Scripts.DataProviders
         public bool AreAllDatabaseFilesPresent()
         {
             if (!System.IO.File.Exists(_rootsMagicDataBaseFileNameWithFullPath)) {
-                Debug.Log($"RootsMagic database file not found. {_rootsMagicDataBaseFileNameWithFullPath}");
+                Debug.LogError($"RootsMagic database file not found. {_rootsMagicDataBaseFileNameWithFullPath}");
                 return false;
             }
             if (!System.IO.File.Exists(_digiKamDataBaseFileNameWithFullPath)) {
-                Debug.Log($"Base DigiKam database file not found. {_digiKamDataBaseFileNameWithFullPath}");
+                Debug.LogError($"Base DigiKam database file not found. {_digiKamDataBaseFileNameWithFullPath}");
                 return false;
             }
             if (!DoesThisDBFileExistInDigiKamFolder(DigiKam_Thumbnails_DataBaseFileNameOnly)) {
-                Debug.Log($"DigiKam Thumbnail database file not found. {DigiKam_Thumbnails_DataBaseFileNameOnly}");
+                Debug.LogError($"DigiKam Thumbnail database file not found. {DigiKam_Thumbnails_DataBaseFileNameOnly}");
                 return false;
             }
             return true;    
@@ -183,7 +183,6 @@ namespace Assets.Scripts.DataProviders
                 string pathToFullResolutionImage = (string)reader["fullPathToFileName"];
                 // now read in the string value for region
                 string region = (string)reader["region"];
-                Debug.Log($"Region: {region}");
                 // Parse XML string
                 XmlDocument doc = new XmlDocument();
                 doc.LoadXml(region);
@@ -301,24 +300,8 @@ namespace Assets.Scripts.DataProviders
                     dbcmd.CommandText = sqlQuery;
                     using (IDataReader reader = dbcmd.ExecuteReader())
                     {
-                        // Log the schema (column names and types)
-                        var schema = reader.GetSchemaTable();
-                        Debug.Log("SQL Schema:");
-                        foreach (DataRow row in schema.Rows)
-                        {
-                            Debug.Log($"Column: {row["ColumnName"]}, Type: {row["DataType"]}");
-                        }
-
                         while (reader.Read())
                         {
-                            // Log all column values
-                            Debug.Log("SQL Row Data:");
-                            for (int i = 0; i < reader.FieldCount; i++)
-                            {
-                                var value = reader.GetValue(i);
-                                Debug.Log($"Column {i} ({reader.GetName(i)}): {value} (Type: {value?.GetType()})");
-                            }
-
                             string fullPathToFileName = reader["fullPathToFileName"] as string;
                             string region = reader["region"] as string;
                             var orient64 = reader["orientation"] as Int64?;

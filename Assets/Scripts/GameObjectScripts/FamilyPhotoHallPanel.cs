@@ -102,32 +102,35 @@ public class FamilyPhotoHallPanel : MonoBehaviour
 
     IEnumerator GetPhotoFromPhotoArchive(string fullPathtoPhotoInArchive, ExifOrientation orientation = ExifOrientation.TopLeft)
     {        
+        Texture2D downloaded = null;
+        // Clean up previous downloaded texture
+        if (currentDownloadedTexture != null)
+        {
+            Destroy(currentDownloadedTexture);
+            currentDownloadedTexture = null;
+        }
         UnityWebRequest request = UnityWebRequestTexture.GetTexture(fullPathtoPhotoInArchive);
         yield return request.SendWebRequest();
         if (request.result == UnityWebRequest.Result.ProtocolError)
         {
-            Debug.Log($"Error downloading photo:{fullPathtoPhotoInArchive} error: {request.error}");
-            currentDownloadedTexture = noImageThisEvent_Texture;
+            Debug.LogWarning($"Error downloading photo:{fullPathtoPhotoInArchive} error: {request.error}");
+            downloaded = noImageThisEvent_Texture;
+            orientation = ExifOrientation.TopLeft;
         }
         else
         {
-            // Clean up previous downloaded texture
-            if (currentDownloadedTexture != null)
-            {
-                Destroy(currentDownloadedTexture);
-                currentDownloadedTexture = null;
-            }
-            Texture2D downloaded = ((DownloadHandlerTexture)request.downloadHandler).texture as Texture2D;
+            downloaded = ((DownloadHandlerTexture)request.downloadHandler).texture as Texture2D;
             if (downloaded == null)
             {
-                Debug.Log($"Error downloading photo:{fullPathtoPhotoInArchive} error: downloaded is null");
-                Debug.Log("Will use placeholder texture");  
+                Debug.LogWarning($"Error downloading photo:{fullPathtoPhotoInArchive} error: downloaded is null"); 
                 downloaded = noImageThisEvent_Texture;
                 orientation = ExifOrientation.TopLeft;
+            } else {
+                // only truly downloaded textures will need to be cleaned up    
+                currentDownloadedTexture = downloaded;
             }
-            setPanelTexture(downloaded, orientation);
-            currentDownloadedTexture = downloaded;
         }
+        setPanelTexture(downloaded, orientation);
     }
 
     private (Rect spriteRect, float rotation) GetSpriteRectAndRotationForOrientation(Texture2D texture, ExifOrientation orientation)
@@ -196,7 +199,6 @@ public class FamilyPhotoHallPanel : MonoBehaviour
             
             if (textureToSet.width > MAX_TEXTURE_SIZE || textureToSet.height > MAX_TEXTURE_SIZE)
             {
-                //Debug.Log($"Resizing texture from {textureToSet.width}x{textureToSet.height} to max dimension {MAX_TEXTURE_SIZE}");
                 finalTexture = ResizeTexture(textureToSet, MAX_TEXTURE_SIZE);
             }
 

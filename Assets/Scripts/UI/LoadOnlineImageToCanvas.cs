@@ -26,7 +26,7 @@ public class LoadOnlineImageToCanvas : MonoBehaviour
         yield return request.SendWebRequest();
         //if (request.isNetworkError || request.isHttpError)
         if (request.result == UnityWebRequest.Result.ProtocolError)
-            Debug.Log(request.error);
+            Debug.LogError(request.error);
         else{
 			Texture2D webTexture = ((DownloadHandlerTexture)request.downloadHandler).texture as Texture2D;
 			Sprite webSprite = SpriteFromTexture2D(webTexture);

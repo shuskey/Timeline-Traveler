@@ -57,7 +57,6 @@ public class HallOfFamilyPhotos : MonoBehaviour
             // Get all photos for this person
             var allPhotos = _pictureProvider.GetPhotoListForPerson(newfocusPerson.dataBaseOwnerID, birthDate);
             var photoCount = allPhotos.Count;
-            Debug.Log($"PHOTO COUNT is {photoCount}");
 
             for (int age = 0; age < lifeSpan; age++)
             {
@@ -78,7 +77,6 @@ public class HallOfFamilyPhotos : MonoBehaviour
                     {
                         var photo = allPhotos[age % photoCount];
                         
-                        Debug.Log($"Photo info {photo}");
                         var orientation = photo.Metadata["Orientation"];
                         // convert the orientation to an enum
                         var orientationEnum = (ExifOrientation)Enum.Parse(typeof(ExifOrientation), orientation);
@@ -96,7 +94,6 @@ public class HallOfFamilyPhotos : MonoBehaviour
                     if (photoCount > 0)
                     {
                         var photo = allPhotos[age % photoCount];
-                        Debug.Log($"Photo info {photo}");
 
                         //add error checking here if no orientation is found use TopLeft
                         var orientation = photo.Metadata["Orientation"];    

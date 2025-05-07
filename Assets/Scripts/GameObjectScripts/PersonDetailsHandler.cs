@@ -102,8 +102,6 @@ public class PersonDetailsHandler : MonoBehaviour
         var myProfileImage = personObject?.personNodeGameObject.GetComponent<PersonNode>().GetPrimaryPhoto(_pictureProvider);
         if (myProfileImage != null)
         {
-            Debug.Log("We got an image!");
-
             Texture2D texture = new Texture2D(2, 2);  // Size does not matter - will be replaced upon load
             texture.LoadImage(myProfileImage);
 
@@ -141,7 +139,6 @@ public class PersonDetailsHandler : MonoBehaviour
 
     public void OnStartInputAction()
     {
-        Debug.Log("Got to OnStartInputAction inside PersonDetailsHandler.");
         resetSceneToThisRootPerson();
     }
 } 

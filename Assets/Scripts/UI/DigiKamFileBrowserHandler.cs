@@ -54,11 +54,9 @@ public class DigiKamFileBrowserHandler : MonoBehaviour
 			fileSelectedText.text = initialFilename;
 			imageTagDatabasePickerGameObject.GetComponent<ImageTagDatabasePickerHandler>().FileSelectedNowEnableUserInterface(true);
 
-			Debug.Log("Location of DigiKam Database loaded from PlayerPrefs.");
 			searchStatusText.text = "DigiKam database location previously identified.  Press Start.";
 		}
 		else {
-			Debug.Log("PlayePrefs does not include the location of the DigiKam database.");
 			searchStatusText.text = "Please identify the DigiKam database location.";
 		}
 
@@ -86,7 +84,6 @@ public class DigiKamFileBrowserHandler : MonoBehaviour
 
 		// Dialog is closed
 		// Print whether the user has selected some files/folders or cancelled the operation (FileBrowser.Success)
-		Debug.Log(FileBrowser.Success);
 
 		if (FileBrowser.Success)
 		{
@@ -125,15 +122,14 @@ public class DigiKamFileBrowserHandler : MonoBehaviour
                 // Save the path for next time
                 PlayerPrefs.SetString(PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH, result);
                 PlayerPrefs.Save();
-                Debug.Log("Game data saved!");
             }
             catch (System.Exception ex)
             {
-				Debug.Log($"{ex.Message} Exception thrown, database file is not valid.");
+				Debug.LogError($"{ex.Message} Exception thrown, database file is not valid.");
 				Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath = null;
 				fileSelectedText.text = "- File Failure -";
 				searchStatusText.text = "Please try again.  Identify the DigiKam database location.";
-				Debug.Log("Bad DigiKam Data File Path Chosen: " + result);
+				Debug.LogError("Bad DigiKam Data File Path Chosen: " + result);
 			}
 		}
 	}

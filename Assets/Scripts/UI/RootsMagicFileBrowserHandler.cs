@@ -47,28 +47,7 @@ public class RootsMagicFileBrowserHandler : MonoBehaviour
 			initialFilename = Path.GetFileName(Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath);
 			initialPath = Path.GetDirectoryName(Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath);
 			fileSelectedText.text = initialFilename;
-			Debug.Log("Game data from RootsMagic loaded!");
-		}
-		else
-			Debug.Log("There is no RootsMagic save data!");
-
-		// Show a save file dialog 
-		// onSuccess event: not registered (which means this dialog is pretty useless)
-		// onCancel event: not registered
-		// Save file/folder: file, Allow multiple selection: false
-		// Initial path: "C:\", Initial filename: "Screenshot.png"
-		// Title: "Save As", Submit button text: "Save"
-		// FileBrowser.ShowSaveDialog( null, null, FileBrowser.PickMode.Files, false, "C:\\", "Screenshot.png", "Save As", "Save" );
-
-		// Show a select folder dialog 
-		// onSuccess event: print the selected folder's path
-		// onCancel event: print "Canceled"
-		// Load file/folder: folder, Allow multiple selection: false
-		// Initial path: default (Documents), Initial filename: empty
-		// Title: "Select Folder", Submit button text: "Select"
-		// FileBrowser.ShowLoadDialog( ( paths ) => { Debug.Log( "Selected: " + paths[0] ); },
-		//						   () => { Debug.Log( "Canceled" ); },
-		//						   FileBrowser.PickMode.Folders, false, null, null, "Select Folder", "Select" );
+		} else Debug.LogError("There is no RootsMagic save data!");
 
 		transform.GetComponent<Button>().onClick.AddListener(delegate { ShowLoadFileDialog(); });
 	}
@@ -116,7 +95,6 @@ public class RootsMagicFileBrowserHandler : MonoBehaviour
 					string previousPath = Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath;
 					Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath = result;
 					fileSelectedText.text = Path.GetFileName(result);
-					Debug.Log("Data File Path Chosen: " + fileSelectedText.text);
 					
 					if (previousPath != result)
 					{
@@ -125,11 +103,6 @@ public class RootsMagicFileBrowserHandler : MonoBehaviour
 						PlayerPrefs.DeleteKey(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_ID);
 						PlayerPrefs.DeleteKey(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_FULL_NAME);
 						PlayerPrefs.Save();
-						Debug.Log("Game data saved! RootsMagic File Selection Changed! Old base person selection cleared.");
-					}
-					else
-					{
-						Debug.Log("RootsMagic File Selection Unchanged - same file selected");
 					}
 					
 					personPickerDropdownGameObject.GetComponent<PersonPickerHandler>().CheckIfFileSelectedAndEnableUserInterface();
@@ -141,10 +114,10 @@ public class RootsMagicFileBrowserHandler : MonoBehaviour
 			}
 			catch (System.Exception ex)
 			{
-				Debug.Log($"{ex.Message} Exception thrown, database file is not valid.");
+				Debug.LogError($"{ex.Message} Exception thrown, database file is not valid.");
 				Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath = null;
 				fileSelectedText.text = "> File Failure <  Please try again.";
-				Debug.Log("Bad Data File Path Chosen: " + result);
+				Debug.LogError("Bad Data File Path Chosen: " + result);
 				personPickerDropdownGameObject.GetComponent<PersonPickerHandler>().CheckIfFileSelectedAndEnableUserInterface();
 			}
 

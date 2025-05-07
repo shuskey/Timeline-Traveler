@@ -82,7 +82,6 @@ namespace Assets.Scripts.DataProviders
                             string pathToFullResolutionImage = (string)reader["fullPathToFileName"];
                             // now read in the string value for region
                             string region = (string)reader["region"];
-                            Debug.Log($"Region: {region}");
                             
                             Rect faceRegion;
                             if (!string.IsNullOrEmpty(region))

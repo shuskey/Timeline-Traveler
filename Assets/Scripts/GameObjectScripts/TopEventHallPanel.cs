@@ -140,7 +140,7 @@ public class TopEventHallPanel : MonoBehaviour
         UnityWebRequest request = UnityWebRequestTexture.GetTexture(MediaUrl);
         yield return request.SendWebRequest();
         if (request.result == UnityWebRequest.Result.ProtocolError)
-            Debug.Log(request.error);
+            Debug.LogError(request.error);
         else
             setPanelTexture(((DownloadHandlerTexture)request.downloadHandler).texture);
     }

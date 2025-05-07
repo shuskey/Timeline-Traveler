@@ -400,13 +400,11 @@ public class Tribe : MonoBehaviour
 
 	private void OnDebugNextPersonOfInterest()
 	{
-		Debug.Log("Tribe: OnDebugNextPersonOfInterest called - primary trigger");
 		teleportToPersonOfInterest(1); // 1 for forward
 	}
 
 	private void OnDebugPreviousPersonOfInterest()
 	{
-		Debug.Log("Tribe: OnDebugPreviousPersonOfInterest called - primary trigger");
 		teleportToPersonOfInterest(-1); // -1 for backward
 	}
 
@@ -447,13 +445,6 @@ public class Tribe : MonoBehaviour
 		vCam.Follow = target.transform;
 		vCam.LookAt = target.transform;
 		vCam.Target.TrackingTarget = target.transform;
-
-		/* Third Person Follow Distance Modifier is not needed for Unity 2024.1 MAYBE???
-				var vDistanceModifier = playerFollowCameraGameObject.GetComponent<ThirdPersonFollowDistanceModifier>();
-				if (vDistanceModifier == null)
-					Debug.Log("The Player Follow Camera Prefab needs the Third Person Follow Distance Monifier script added.");
-				vDistanceModifier.SetFollow();
-		*/
 	}
 
 
@@ -655,13 +646,11 @@ public class Tribe : MonoBehaviour
 
 	private void OnMenu()
 	{
-		Debug.Log("Tribe: OnMenu called - primary trigger");
 		SceneManager.LoadScene("aaStart RootsMagicNamePicker");
 	}
 
 	private void OnStart()
 	{
-		Debug.Log("Tribe: OnStart called - primary trigger");
 		if (personDetailsHandlerScript != null)
 			personDetailsHandlerScript.OnStartInputAction();
 	}
