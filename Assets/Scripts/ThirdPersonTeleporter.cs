@@ -48,10 +48,11 @@ public class ThirdPersonTeleporter : MonoBehaviour
         var animator = GetComponent<Animator>();
         if (animator != null)
         {
-            // animator.SetFloat("Speed", 0f); // This usually triggers Idle
-            // animator.SetFloat("MotionSpeed", 0f); // Optional, if used for idle
+            animator.SetFloat("Speed", 0f); // This usually triggers Idle
+            animator.SetFloat("MotionSpeed", 0f); // Optional, if used for idle
             // If you have a specific Idle trigger, use:
-            // animator.SetTrigger("Idle");
+            //animator.SetTrigger("Idle");
+            animator.SetBool("Jump", true);
         }
 
         
