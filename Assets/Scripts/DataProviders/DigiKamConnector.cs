@@ -150,7 +150,7 @@ namespace Assets.Scripts.DataProviders
                     images.id as ""imageId"",
                     tnails.type,
                     tnails.modificationDate,
-                    tnails.orientationHint,
+                    tnails.orientationHint as ""orientation"",
                     'C:' || 
                     (SELECT specificPath FROM AlbumRoots WHERE AlbumRoots.id = 1) ||
                         CASE
@@ -183,6 +183,9 @@ namespace Assets.Scripts.DataProviders
                 string pathToFullResolutionImage = (string)reader["fullPathToFileName"];
                 // now read in the string value for region
                 string region = (string)reader["region"];
+                var orient64 = reader["orientation"] as Int64?;
+                // orientation is an INT64 in the DB
+                int orientation = (int)orient64;
                 // Parse XML string
                 XmlDocument doc = new XmlDocument();
                 doc.LoadXml(region);
@@ -200,41 +203,7 @@ namespace Assets.Scripts.DataProviders
                     try {
                         // Load the full image into a byte array
                         byte[] fullImageBytes = System.IO.File.ReadAllBytes(pathToFullResolutionImage);
-                        
-                        // Create a texture from the bytes
-                        Texture2D fullTexture = new Texture2D(2, 2);
-                        fullTexture.LoadImage(fullImageBytes);
-                        
-                        // Get a square bounded region for the face
-                        RectInt squareRegion = ImageUtils.GetSquareBoundedRegion(fullTexture, faceRegion);
-                        
-                        // Create a new texture for the square cropped region
-                        Texture2D croppedTexture = new Texture2D(squareRegion.width, squareRegion.height);
-
-                        //We need to flip the image vertically because the coo
-
-                        int flippedY = fullTexture.height - (squareRegion.y + squareRegion.height);
-                        
-                        // Copy the pixels from the square region
-                        Color[] pixels = fullTexture.GetPixels(squareRegion.x, flippedY, 
-                                                             squareRegion.width, squareRegion.height);
-                        croppedTexture.SetPixels(0, 0, squareRegion.width, squareRegion.height, pixels);
-                        croppedTexture.Apply();
-                        
-                        // Convert back to bytes
-                        imageToReturn = croppedTexture.EncodeToPNG();
-                        
-                        // Clean up
-                        if (Application.isPlaying)
-                        {
-                            UnityEngine.Object.Destroy(fullTexture);
-                            UnityEngine.Object.Destroy(croppedTexture);
-                        }
-                        else
-                        {
-                            UnityEngine.Object.DestroyImmediate(fullTexture);
-                            UnityEngine.Object.DestroyImmediate(croppedTexture);
-                        }
+                        imageToReturn = ProcessAndCropImage(fullImageBytes, faceRegion, orientation);
                     }
                     catch (Exception ex) {
                         Debug.LogError($"Error reading image file {pathToFullResolutionImage}: {ex.Message}");
@@ -255,6 +224,45 @@ namespace Assets.Scripts.DataProviders
             dbconn.Close();
             dbconn = null;
             return imageToReturn;
+        }
+
+        private byte[] ProcessAndCropImage(byte[] fullImageBytes, Rect faceRegion, int orientation)
+        {
+            // Create a texture from the bytes
+            Texture2D fullTexture = new Texture2D(2, 2);
+            fullTexture.LoadImage(fullImageBytes);
+            
+            // Get a square bounded region for the face
+            RectInt squareRegion = ImageUtils.GetSquareBoundedRegion(fullTexture, faceRegion);
+            
+            // Create a new texture for the square cropped region
+            Texture2D croppedTexture = new Texture2D(squareRegion.width, squareRegion.height);
+
+            //We need to flip the image vertically because the coo
+            int flippedY = fullTexture.height - (squareRegion.y + squareRegion.height);
+            
+            // Copy the pixels from the square region
+            Color[] pixels = fullTexture.GetPixels(squareRegion.x, flippedY, 
+                                                 squareRegion.width, squareRegion.height);
+            croppedTexture.SetPixels(0, 0, squareRegion.width, squareRegion.height, pixels);
+            croppedTexture.Apply();
+            
+            // Convert back to bytes
+            byte[] processedImage = croppedTexture.EncodeToPNG();
+            
+            // Clean up
+            if (Application.isPlaying)
+            {
+                UnityEngine.Object.Destroy(fullTexture);
+                UnityEngine.Object.Destroy(croppedTexture);
+            }
+            else
+            {
+                UnityEngine.Object.DestroyImmediate(fullTexture);
+                UnityEngine.Object.DestroyImmediate(croppedTexture);
+            }
+
+            return processedImage;
         }
 
         public List<PhotoInfo> GetPhotoListForPersonFromDataBase(int ownerId)

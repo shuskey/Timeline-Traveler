@@ -100,10 +100,30 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider.Tests
             mockResult.Should().NotBeNull("because we should always get a list");
             mockResult.Count.Should().BeGreaterThan(0, "because we expect some Kennedys in mock data");
             mockResult.Should().OnlyContain(p => p.surName.Contains("Kennedy"), "because we filtered for Kennedys");
+            // Aseert that resulting list is sorted by surName and then givenName
+             for (int i = 0; i < mockResult.Count - 1; i++)
+            {
+                if (mockResult[i].surName == mockResult[i + 1].surName)
+                {
+                    mockResult[i].givenName.CompareTo(mockResult[i + 1].givenName).Should().BeLessThan(0, "because mock surname is the same, the list is sorted by givenName");  
+                } else {
+                    mockResult[i].surName.CompareTo(mockResult[i + 1].surName).Should().BeLessThan(0, "because mock surname is the same, the list is sorted by givenName");
+                }
+            }
 
             realResult.Should().NotBeNull("because we should always get a list");
             realResult.Count.Should().BeGreaterThan(0, "because we expect some Kennedys in the database");
             realResult.Should().OnlyContain(p => p.surName.Contains("Kennedy"), "because we filtered for Kennedys");
+            // Aseert that resulting list is sorted by surName and then givenName
+            for (int i = 0; i < realResult.Count - 1; i++)
+            {
+                if (realResult[i].surName == realResult[i + 1].surName)
+                {
+                    realResult[i].givenName.CompareTo(realResult[i + 1].givenName).Should().BeLessThan(0, "because surname is the same, the list is sorted by givenName");  
+                } else {
+                    realResult[i].surName.CompareTo(realResult[i + 1].surName).Should().BeLessThan(0, "because the list is sorted by surName");
+                }
+            }
         }
 
         [Test]

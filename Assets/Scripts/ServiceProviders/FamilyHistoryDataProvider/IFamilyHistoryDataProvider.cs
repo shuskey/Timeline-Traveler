@@ -44,6 +44,7 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
         /// <param name="generation">The generation number for display purposes</param>
         /// <param name="xOffset">X offset for display purposes</param>
         /// <param name="spouseNumber">Spouse number for display purposes</param>
+        /// <param name="alphaSorted">Sort by</param>
         /// <returns>List of persons matching the last name</returns>
         List<Person> GetPersonListByLastName(string lastNameFilter, int limitListSizeTo, int generation = 0, float xOffset = 0.0f, int spouseNumber = 0);
 

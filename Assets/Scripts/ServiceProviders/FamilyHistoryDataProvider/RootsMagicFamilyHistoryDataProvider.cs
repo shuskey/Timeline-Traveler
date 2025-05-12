@@ -177,6 +177,12 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
                     }
                 }
             }
+  
+            result.Sort((a, b) => {
+                int surnameComparison = a.surName.CompareTo(b.surName);
+                return surnameComparison != 0 ? surnameComparison : a.givenName.CompareTo(b.givenName);
+            });
+            
             return result;
         }
 

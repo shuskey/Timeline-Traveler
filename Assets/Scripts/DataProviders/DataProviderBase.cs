@@ -14,7 +14,7 @@ namespace Assets.Scripts.DataProviders
             }
             catch (Exception)
             {
-                Debug.LogError($"For {description}, attempted to convert {stringToConvert} to an integer, but failed.  Will return 0.");
+                Debug.Log($"For {description}, attempted to convert {stringToConvert} to an integer, but failed.  Will return 0.");
             }
             return intToReturn;
         }

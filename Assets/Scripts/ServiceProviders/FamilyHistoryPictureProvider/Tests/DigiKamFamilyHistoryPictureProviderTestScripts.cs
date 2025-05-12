@@ -80,7 +80,7 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
             var (photo, metadata) = result[0];
             photo.Should().NotBeNull("because we should have a valid photo");
             metadata.Should().NotBeNull("because we should have metadata");
-            metadata.Count.Should().Be(1, "because we expect 1 metadata field to be Region");
+            metadata.Count.Should().Be(2, "because we expect 2 metadata fields: Region and orientation");
             metadata["Region"].Should().NotBeNull("because we expect a region to be defined");
         }
 
