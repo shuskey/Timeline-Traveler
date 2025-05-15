@@ -69,30 +69,26 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
             return thumbnails;
         }
 
-        public List<(string FullPathToFileName, Dictionary<string, string> Metadata)> GetPhotoListForPerson(int personId, int year)
+        public List<DigiKamConnector.PhotoInfo> GetPhotoInfoListForPerson(int personId, int year)
         {
             if (!_isInitialized)
             {
                 Debug.LogError("DigiKamFamilyHistoryPictureProvider not initialized");
-                return new List<(string FullPathToFileName, Dictionary<string, string> Metadata)>();
+                return new List<DigiKamConnector.PhotoInfo>();
             }
-            //ok lets call the connector to get the photo list
-            var photoInfoList = _connector.GetPhotoListForPersonFromDataBase(personId);
+            return _connector.GetPhotoInfoListForPersonFromDataBase(personId);
+        }
 
-            // Lets prepare to return a list of Texture2D and Meta Data dictionary For each PhotoInfo record create either a thumbnail or the full image based on the returnThumbnails flag
-            // Also the region information will become a new metadata field called Region
-            var photoMetaDataList = new List<(string FullPathToFileName, Dictionary<string, string> Metadata)>();
-
-            foreach (var photoInfo in photoInfoList)
+        public DigiKamConnector.PhotoInfo GetThumbnailPhotoInfoForPerson(int personId, int year)
+        {
+            if (!_isInitialized)
             {
-                var metadata = new Dictionary<string, string>
-                {
-                    { "Region", photoInfo.Region },
-                    { "Orientation", photoInfo.Orientation.ToString() }
-                };
-                photoMetaDataList.Add((photoInfo.FullPathToFileName, metadata));
+                Debug.LogError("DigiKamFamilyHistoryPictureProvider not initialized");
+                return null;
             }
-            return photoMetaDataList;   
+            var photoInfo = _connector.GetPhotoInfoForPrimaryThumbnailForPersonFromDataBase(personId);
+           
+            return photoInfo;
         }
     }
 } 

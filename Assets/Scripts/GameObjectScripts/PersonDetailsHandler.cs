@@ -9,6 +9,7 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider;
 using Assets.Scripts.ServiceProviders;
+using Assets.Scripts.Utilities;
 
 public class PersonDetailsHandler : MonoBehaviour
 {
@@ -99,10 +100,24 @@ public class PersonDetailsHandler : MonoBehaviour
         UpdateCurrentDate(currentDate);
         dateQualityInformationGameObject.GetComponent<Text>().text = (personObject == null) ? "" : personObject.dateQualityInformationString;
         recordIdGameObject.GetComponent<Text>().text = (personObject == null) ? "" : $"RootsMagic DB ID: {personObject.dataBaseOwnerId}";
-        var myProfileImage = personObject?.personNodeGameObject.GetComponent<PersonNode>().GetPrimaryPhoto(_pictureProvider);
-        if (myProfileImage != null)
-        {
-            Texture2D texture = new Texture2D(2, 2);  // Size does not matter - will be replaced upon load
+    
+        Sprite fallbackSprite = (personObject == null) ? unknownGenderImage :
+                personObject.gender == Assets.Scripts.Enums.PersonGenderType.Male ? maleImage :
+                personObject.gender == Assets.Scripts.Enums.PersonGenderType.Female ? femaleImage : unknownGenderImage;
+
+       var photoInfo = _pictureProvider.GetThumbnailPhotoInfoForPerson(personObject.dataBaseOwnerId, 2024);
+       if (photoInfo != null)
+       {
+         var destinationImagePanel = imageGameObject.GetComponent<Image>();
+         var fallbackTexture = fallbackSprite.texture;
+        StartCoroutine(ImageUtils.SetImagePanelTextureFromPhotoArchive(destinationImagePanel, photoInfo.FullPathToFileName, ExifOrientation.TopLeft, fallbackTexture));
+       }
+       else
+       {
+        imageGameObject.GetComponent<Image>().sprite = fallbackSprite;
+       }
+       
+/*          Texture2D texture = new Texture2D(2, 2);  // Size does not matter - will be replaced upon load
             texture.LoadImage(myProfileImage);
 
             var cropSize = Math.Min(texture.width, texture.height);
@@ -110,13 +125,8 @@ public class PersonDetailsHandler : MonoBehaviour
             var yStart = (texture.height - cropSize) / 2;
 
             imageGameObject.GetComponent<Image>().sprite = Sprite.Create(texture, new Rect(xStart, yStart, cropSize, cropSize), new Vector2(0.5f, 0.5f), 100f);
-        }
-        else
-        {
-            imageGameObject.GetComponent<Image>().sprite = (personObject == null) ? unknownGenderImage :
-                personObject.gender == Assets.Scripts.Enums.PersonGenderType.Male ? maleImage :
-                personObject.gender == Assets.Scripts.Enums.PersonGenderType.Female ? femaleImage : unknownGenderImage;
-        }
+*/
+     
     }
 
     private void resetSceneToThisRootPerson()

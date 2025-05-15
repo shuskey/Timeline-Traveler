@@ -55,7 +55,7 @@ public class HallOfFamilyPhotos : MonoBehaviour
             var y = focusPerson.transform.position.y;
 
             // Get all photos for this person
-            var allPhotos = _pictureProvider.GetPhotoListForPerson(newfocusPerson.dataBaseOwnerID, birthDate);
+            var allPhotos = _pictureProvider.GetPhotoInfoListForPerson(newfocusPerson.dataBaseOwnerID, birthDate);
             var photoCount = allPhotos.Count;
 
             for (int age = 0; age < lifeSpan; age++)
@@ -77,10 +77,18 @@ public class HallOfFamilyPhotos : MonoBehaviour
                     {
                         var photo = allPhotos[age % photoCount];
                         
-                        var orientation = photo.Metadata["Orientation"];
+                        var orientation = photo.Orientation;
+                        
                         // convert the orientation to an enum
-                        var orientationEnum = (ExifOrientation)Enum.Parse(typeof(ExifOrientation), orientation);
-                        panelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, year, photo.FullPathToFileName, orientationEnum);
+                        if (orientation.HasValue)
+                        {
+                            var orientationEnum = (ExifOrientation)Enum.Parse(typeof(ExifOrientation), orientation.Value.ToString());
+                            panelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, year, photo.FullPathToFileName, orientationEnum);
+                        }
+                        else
+                        {
+                            panelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, year, photo.FullPathToFileName, ExifOrientation.TopLeft);
+                        }
                     }
                 }
                 else
@@ -96,13 +104,13 @@ public class HallOfFamilyPhotos : MonoBehaviour
                         var photo = allPhotos[age % photoCount];
 
                         //add error checking here if no orientation is found use TopLeft
-                        var orientation = photo.Metadata["Orientation"];    
-                        if (string.IsNullOrEmpty(orientation))
+                        var orientation = photo.Orientation;
+                        if (!orientation.HasValue)
                         {
-                            orientation = "TopLeft";
+                            orientation = 1;
                         }
                         // convert the orientation to an enum
-                        var orientationEnum = (ExifOrientation)Enum.Parse(typeof(ExifOrientation), orientation);
+                        var orientationEnum = (ExifOrientation)Enum.Parse(typeof(ExifOrientation), orientation.Value.ToString());
                         panelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, year, photo.FullPathToFileName, orientationEnum);
                     }
 

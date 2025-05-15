@@ -1,5 +1,9 @@
 using UnityEngine;
 using System;
+using Assets.Scripts.Enums;
+using UnityEngine.Networking;
+using System.Collections;
+using UnityEngine.UI;
 
 namespace Assets.Scripts.Utilities
 {
@@ -54,6 +58,201 @@ namespace Assets.Scripts.Utilities
                 squareSize,
                 squareSize
             );
+        }
+
+        /// <summary>
+        /// Gets the sprite rectangle and rotation angle for a texture based on its EXIF orientation.
+        /// </summary>
+        /// <param name="texture">The source texture</param>
+        /// <param name="orientation">The EXIF orientation of the image</param>
+        /// <returns>A tuple containing the sprite rectangle and rotation angle</returns>
+        public static (Rect spriteRect, float rotation) GetSpriteRectAndRotationForOrientation(Texture2D texture, ExifOrientation orientation)
+        {
+            switch (orientation)
+            {
+                case ExifOrientation.TopLeft:     // Normal
+                    return (new Rect(0, 0, texture.width, texture.height), 0f);
+                case ExifOrientation.TopRight:    // Mirrored
+                    return (new Rect(0, 0, -texture.width, texture.height), 0f);
+                case ExifOrientation.BottomRight: // Rotated 180
+                    return (new Rect(0, 0, -texture.width, -texture.height), 0f);
+                case ExifOrientation.BottomLeft:  // Mirrored and rotated 180
+                    return (new Rect(0, 0, texture.width, -texture.height), 0f);
+                case ExifOrientation.LeftTop:     // Mirrored and rotated 270
+                    return (new Rect(0, 0, texture.height, texture.width), -270f);
+                case ExifOrientation.RightTop:    // Rotated 90
+                    return (new Rect(0, 0, texture.height, texture.width), -90f);
+                case ExifOrientation.RightBottom: // Mirrored and rotated 90
+                    return (new Rect(0, 0, -texture.height, texture.width), -90f);
+                case ExifOrientation.LeftBottom:  // Rotated 270
+                    return (new Rect(0, 0, texture.height, texture.width), 270f);
+                default:
+                    return (new Rect(0, 0, texture.width, texture.height), 0f);
+            }
+        }
+
+        /// <summary>
+        /// Resizes a texture while maintaining its aspect ratio.
+        /// </summary>
+        /// <param name="source">The source texture to resize</param>
+        /// <param name="targetWidth">The desired width of the resized texture</param>
+        /// <returns>A new Texture2D with the specified width and proportional height</returns>
+        public static Texture2D ResizeTexture(Texture2D source, int targetWidth)
+        {
+            // Calculate height maintaining aspect ratio
+            float aspectRatio = (float)source.height / source.width;
+            int targetHeight = Mathf.RoundToInt(targetWidth * aspectRatio);
+
+            // Create a new texture with the target dimensions
+            Texture2D resized = new Texture2D(targetWidth, targetHeight, source.format, false);
+            
+            // Create a temporary RenderTexture to do the resizing
+            RenderTexture rt = new RenderTexture(targetWidth, targetHeight, 0, RenderTextureFormat.ARGB32);
+            rt.Create();
+
+            // Store the current render texture
+            RenderTexture previous = RenderTexture.active;
+            RenderTexture.active = rt;
+
+            // Copy the source texture to the render texture
+            Graphics.Blit(source, rt);
+
+            // Read the pixels from the render texture
+            resized.ReadPixels(new Rect(0, 0, targetWidth, targetHeight), 0, 0);
+            resized.Apply();
+
+            // Restore the previous render texture
+            RenderTexture.active = previous;
+            rt.Release();
+
+            return resized;
+        }
+
+        /// <summary>
+        /// Creates a sprite from a texture with optional cropping and orientation adjustment.
+        /// </summary>
+        /// <param name="textureToSet">The source texture</param>
+        /// <param name="orientation">The EXIF orientation of the image</param>
+        /// <param name="crop">Whether to crop the image to a square</param>
+        /// <param name="maxTextureSize">Maximum size for the texture (will be resized if larger)</param>
+        /// <returns>A tuple containing the created sprite and its rotation angle</returns>
+        public static (Sprite sprite, float rotation) CreateSpriteFromTexture(Texture2D textureToSet, ExifOrientation orientation = ExifOrientation.TopLeft, bool crop = true, int maxTextureSize = 780)
+        {
+            try
+            {
+                // Resize the texture if it's too large
+                Texture2D finalTexture = textureToSet;
+                
+                if (textureToSet.width > maxTextureSize || textureToSet.height > maxTextureSize)
+                {
+                    finalTexture = ResizeTexture(textureToSet, maxTextureSize);
+                }
+
+                if (crop)
+                {
+                    int cropSize = Math.Min(finalTexture.width, finalTexture.height);
+                    int xStart = (finalTexture.width - cropSize) / 2;
+                    int yStart = (finalTexture.height - cropSize) / 2;
+
+                    Color[] pixels = finalTexture.GetPixels(xStart, yStart, cropSize, cropSize);
+                    finalTexture = new Texture2D(cropSize, cropSize, finalTexture.format, false);
+                    finalTexture.SetPixels(pixels);
+                    finalTexture.Apply();
+                }
+
+                // Get sprite rect and rotation based on orientation
+                var (spriteRect, rotation) = GetSpriteRectAndRotationForOrientation(finalTexture, orientation);
+
+                // Create sprite with the adjusted rect that may mirror the image based on orientation  
+                Sprite sprite = Sprite.Create(finalTexture, spriteRect, new Vector2(0.5f, 0.5f), 100f);
+
+                return (sprite, rotation);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Error in CreateSpriteFromTexture: {ex.Message}");
+                Debug.LogError("Texture attempted to be created: " + textureToSet.name);
+                Debug.LogError("Texture orientation attempted to be created: " + orientation);
+                return (null, 0f);
+            }
+        }
+
+        /// <summary>
+        /// Downloads and processes an image from a photo archive.
+        /// </summary>
+        /// <param name="fullPathtoPhotoInArchive">Path to the photo in the archive</param>
+        /// <param name="orientation">EXIF orientation of the image</param>
+        /// <param name="fallbackTexture">Texture to use if download fails</param>
+        /// <returns>Coroutine that yields the downloaded texture</returns>
+        public static IEnumerator DownloadAndProcessImage(string fullPathtoPhotoInArchive, ExifOrientation orientation, Texture2D fallbackTexture)
+        {        
+            Texture2D downloaded = null;
+            UnityWebRequest request = UnityWebRequestTexture.GetTexture(fullPathtoPhotoInArchive);
+            yield return request.SendWebRequest();
+            
+            if (request.result == UnityWebRequest.Result.ProtocolError)
+            {
+                Debug.LogWarning($"Error downloading photo:{fullPathtoPhotoInArchive} error: {request.error}");
+                downloaded = fallbackTexture;
+                orientation = ExifOrientation.TopLeft;
+            }
+            else
+            {
+                downloaded = ((DownloadHandlerTexture)request.downloadHandler).texture;
+                if (downloaded == null)
+                {
+                    Debug.LogWarning($"Error downloading photo:{fullPathtoPhotoInArchive} error: downloaded is null"); 
+                    downloaded = fallbackTexture;
+                    orientation = ExifOrientation.TopLeft;
+                }
+            }
+            yield return (downloaded, orientation);
+        }
+
+        /// <summary>
+        /// Sets a texture on a UI Image component with proper orientation and cropping.
+        /// </summary>
+        /// <param name="destinationImagePanel">The UI Image component to set the texture on</param>
+        /// <param name="textureToSet">The texture to set</param>
+        /// <param name="orientation">EXIF orientation of the image</param>
+        /// <param name="crop">Whether to crop the image to a square</param>
+        public static void SetImagePanelTexture(Image destinationImagePanel, Texture2D textureToSet, ExifOrientation orientation = ExifOrientation.TopLeft, bool crop = true)
+        {
+            if (destinationImagePanel == null)
+            {
+                Debug.LogWarning("Destination image panel is null");
+                return;
+            }
+
+            // Use the utility method to create the sprite and get rotation
+            (Sprite sprite, float rotation) = CreateSpriteFromTexture(textureToSet, orientation, crop);
+
+            if (sprite == null)
+            {
+                Debug.LogWarning("Failed to create sprite from texture");
+                return;
+            }
+
+            destinationImagePanel.sprite = sprite; 
+            // Apply the sprite and rotation
+            destinationImagePanel.transform.localRotation = Quaternion.Euler(0, 0, rotation);      
+        }
+
+        /// <summary>
+        /// Downloads an image from a photo archive and sets it on a UI Image component.
+        /// </summary>
+        /// <param name="destinationImagePanel">The UI Image component to set the texture on</param>
+        /// <param name="fullPathtoPhotoInArchive">Path to the photo in the archive</param>
+        /// <param name="orientation">EXIF orientation of the image</param>
+        /// <param name="fallbackTexture">Texture to use if download fails</param>
+        /// <returns>Coroutine that handles the download and setting of the texture</returns>
+        public static IEnumerator SetImagePanelTextureFromPhotoArchive(Image destinationImagePanel, string fullPathtoPhotoInArchive, ExifOrientation orientation, Texture2D fallbackTexture)
+        {        
+            var downloadCoroutine = DownloadAndProcessImage(fullPathtoPhotoInArchive, orientation, fallbackTexture);
+            yield return downloadCoroutine;
+            
+            var (downloaded, finalOrientation) = ((Texture2D, ExifOrientation))downloadCoroutine.Current;
+            SetImagePanelTexture(destinationImagePanel, downloaded, finalOrientation);
         }
     }
 } 

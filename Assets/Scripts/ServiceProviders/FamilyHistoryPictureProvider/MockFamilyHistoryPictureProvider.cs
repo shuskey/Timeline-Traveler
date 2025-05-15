@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.IO;
+using Assets.Scripts.DataProviders;
 
 namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
 {
@@ -31,36 +32,17 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
             return true;
         }
 
-        public List<Texture2D> GetThumbnailForPerson(int personId, int year)
+        public List<DigiKamConnector.PhotoInfo> GetPhotoInfoListForPerson(int personId, int year)
         {
-            // Create a mock texture
-            var texture = new Texture2D(100, 100);
-            var colors = new Color[100 * 100];
-            for (int i = 0; i < colors.Length; i++)
+              return new List<DigiKamConnector.PhotoInfo>
             {
-                colors[i] = Color.gray;
-            }
-            texture.SetPixels(colors);
-            texture.Apply();
-            return new List<Texture2D> { texture };
+                new DigiKamConnector.PhotoInfo("MockPhoto.jpg", "Mock Location", 1)
+            };
         }
 
-        public List<(string FullPathToFileName, Dictionary<string, string> Metadata)> GetPhotoListForPerson(int personId, int year)
+        public DigiKamConnector.PhotoInfo GetThumbnailPhotoInfoForPerson(int personId, int year)
         {
-            var result = new List<(string FullPathToFileName, Dictionary<string, string> Metadata)>();
-            
-
-            // Create mock metadata
-            var metadata = new Dictionary<string, string>
-            {
-                { "Date", $"{year}-01-01" },
-                { "Location", "Mock Location" },
-                { "Description", "Mock Description" },
-                { "Source", "Mock Source" }
-            };
-
-            result.Add(("MockPhoto.jpg", metadata));
-            return result;
+            return new DigiKamConnector.PhotoInfo("MockPhoto.jpg", "Mock Location", 1);
         }
     }
 } 

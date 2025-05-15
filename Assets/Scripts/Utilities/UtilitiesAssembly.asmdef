@@ -2,7 +2,8 @@
     "name": "UtilitiesAssembly",
     "rootNamespace": "",
     "references": [
-        "GUID:e372c541aba5148868e12aa078ca7c20"
+        "GUID:e372c541aba5148868e12aa078ca7c20",
+        "GUID:c89216c21f1199e44824a82e77f0eb3f"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

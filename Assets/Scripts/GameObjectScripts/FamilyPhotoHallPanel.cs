@@ -10,11 +10,12 @@ using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 using Random = UnityEngine.Random;
+using Assets.Scripts.Utilities;
 
 public class FamilyPhotoHallPanel : MonoBehaviour
 {    
-    public Texture2D noPhotosThisYear_Texture;
-    public Texture2D noImageThisEvent_Texture;
+    public Sprite noPhotosThisYear_Sprite;
+    public Sprite noImageThisEvent_Sprite;
     
     private List<FamilyPhoto> familyPhotos = new List<FamilyPhoto>();
     private List<string> onlyThumbnails = new List<string>();
@@ -35,7 +36,8 @@ public class FamilyPhotoHallPanel : MonoBehaviour
         
         dateTextFieldName = textMeshProObjects[0];
         titleTextFieldName = textMeshProObjects[1];
-        familyPhotoImage_Texture = noImageThisEvent_Texture;
+
+        familyPhotoImage_Texture = noImageThisEvent_Sprite.texture;
     }
 
     private void Start()
@@ -75,18 +77,19 @@ public class FamilyPhotoHallPanel : MonoBehaviour
 
     public void DisplayHallPanelImageTexture()
     {
+        var destinationImagePanel = GetUICanvasImagePanel();
         if (numberOfEvents == 0)
         {
-            setPanelTexture(noPhotosThisYear_Texture);
+            ImageUtils.SetImagePanelTexture(destinationImagePanel, noPhotosThisYear_Sprite.texture);
             return;
         }
         var familPhotoToShow = familyPhotos[currentEventIndex];
         if (string.IsNullOrEmpty(familPhotoToShow.picturePathInArchive))
         {
-            setPanelTexture(noImageThisEvent_Texture);
+            ImageUtils.SetImagePanelTexture(destinationImagePanel, noImageThisEvent_Sprite.texture);
             return;
         }
-        StartCoroutine(GetPhotoFromPhotoArchive(familPhotoToShow.picturePathInArchive, familPhotoToShow.orientation));
+        StartCoroutine(ImageUtils.SetImagePanelTextureFromPhotoArchive(destinationImagePanel, familPhotoToShow.picturePathInArchive, familPhotoToShow.orientation, noImageThisEvent_Sprite.texture));
     }
 
     public string currentlySelectedEventTitle()
@@ -99,158 +102,33 @@ public class FamilyPhotoHallPanel : MonoBehaviour
         return stringToReturn[0].ToString().ToUpper() + stringToReturn.Substring(1);
     }
 
-
-    IEnumerator GetPhotoFromPhotoArchive(string fullPathtoPhotoInArchive, ExifOrientation orientation = ExifOrientation.TopLeft)
-    {        
-        Texture2D downloaded = null;
-        // Clean up previous downloaded texture
-        if (currentDownloadedTexture != null)
-        {
-            Destroy(currentDownloadedTexture);
-            currentDownloadedTexture = null;
-        }
-        UnityWebRequest request = UnityWebRequestTexture.GetTexture(fullPathtoPhotoInArchive);
-        yield return request.SendWebRequest();
-        if (request.result == UnityWebRequest.Result.ProtocolError)
-        {
-            Debug.LogWarning($"Error downloading photo:{fullPathtoPhotoInArchive} error: {request.error}");
-            downloaded = noImageThisEvent_Texture;
-            orientation = ExifOrientation.TopLeft;
-        }
-        else
-        {
-            downloaded = ((DownloadHandlerTexture)request.downloadHandler).texture as Texture2D;
-            if (downloaded == null)
-            {
-                Debug.LogWarning($"Error downloading photo:{fullPathtoPhotoInArchive} error: downloaded is null"); 
-                downloaded = noImageThisEvent_Texture;
-                orientation = ExifOrientation.TopLeft;
-            } else {
-                // only truly downloaded textures will need to be cleaned up    
-                currentDownloadedTexture = downloaded;
-            }
-        }
-        setPanelTexture(downloaded, orientation);
-    }
-
-    private (Rect spriteRect, float rotation) GetSpriteRectAndRotationForOrientation(Texture2D texture, ExifOrientation orientation)
+  
+    Image GetUICanvasImagePanel()
     {
-        switch (orientation)
+        // Step 1: Find the Canvas child
+        Transform canvasTransform = this.gameObject.transform.Find("Canvas");
+        if (canvasTransform == null)
         {
-            case ExifOrientation.TopLeft:     // Normal
-                return (new Rect(0, 0, texture.width, texture.height), 0f);
-            case ExifOrientation.TopRight:    // Mirrored
-                return (new Rect(0, 0, -texture.width, texture.height), 0f);
-            case ExifOrientation.BottomRight: // Rotated 180
-                return (new Rect(0, 0, -texture.width, -texture.height), 0f);
-            case ExifOrientation.BottomLeft:  // Mirrored and rotated 180
-                return (new Rect(0, 0, texture.width, -texture.height), 0f);
-            case ExifOrientation.LeftTop:     // Mirrored and rotated 270
-                return (new Rect(0, 0, texture.height, texture.width), -270f);
-            case ExifOrientation.RightTop:    // Rotated 90
-                return (new Rect(0, 0, texture.height, texture.width), -90f);
-            case ExifOrientation.RightBottom: // Mirrored and rotated 90
-                return (new Rect(0, 0, -texture.height, texture.width), -90f);
-            case ExifOrientation.LeftBottom:  // Rotated 270
-                return (new Rect(0, 0, texture.height, texture.width), 270f);
-            default:
-                return (new Rect(0, 0, texture.width, texture.height), 0f);
+            Debug.LogWarning("Canvas child not found!");
+            return null;
         }
-    }
 
-    private Texture2D ResizeTexture(Texture2D source, int targetWidth)
-    {
-        // Calculate height maintaining aspect ratio
-        float aspectRatio = (float)source.height / source.width;
-        int targetHeight = Mathf.RoundToInt(targetWidth * aspectRatio);
-
-        // Create a new texture with the target dimensions
-        Texture2D resized = new Texture2D(targetWidth, targetHeight, source.format, false);
-        
-        // Create a temporary RenderTexture to do the resizing
-        RenderTexture rt = new RenderTexture(targetWidth, targetHeight, 0, RenderTextureFormat.ARGB32);
-        rt.Create();
-
-        // Store the current render texture
-        RenderTexture previous = RenderTexture.active;
-        RenderTexture.active = rt;
-
-        // Copy the source texture to the render texture
-        Graphics.Blit(source, rt);
-
-        // Read the pixels from the render texture
-        resized.ReadPixels(new Rect(0, 0, targetWidth, targetHeight), 0, 0);
-        resized.Apply();
-
-        // Restore the previous render texture
-        RenderTexture.active = previous;
-        rt.Release();
-
-        return resized;
-    }
-
-    void setPanelTexture(Texture2D textureToSet, ExifOrientation orientation = ExifOrientation.TopLeft, bool crop = true)
-    {
-        try
+        // Step 2: Find the ImagePanel child under Canvas
+        Transform imagePanelTransform = canvasTransform.Find("ImagePanel");
+        if (imagePanelTransform == null)
         {
-            // Resize the texture if it's too large (e.g., if width > 1024)
-            const int MAX_TEXTURE_SIZE = 780;
-            Texture2D finalTexture = textureToSet;
-            
-            if (textureToSet.width > MAX_TEXTURE_SIZE || textureToSet.height > MAX_TEXTURE_SIZE)
-            {
-                finalTexture = ResizeTexture(textureToSet, MAX_TEXTURE_SIZE);
-            }
-
-            if (crop)
-            {
-                int cropSize = Math.Min(finalTexture.width, finalTexture.height);
-                int xStart = (finalTexture.width - cropSize) / 2;
-                int yStart = (finalTexture.height - cropSize) / 2;
-
-                Color[] pixels = finalTexture.GetPixels(xStart, yStart, cropSize, cropSize);
-                finalTexture = new Texture2D(cropSize, cropSize, finalTexture.format, false);
-                finalTexture.SetPixels(pixels);
-                finalTexture.Apply();
-            }
-            // Get sprite rect and rotation based on orientation
-            var (spriteRect, rotation) = GetSpriteRectAndRotationForOrientation(finalTexture, orientation);
-
-            // Create sprite with the adjusted rect that may mirror the image based on orientation  
-            Sprite sprite = Sprite.Create(finalTexture, spriteRect, new Vector2(0.5f, 0.5f), 100f);
-
-            // Step 1: Find the Canvas child
-            Transform canvasTransform = this.gameObject.transform.Find("Canvas");
-            if (canvasTransform == null)
-            {
-                Debug.LogWarning("Canvas child not found!");
-                return;
-            }
-
-            // Step 2: Find the ImagePanel child under Canvas
-            Transform imagePanelTransform = canvasTransform.Find("ImagePanel");
-            if (imagePanelTransform == null)
-            {
-                Debug.LogWarning("ImagePanel child not found under Canvas!");
-                return;
-            }
-
-
-            // Get the Image component from the found transform
-            UnityEngine.UI.Image image = imagePanelTransform.GetComponent<UnityEngine.UI.Image>();
-            if (image == null)
-            {
-                Debug.LogWarning("Image component not found on ImagePanel!");
-                return;
-            }
-            image.sprite = sprite; 
-            // Apply the sprite and rotation
-            image.transform.localRotation = Quaternion.Euler(0, 0, rotation);      
+            Debug.LogWarning("ImagePanel child not found under Canvas!");
+            return null;
         }
-        catch (Exception ex)
+
+        // Get the Image component from the found transform
+        UnityEngine.UI.Image image = imagePanelTransform.GetComponent<UnityEngine.UI.Image>();
+        if (image == null)
         {
-            Debug.LogWarning($"Error in setPanelTexture: {ex.Message}, for Title: {titleTextFieldName.text}, and Date: {dateTextFieldName.text}");
+            Debug.LogWarning("Image component not found on ImagePanel!");
+            return null;
         }
+        return image;
     }
 
     void OnDestroy()

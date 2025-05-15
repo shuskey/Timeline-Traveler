@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Assets.Scripts.DataProviders;
 
 namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
 {
@@ -18,19 +19,13 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
         bool AreAllDatabaseFilesPresent();
 
         /// <summary>
-        /// Gets thumbnails for a person in a specific year
-        /// </summary>
-        /// <param name="personId">The ID of the person</param>
-        /// <param name="year">The year to get thumbnails for</param>
-        /// <returns>List of thumbnail textures</returns>
-        List<Texture2D> GetThumbnailForPerson(int personId, int year);
-
-        /// <summary>
         /// Gets photos with associated metadata for a person in a specific year
         /// </summary>
         /// <param name="personId">The ID of the person</param>
         /// <param name="year">The year to get photos for</param>
         /// <returns>List of tuples containing the photo texture and its associated metadata</returns>
-        List<(string FullPathToFileName, Dictionary<string, string> Metadata)> GetPhotoListForPerson(int personId, int year);
+        List<DigiKamConnector.PhotoInfo> GetPhotoInfoListForPerson(int personId, int year);
+
+        DigiKamConnector.PhotoInfo GetThumbnailPhotoInfoForPerson(int personId, int year);
     }
 } 

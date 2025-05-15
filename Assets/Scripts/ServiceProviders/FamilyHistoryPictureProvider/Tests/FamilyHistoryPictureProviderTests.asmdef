@@ -6,7 +6,8 @@
         "UnityEditor.TestRunner",
         "BoundfoxStudios.FluentAssertions",
         "FamilyHistoryPictureProvider",
-        "ServiceProviders"
+        "ServiceProviders",
+        "DataProvidersAssembly"
     ],
     "includePlatforms": [
         "Editor"

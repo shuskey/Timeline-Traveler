@@ -71,17 +71,16 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
         public void GetPhotoListForPerson_WhenPersonExists_ReturnsSampleData()
         {
             // Act
-            var result = _provider.GetPhotoListForPerson(_ownerIDForJFK, 1963);
+            var result = _provider.GetPhotoInfoListForPerson(_ownerIDForJFK, 1963);
 
             // Assert
             result.Should().NotBeNull("because we should always get a list");
             result.Count.Should().Be(3, "because we expect 3 sample photos photo");
             
-            var (photo, metadata) = result[0];
-            photo.Should().NotBeNull("because we should have a valid photo");
-            metadata.Should().NotBeNull("because we should have metadata");
-            metadata.Count.Should().Be(2, "because we expect 2 metadata fields: Region and orientation");
-            metadata["Region"].Should().NotBeNull("because we expect a region to be defined");
+            var photoInfo = result[0];
+            photoInfo.Should().NotBeNull("because we should have a valid photo");
+            photoInfo.Region.Should().NotBeNull("because we expect a region to be defined");
+            photoInfo.Orientation.Should().NotBeNull("because we expect a orientation to be defined");
         }
 
         [TearDown]

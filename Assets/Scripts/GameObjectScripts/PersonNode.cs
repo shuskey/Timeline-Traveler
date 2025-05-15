@@ -135,16 +135,6 @@ public class PersonNode : MonoBehaviour
         this.hallOfFamilyPhotosGameObject = hallOfFamilyPhotos;
     }
 
-    public byte[] GetPrimaryPhoto(IFamilyHistoryPictureProvider pictureProvider)
-    {
-        var thumbnails = pictureProvider.GetThumbnailForPerson(this.dataBaseOwnerID, 2024);
-        if (thumbnails == null || thumbnails.Count == 0)
-            return null;
-            
-        var texture = thumbnails[0];
-        return texture.EncodeToPNG();
-    }
-
     public void SetGlobalSpringType(GlobalSpringType globalSpringType)
     {
         this.globalSpringType = globalSpringType;
