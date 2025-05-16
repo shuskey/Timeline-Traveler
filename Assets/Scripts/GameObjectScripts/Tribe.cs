@@ -135,7 +135,12 @@ public class Tribe : MonoBehaviour
 			var personWeAreAdding = personList[0];
 			//only add the person if we are not skipping the starting person and the person is not the starting person
 			if (!(pleaseSkipStartingPerson && personWeAreAdding.dataBaseOwnerId == startingIdForTree))
-				listOfPersonsPerGeneration[depth].Add(personWeAreAdding);
+			{
+				if (!PersonExistsInGeneration(personWeAreAdding.dataBaseOwnerId, depth))
+				{
+					listOfPersonsPerGeneration[depth].Add(personWeAreAdding);
+				}
+			}
 
 			var listOfFamilyIds = AddParentsAndFixUpDates(personWeAreAdding);
 			if (depth > 0)
@@ -161,7 +166,10 @@ public class Tribe : MonoBehaviour
 		if (personList.Count > 0)
 		{
 			var personWeAreAdding = personList[0];
-			listOfPersonsPerGeneration[numberOfGenerations - depth - centerByThisOffset].Add(personWeAreAdding);
+			if (!PersonExistsInGeneration(personWeAreAdding.dataBaseOwnerId, numberOfGenerations - depth - centerByThisOffset))
+			{
+				listOfPersonsPerGeneration[numberOfGenerations - depth - centerByThisOffset].Add(personWeAreAdding);
+			}
 
 			var listOfFamilyIds = AddSpousesAndFixUpDates(personWeAreAdding, numberOfGenerations - depth - centerByThisOffset, xOffSet, xRange);
 			if (depth > 0)
@@ -200,6 +208,11 @@ public class Tribe : MonoBehaviour
 		return listOfPersonIdsToReturn;
 	}
 
+	private bool PersonExistsInGeneration(int personId, int depth)
+	{
+		return listOfPersonsPerGeneration[depth].Any(p => p.dataBaseOwnerId == personId);
+	}
+
 	List<int> AddSpousesAndFixUpDates(Person forThisPerson, int depth, float xOffset, float xRange)
 	{
 		var listOfFamilyIdsToReturn = new List<int>();
@@ -217,8 +230,10 @@ public class Tribe : MonoBehaviour
 			if (spouseList.Count > 0)
 			{
 				var spousePersonWeAreAdding = spouseList[0];
-				listOfPersonsPerGeneration[depth].Add(spousePersonWeAreAdding);
-
+				if (!PersonExistsInGeneration(spousePersonWeAreAdding.dataBaseOwnerId, depth))
+				{
+					listOfPersonsPerGeneration[depth].Add(spousePersonWeAreAdding);
+				}
 				forThisPerson.FixUpDatesForViewingWithMarriageDate(marriage.marriageYear, spousePersonWeAreAdding);
 				spousePersonWeAreAdding.FixUpDatesForViewingWithMarriageDate(marriage.marriageYear, forThisPerson);
 			}
