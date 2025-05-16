@@ -10,6 +10,7 @@ using UnityEngine.UI;
 using Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider;
 using Assets.Scripts.ServiceProviders;
 using Assets.Scripts.Utilities;
+using Assets.Scripts.DataProviders;
 
 public class PersonDetailsHandler : MonoBehaviour
 {
@@ -110,7 +111,7 @@ public class PersonDetailsHandler : MonoBehaviour
        {
          var destinationImagePanel = imageGameObject.GetComponent<Image>();
          var fallbackTexture = fallbackSprite.texture;
-        StartCoroutine(ImageUtils.SetImagePanelTextureFromPhotoArchive(destinationImagePanel, photoInfo.FullPathToFileName, ExifOrientation.TopLeft, fallbackTexture));
+         StartCoroutine(ImageUtils.SetImagePanelTextureFromPhotoArchive(destinationImagePanel, photoInfo, fallbackTexture));
        }
        else
        {

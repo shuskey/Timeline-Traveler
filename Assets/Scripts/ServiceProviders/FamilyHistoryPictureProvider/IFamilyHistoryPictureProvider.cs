@@ -1,7 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
-using Assets.Scripts.DataProviders;
-
+using Assets.Scripts.Utilities;
 namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
 {
     public interface IFamilyHistoryPictureProvider
@@ -24,8 +23,8 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
         /// <param name="personId">The ID of the person</param>
         /// <param name="year">The year to get photos for</param>
         /// <returns>List of tuples containing the photo texture and its associated metadata</returns>
-        List<DigiKamConnector.PhotoInfo> GetPhotoInfoListForPerson(int personId, int year);
+        List<PhotoInfo> GetPhotoInfoListForPerson(int personId, int year);
 
-        DigiKamConnector.PhotoInfo GetThumbnailPhotoInfoForPerson(int personId, int year);
+        PhotoInfo GetThumbnailPhotoInfoForPerson(int personId, int year);
     }
 } 

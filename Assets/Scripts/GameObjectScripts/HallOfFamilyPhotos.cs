@@ -83,11 +83,11 @@ public class HallOfFamilyPhotos : MonoBehaviour
                         if (orientation.HasValue)
                         {
                             var orientationEnum = (ExifOrientation)Enum.Parse(typeof(ExifOrientation), orientation.Value.ToString());
-                            panelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, year, photo.FullPathToFileName, orientationEnum);
+                            panelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, year, photo);
                         }
                         else
                         {
-                            panelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, year, photo.FullPathToFileName, ExifOrientation.TopLeft);
+                            panelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, year, photo);
                         }
                     }
                 }
@@ -111,7 +111,7 @@ public class HallOfFamilyPhotos : MonoBehaviour
                         }
                         // convert the orientation to an enum
                         var orientationEnum = (ExifOrientation)Enum.Parse(typeof(ExifOrientation), orientation.Value.ToString());
-                        panelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, year, photo.FullPathToFileName, orientationEnum);
+                        panelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, year, photo);
                     }
 
                     familyPhotoPanelDictionary.Add(age, newPanel);

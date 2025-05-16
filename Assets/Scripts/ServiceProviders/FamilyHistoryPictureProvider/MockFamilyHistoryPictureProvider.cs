@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.IO;
-using Assets.Scripts.DataProviders;
+using Assets.Scripts.Utilities;
 
 namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
 {
@@ -32,17 +32,17 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
             return true;
         }
 
-        public List<DigiKamConnector.PhotoInfo> GetPhotoInfoListForPerson(int personId, int year)
+        public List<PhotoInfo> GetPhotoInfoListForPerson(int personId, int year)
         {
-              return new List<DigiKamConnector.PhotoInfo>
+              return new List<PhotoInfo>
             {
-                new DigiKamConnector.PhotoInfo("MockPhoto.jpg", "Mock Location", 1)
+                new("MockPhoto.jpg", "Mock Location", 1, "MockPhoto.jpg", "Mock Photo")
             };
         }
 
-        public DigiKamConnector.PhotoInfo GetThumbnailPhotoInfoForPerson(int personId, int year)
+        public PhotoInfo GetThumbnailPhotoInfoForPerson(int personId, int year)
         {
-            return new DigiKamConnector.PhotoInfo("MockPhoto.jpg", "Mock Location", 1);
+            return new PhotoInfo("MockPhoto.jpg", "Mock Location", 1, "MockPhoto.jpg", "Mock Photo");
         }
     }
 } 

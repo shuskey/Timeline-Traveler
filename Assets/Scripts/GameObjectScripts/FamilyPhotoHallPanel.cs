@@ -16,8 +16,7 @@ public class FamilyPhotoHallPanel : MonoBehaviour
 {    
     public Sprite noPhotosThisYear_Sprite;
     public Sprite noImageThisEvent_Sprite;
-    
-    private List<FamilyPhoto> familyPhotos = new List<FamilyPhoto>();
+    private List<PhotoInfo> photoInfoList = new List<PhotoInfo>();
     private List<string> onlyThumbnails = new List<string>();
     private int year;
     private int currentEventIndex = 0;
@@ -45,22 +44,11 @@ public class FamilyPhotoHallPanel : MonoBehaviour
       
     }
 
-    public void LoadFamilyPhotosForYearAndPerson(int personOwnerID, int year, string fileNameString, ExifOrientation orientation = ExifOrientation.TopLeft)
+    public void LoadFamilyPhotosForYearAndPerson(int personOwnerID, int year, PhotoInfo photoInfo)
     {
         this.year = year;
         
-        var familyPhoto = new FamilyPhoto(
-            year: this.year.ToString(), 
-            itemLabel: $"Orientation: {orientation} Filename: {Path.GetFileName(fileNameString)}", 
-            picturePathInArchive: fileNameString, 
-            description: "temp Description", 
-            locations: "temp Locations", 
-            countries: "temp Countries", 
-            pointInTime: "", 
-            eventStartDate: "", 
-            eventEndDate: "", 
-            orientation: orientation);
-        familyPhotos.Add(familyPhoto);
+        photoInfoList.Add(photoInfo);
         numberOfEvents = 1;
         DisplayHallPanelImageTexture();
         dateTextFieldName.text = year.ToString();
@@ -70,7 +58,7 @@ public class FamilyPhotoHallPanel : MonoBehaviour
     // I need a call that will clear the familyPhotos list
     public void ClearFamilyPhotos()
     {
-        familyPhotos.Clear();
+        photoInfoList.Clear();
         numberOfEvents = 0;
         DisplayHallPanelImageTexture();
     }
@@ -83,20 +71,20 @@ public class FamilyPhotoHallPanel : MonoBehaviour
             ImageUtils.SetImagePanelTexture(destinationImagePanel, noPhotosThisYear_Sprite.texture);
             return;
         }
-        var familPhotoToShow = familyPhotos[currentEventIndex];
+        var familPhotoToShow = photoInfoList[currentEventIndex];
         if (string.IsNullOrEmpty(familPhotoToShow.picturePathInArchive))
         {
             ImageUtils.SetImagePanelTexture(destinationImagePanel, noImageThisEvent_Sprite.texture);
             return;
         }
-        StartCoroutine(ImageUtils.SetImagePanelTextureFromPhotoArchive(destinationImagePanel, familPhotoToShow.picturePathInArchive, familPhotoToShow.orientation, noImageThisEvent_Sprite.texture));
+        StartCoroutine(ImageUtils.SetImagePanelTextureFromPhotoArchive(destinationImagePanel, familPhotoToShow, noImageThisEvent_Sprite.texture));
     }
 
     public string currentlySelectedEventTitle()
     {
         if (numberOfEvents == 0)
             return $"Year {year}: No photos.";
-        var stringToReturn = familyPhotos[currentEventIndex].itemLabel;
+        var stringToReturn = photoInfoList[currentEventIndex].itemLabel;
         if (string.IsNullOrEmpty(stringToReturn))
             return "No title found for this photo";
         return stringToReturn[0].ToString().ToUpper() + stringToReturn.Substring(1);

@@ -7,6 +7,9 @@ using System.Collections;
 using Assets.Scripts.ServiceProviders;
 using Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider;
 using System.Linq;
+using Assets.Scripts.Utilities;
+using Assets.Scripts.Enums;
+using System.Threading.Tasks;
 
 namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
 {
@@ -38,33 +41,26 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
         }
 
         [Test]
-        public void GetThumbnailForPerson_WhenPersonExists_ReturnsCroppedImage()
+        public void GetThumbnailForPerson_WhenPersonExists_ReturnsPhotoInfo()
         {
             // Act
-            var result = _provider.GetThumbnailForPerson(_ownerIDForJFK, 1963);
+            var result = _provider.GetThumbnailPhotoInfoForPerson(_ownerIDForJFK, 1963);
 
             // Assert
             result.Should().NotBeNull("because the person exists and has a face region defined");
-            result.Count.Should().Be(1, "because we expect exactly one thumbnail");
-            
-            // Verify the image data
-            var resultTexture = result[0];
-            resultTexture.Should().NotBeNull("because the returned data should be valid PNG image data");
-            
-            // The resulting image should be a reasonable face crop size
-            resultTexture.width.Should().BeGreaterThan(0, "because we should have a valid face region");
-            resultTexture.height.Should().BeGreaterThan(0, "because we should have a valid face region");
-        }
+            result.FullPathToFileName.Should().NotBeNull("because the person exists and has a face region defined");
+            result.Orientation.Should().NotBeNull("because the person exists and has a face region defined");
+
+             }
 
         [Test]
-        public void GetThumbnailForPerson_WhenPersonDoesNotExist_ReturnsEmptyList()
+        public void GetThumbnailForPerson_WhenPersonDoesNotExist_ReturnsNothing()
         {
             // Act
-            var result = _provider.GetThumbnailForPerson(999999, 1963);
+            var result = _provider.GetThumbnailPhotoInfoForPerson(999999, 1963);
 
             // Assert
-            result.Should().NotBeNull("because we should always get a list");
-            result.Count.Should().Be(0, "because the person ID does not exist in the database");
+            result.Should().BeNull("because the person ID does not exist in the database");
         }
 
         [Test]

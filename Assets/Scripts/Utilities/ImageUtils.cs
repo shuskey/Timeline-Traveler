@@ -1,5 +1,6 @@
 using UnityEngine;
 using System;
+using System.IO;
 using Assets.Scripts.Enums;
 using UnityEngine.Networking;
 using System.Collections;
@@ -7,6 +8,24 @@ using UnityEngine.UI;
 
 namespace Assets.Scripts.Utilities
 {
+    public class PhotoInfo
+    {
+        public string FullPathToFileName { get; set; }
+        public string Region { get; set; }
+        public int? Orientation { get; set; }
+        public string picturePathInArchive { get; set; }
+        public string itemLabel { get; set; }
+
+        public PhotoInfo(string fullPathToFileName, string region, int? orientation, string picturePathInArchive = null, string itemLabel = null)
+        {
+            FullPathToFileName = fullPathToFileName;
+            Region = region;
+            Orientation = orientation;
+            this.picturePathInArchive = picturePathInArchive ?? fullPathToFileName;
+            this.itemLabel = itemLabel ?? Path.GetFileNameWithoutExtension(fullPathToFileName);
+        }
+    }
+
     public static class ImageUtils
     {
         /// <summary>
@@ -242,13 +261,12 @@ namespace Assets.Scripts.Utilities
         /// Downloads an image from a photo archive and sets it on a UI Image component.
         /// </summary>
         /// <param name="destinationImagePanel">The UI Image component to set the texture on</param>
-        /// <param name="fullPathtoPhotoInArchive">Path to the photo in the archive</param>
-        /// <param name="orientation">EXIF orientation of the image</param>
+        /// <param name="photoInfo">The photo information</param>
         /// <param name="fallbackTexture">Texture to use if download fails</param>
         /// <returns>Coroutine that handles the download and setting of the texture</returns>
-        public static IEnumerator SetImagePanelTextureFromPhotoArchive(Image destinationImagePanel, string fullPathtoPhotoInArchive, ExifOrientation orientation, Texture2D fallbackTexture)
+        public static IEnumerator SetImagePanelTextureFromPhotoArchive(Image destinationImagePanel, PhotoInfo photoInfo, Texture2D fallbackTexture)
         {        
-            var downloadCoroutine = DownloadAndProcessImage(fullPathtoPhotoInArchive, orientation, fallbackTexture);
+            var downloadCoroutine = DownloadAndProcessImage(photoInfo.FullPathToFileName, (ExifOrientation)photoInfo.Orientation.Value, fallbackTexture);
             yield return downloadCoroutine;
             
             var (downloaded, finalOrientation) = ((Texture2D, ExifOrientation))downloadCoroutine.Current;

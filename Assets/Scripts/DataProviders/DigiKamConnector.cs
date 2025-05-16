@@ -13,19 +13,6 @@ namespace Assets.Scripts.DataProviders
 {
     public class DigiKamConnector : DataProviderBase
     {
-        public class PhotoInfo
-        {
-            public string FullPathToFileName { get; set; }
-            public string Region { get; set; }
-            public int? Orientation { get; set; }
-
-            public PhotoInfo(string fullPathToFileName, string region, int? orientation)
-            {
-                FullPathToFileName = fullPathToFileName;
-                Region = region;
-                Orientation = orientation;
-            }
-        }
 
         public List<DigiKamFaceTag> faceTagList;
         private Dictionary<int, int> _ownerIdToTagIdMap;

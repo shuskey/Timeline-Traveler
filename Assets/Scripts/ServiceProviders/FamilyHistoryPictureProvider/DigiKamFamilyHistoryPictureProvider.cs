@@ -1,9 +1,11 @@
 using UnityEngine;
 using System.Collections.Generic;
-using Assets.Scripts.DataProviders;
+using Assets.Scripts.Utilities;
 using System;
 using System.IO;
 using Assets.Scripts.ServiceProviders;
+using Assets.Scripts.DataProviders;
+
 
 namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
 {
@@ -48,47 +50,24 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
             return true;
         }
 
-        public List<Texture2D> GetThumbnailForPerson(int personId, int year)
+        public List<PhotoInfo> GetPhotoInfoListForPerson(int personId, int year)
         {
             if (!_isInitialized)
             {
                 Debug.LogError("DigiKamFamilyHistoryPictureProvider not initialized");
-                return new List<Texture2D>();
+                return new List<PhotoInfo>();
             }
-
-            var thumbnails = new List<Texture2D>();
-            byte[] imageData = _connector.GetPrimaryThumbnailForPersonFromDataBase(personId);
-
-            if (imageData != null)
-            {
-                var thumbnail = new Texture2D(2, 2);
-                thumbnail.LoadImage(imageData);
-                thumbnails.Add(thumbnail);
-            }
-
-            return thumbnails;
+           return _connector.GetPhotoInfoListForPersonFromDataBase(personId);
         }
 
-        public List<DigiKamConnector.PhotoInfo> GetPhotoInfoListForPerson(int personId, int year)
-        {
-            if (!_isInitialized)
-            {
-                Debug.LogError("DigiKamFamilyHistoryPictureProvider not initialized");
-                return new List<DigiKamConnector.PhotoInfo>();
-            }
-            return _connector.GetPhotoInfoListForPersonFromDataBase(personId);
-        }
-
-        public DigiKamConnector.PhotoInfo GetThumbnailPhotoInfoForPerson(int personId, int year)
+        public PhotoInfo GetThumbnailPhotoInfoForPerson(int personId, int year)
         {
             if (!_isInitialized)
             {
                 Debug.LogError("DigiKamFamilyHistoryPictureProvider not initialized");
                 return null;
             }
-            var photoInfo = _connector.GetPhotoInfoForPrimaryThumbnailForPersonFromDataBase(personId);
-           
-            return photoInfo;
+            return _connector.GetPhotoInfoForPrimaryThumbnailForPersonFromDataBase(personId);
         }
     }
 } 

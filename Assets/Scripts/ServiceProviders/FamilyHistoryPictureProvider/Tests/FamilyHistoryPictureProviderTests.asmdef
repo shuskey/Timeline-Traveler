@@ -7,7 +7,9 @@
         "BoundfoxStudios.FluentAssertions",
         "FamilyHistoryPictureProvider",
         "ServiceProviders",
-        "DataProvidersAssembly"
+        "DataProvidersAssembly",
+        "EnumsAssembly",
+        "UtilitiesAssembly"
     ],
     "includePlatforms": [
         "Editor"
