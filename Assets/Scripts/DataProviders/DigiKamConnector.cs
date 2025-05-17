@@ -174,18 +174,8 @@ namespace Assets.Scripts.DataProviders
                 // orientation is an INT64 in the DB
                 int orientation = (int)orient64;
                 // Parse XML string
-                XmlDocument doc = new XmlDocument();
-                doc.LoadXml(region);
-                var rectElement = doc.DocumentElement;
+                Rect faceRegion = ImageUtils.ParseRegionXml(region);
 
-                // Create Rect from XML attributes
-                Rect faceRegion = new Rect(
-                    float.Parse(rectElement.GetAttribute("x")),
-                    float.Parse(rectElement.GetAttribute("y")),
-                    float.Parse(rectElement.GetAttribute("width")),
-                    float.Parse(rectElement.GetAttribute("height"))
-                );
- 
                 imageToReturn = LoadAndProcessImage(pathToFullResolutionImage, faceRegion, orientation);
  
                 currentArrayIndex++;
@@ -260,15 +250,19 @@ namespace Assets.Scripts.DataProviders
             while (reader.Read() && currentArrayIndex < limitListSizeTo) { 
                 string fullPathToFileName = reader["fullPathToFileName"] as string;
                 string region = reader["region"] as string;
+                  
+                // Parse XML string
+                Rect faceRegion = ImageUtils.ParseRegionXml(region);
                 var orient64 = reader["orientation"] as Int64?;
                 // orientation is an INT64 in the DB
                 int orientation = (int)orient64;
                 // I want to bound the orientation to a valid ExifOrientation enum value
                 orientation = (int)Mathf.Clamp(orientation, 1, 8);  
+                var exitOrientation = (ExifOrientation)orientation;
                 
                 if (!string.IsNullOrEmpty(fullPathToFileName))
                 {
-                    photoInfo = new PhotoInfo(fullPathToFileName, region, orientation);
+                    photoInfo = new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation);
                 }
                 else
                 {
@@ -401,15 +395,17 @@ namespace Assets.Scripts.DataProviders
                         {
                             string fullPathToFileName = reader["fullPathToFileName"] as string;
                             string region = reader["region"] as string;
+                            Rect faceRegion = ImageUtils.ParseRegionXml(region);
                             var orient64 = reader["orientation"] as Int64?;
                             // orientation is an INT64 in the DB
                             int orientation = (int)orient64;
                             // I want to bound the orientation to a valid ExifOrientation enum value
                             orientation = (int)Mathf.Clamp(orientation, 1, 8);  
+                            var exitOrientation = (ExifOrientation)orientation;
                            
                             if (!string.IsNullOrEmpty(fullPathToFileName))
                             {
-                                photoList.Add(new PhotoInfo(fullPathToFileName, region, orientation));
+                                photoList.Add(new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation));
                             }
                         }
                     }

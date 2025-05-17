@@ -49,7 +49,6 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
             // Assert
             result.Should().NotBeNull("because the person exists and has a face region defined");
             result.FullPathToFileName.Should().NotBeNull("because the person exists and has a face region defined");
-            result.Orientation.Should().NotBeNull("because the person exists and has a face region defined");
 
              }
 
@@ -76,7 +75,6 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
             var photoInfo = result[0];
             photoInfo.Should().NotBeNull("because we should have a valid photo");
             photoInfo.Region.Should().NotBeNull("because we expect a region to be defined");
-            photoInfo.Orientation.Should().NotBeNull("because we expect a orientation to be defined");
         }
 
         [TearDown]

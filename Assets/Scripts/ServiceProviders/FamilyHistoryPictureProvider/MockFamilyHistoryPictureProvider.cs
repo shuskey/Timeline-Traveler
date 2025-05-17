@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using System.IO;
 using Assets.Scripts.Utilities;
+using Assets.Scripts.Enums;
 
 namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
 {
@@ -9,7 +10,7 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
     {
         private Dictionary<string, string> _configuration;
         private string _rootsMagicDbPath;
-        private string _digiKamDbPath;
+    private string _digiKamDbPath;
         private string _digiKamFolder;
 
         public void Initialize(Dictionary<string, string> configuration)
@@ -36,13 +37,13 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
         {
               return new List<PhotoInfo>
             {
-                new("MockPhoto.jpg", "Mock Location", 1, "MockPhoto.jpg", "Mock Photo")
+                new("MockPhoto.jpg", new Rect(0, 0, 100, 100), ExifOrientation.TopLeft, "MockPhoto.jpg", "Mock Photo")
             };
         }
 
         public PhotoInfo GetThumbnailPhotoInfoForPerson(int personId, int year)
         {
-            return new PhotoInfo("MockPhoto.jpg", "Mock Location", 1, "MockPhoto.jpg", "Mock Photo");
+            return new PhotoInfo("MockPhoto.jpg", new Rect(0, 0, 100, 100), ExifOrientation.TopLeft, "MockPhoto.jpg", "Mock Photo");
         }
     }
 } 

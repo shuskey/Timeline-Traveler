@@ -111,23 +111,13 @@ public class PersonDetailsHandler : MonoBehaviour
        {
          var destinationImagePanel = imageGameObject.GetComponent<Image>();
          var fallbackTexture = fallbackSprite.texture;
-         StartCoroutine(ImageUtils.SetImagePanelTextureFromPhotoArchive(destinationImagePanel, photoInfo, fallbackTexture));
+         // Thumbnails are meant to be cropped to the region of the person
+         StartCoroutine(ImageUtils.SetImagePanelTextureFromPhotoArchive(destinationImagePanel, photoInfo, fallbackTexture, cropToRegion: true));
        }
        else
        {
         imageGameObject.GetComponent<Image>().sprite = fallbackSprite;
-       }
-       
-/*          Texture2D texture = new Texture2D(2, 2);  // Size does not matter - will be replaced upon load
-            texture.LoadImage(myProfileImage);
-
-            var cropSize = Math.Min(texture.width, texture.height);
-            var xStart = (texture.width - cropSize) / 2;
-            var yStart = (texture.height - cropSize) / 2;
-
-            imageGameObject.GetComponent<Image>().sprite = Sprite.Create(texture, new Rect(xStart, yStart, cropSize, cropSize), new Vector2(0.5f, 0.5f), 100f);
-*/
-     
+       }     
     }
 
     private void resetSceneToThisRootPerson()

@@ -76,19 +76,8 @@ public class HallOfFamilyPhotos : MonoBehaviour
                     if (photoCount > 0)
                     {
                         var photo = allPhotos[age % photoCount];
-                        
-                        var orientation = photo.Orientation;
-                        
-                        // convert the orientation to an enum
-                        if (orientation.HasValue)
-                        {
-                            var orientationEnum = (ExifOrientation)Enum.Parse(typeof(ExifOrientation), orientation.Value.ToString());
-                            panelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, year, photo);
-                        }
-                        else
-                        {
-                            panelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, year, photo);
-                        }
+
+                        panelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, year, photo);
                     }
                 }
                 else
@@ -102,15 +91,6 @@ public class HallOfFamilyPhotos : MonoBehaviour
                     if (photoCount > 0)
                     {
                         var photo = allPhotos[age % photoCount];
-
-                        //add error checking here if no orientation is found use TopLeft
-                        var orientation = photo.Orientation;
-                        if (!orientation.HasValue)
-                        {
-                            orientation = 1;
-                        }
-                        // convert the orientation to an enum
-                        var orientationEnum = (ExifOrientation)Enum.Parse(typeof(ExifOrientation), orientation.Value.ToString());
                         panelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, year, photo);
                     }
 

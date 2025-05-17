@@ -72,7 +72,7 @@ public class FamilyPhotoHallPanel : MonoBehaviour
             return;
         }
         var familPhotoToShow = photoInfoList[currentEventIndex];
-        if (string.IsNullOrEmpty(familPhotoToShow.picturePathInArchive))
+        if (string.IsNullOrEmpty(familPhotoToShow.PicturePathInArchive))
         {
             ImageUtils.SetImagePanelTexture(destinationImagePanel, noImageThisEvent_Sprite.texture);
             return;
@@ -84,7 +84,7 @@ public class FamilyPhotoHallPanel : MonoBehaviour
     {
         if (numberOfEvents == 0)
             return $"Year {year}: No photos.";
-        var stringToReturn = photoInfoList[currentEventIndex].itemLabel;
+        var stringToReturn = photoInfoList[currentEventIndex].ItemLabel;
         if (string.IsNullOrEmpty(stringToReturn))
             return "No title found for this photo";
         return stringToReturn[0].ToString().ToUpper() + stringToReturn.Substring(1);

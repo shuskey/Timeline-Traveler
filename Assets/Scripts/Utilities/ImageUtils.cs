@@ -5,24 +5,25 @@ using Assets.Scripts.Enums;
 using UnityEngine.Networking;
 using System.Collections;
 using UnityEngine.UI;
+using System.Xml;
 
 namespace Assets.Scripts.Utilities
 {
     public class PhotoInfo
     {
         public string FullPathToFileName { get; set; }
-        public string Region { get; set; }
-        public int? Orientation { get; set; }
-        public string picturePathInArchive { get; set; }
-        public string itemLabel { get; set; }
+        public Rect Region { get; set; }
+        public ExifOrientation ExifOrientation { get; set; }
+        public string PicturePathInArchive { get; set; }
+        public string ItemLabel { get; set; }
 
-        public PhotoInfo(string fullPathToFileName, string region, int? orientation, string picturePathInArchive = null, string itemLabel = null)
+        public PhotoInfo(string fullPathToFileName, Rect region, ExifOrientation orientation, string picturePathInArchive = null, string itemLabel = null)
         {
             FullPathToFileName = fullPathToFileName;
             Region = region;
-            Orientation = orientation;
-            this.picturePathInArchive = picturePathInArchive ?? fullPathToFileName;
-            this.itemLabel = itemLabel ?? Path.GetFileNameWithoutExtension(fullPathToFileName);
+            ExifOrientation = orientation;
+            PicturePathInArchive = picturePathInArchive ?? fullPathToFileName;
+            ItemLabel = itemLabel ?? Path.GetFileNameWithoutExtension(fullPathToFileName);
         }
     }
 
@@ -155,7 +156,7 @@ namespace Assets.Scripts.Utilities
         /// <param name="crop">Whether to crop the image to a square</param>
         /// <param name="maxTextureSize">Maximum size for the texture (will be resized if larger)</param>
         /// <returns>A tuple containing the created sprite and its rotation angle</returns>
-        public static (Sprite sprite, float rotation) CreateSpriteFromTexture(Texture2D textureToSet, ExifOrientation orientation = ExifOrientation.TopLeft, bool crop = true, int maxTextureSize = 780)
+        public static (Sprite sprite, float rotation) CreateSpriteFromTexture(Texture2D textureToSet, ExifOrientation orientation = ExifOrientation.TopLeft, bool cropToRegion = false, int maxTextureSize = 780)
         {
             try
             {
@@ -167,8 +168,9 @@ namespace Assets.Scripts.Utilities
                     finalTexture = ResizeTexture(textureToSet, maxTextureSize);
                 }
 
-                if (crop)
+                if (cropToRegion)
                 {
+                                      
                     int cropSize = Math.Min(finalTexture.width, finalTexture.height);
                     int xStart = (finalTexture.width - cropSize) / 2;
                     int yStart = (finalTexture.height - cropSize) / 2;
@@ -199,33 +201,34 @@ namespace Assets.Scripts.Utilities
         /// <summary>
         /// Downloads and processes an image from a photo archive.
         /// </summary>
-        /// <param name="fullPathtoPhotoInArchive">Path to the photo in the archive</param>
-        /// <param name="orientation">EXIF orientation of the image</param>
+        /// <param name="photoInfo">The photo information containing path and orientation</param>
         /// <param name="fallbackTexture">Texture to use if download fails</param>
         /// <returns>Coroutine that yields the downloaded texture</returns>
-        public static IEnumerator DownloadAndProcessImage(string fullPathtoPhotoInArchive, ExifOrientation orientation, Texture2D fallbackTexture)
+        public static IEnumerator DownloadAndProcessImage(PhotoInfo photoInfo, Texture2D fallbackTexture)
         {        
             Texture2D downloaded = null;
-            UnityWebRequest request = UnityWebRequestTexture.GetTexture(fullPathtoPhotoInArchive);
+            UnityWebRequest request = UnityWebRequestTexture.GetTexture(photoInfo.PicturePathInArchive);
             yield return request.SendWebRequest();
             
             if (request.result == UnityWebRequest.Result.ProtocolError)
             {
-                Debug.LogWarning($"Error downloading photo:{fullPathtoPhotoInArchive} error: {request.error}");
+                Debug.LogWarning($"Error downloading photo:{photoInfo.PicturePathInArchive} error: {request.error}");
                 downloaded = fallbackTexture;
-                orientation = ExifOrientation.TopLeft;
+                photoInfo.ExifOrientation = ExifOrientation.TopLeft;
+                photoInfo.Region = new Rect(0, 0, 0, 0);
             }
             else
             {
                 downloaded = ((DownloadHandlerTexture)request.downloadHandler).texture;
                 if (downloaded == null)
                 {
-                    Debug.LogWarning($"Error downloading photo:{fullPathtoPhotoInArchive} error: downloaded is null"); 
+                    Debug.LogWarning($"Error downloading photo:{photoInfo.PicturePathInArchive} error: downloaded is null"); 
                     downloaded = fallbackTexture;
-                    orientation = ExifOrientation.TopLeft;
+                    photoInfo.ExifOrientation = ExifOrientation.TopLeft;
+                    photoInfo.Region = new Rect(0, 0, 0, 0);
                 }
             }
-            yield return (downloaded, orientation);
+            yield return (downloaded, photoInfo);
         }
 
         /// <summary>
@@ -234,17 +237,24 @@ namespace Assets.Scripts.Utilities
         /// <param name="destinationImagePanel">The UI Image component to set the texture on</param>
         /// <param name="textureToSet">The texture to set</param>
         /// <param name="orientation">EXIF orientation of the image</param>
-        /// <param name="crop">Whether to crop the image to a square</param>
-        public static void SetImagePanelTexture(Image destinationImagePanel, Texture2D textureToSet, ExifOrientation orientation = ExifOrientation.TopLeft, bool crop = true)
+        /// <param name="cropToRegion">Whether to crop the image to a square</param>
+        public static void SetImagePanelTexture(Image destinationImagePanel, Texture2D textureToSet, PhotoInfo resultingPhotoInfo = null, bool cropToRegion = false)
         {
             if (destinationImagePanel == null)
             {
                 Debug.LogWarning("Destination image panel is null");
                 return;
             }
+            var orientation = ExifOrientation.TopLeft;
+            var cropRegion = new Rect(0, 0, textureToSet.width, textureToSet.height);
+            if (resultingPhotoInfo != null)
+            {
+                orientation = resultingPhotoInfo.ExifOrientation;
+                cropRegion =  resultingPhotoInfo.Region;
+            }
 
             // Use the utility method to create the sprite and get rotation
-            (Sprite sprite, float rotation) = CreateSpriteFromTexture(textureToSet, orientation, crop);
+            (Sprite sprite, float rotation) = CreateSpriteFromTexture(textureToSet, orientation, cropToRegion);
 
             if (sprite == null)
             {
@@ -264,13 +274,44 @@ namespace Assets.Scripts.Utilities
         /// <param name="photoInfo">The photo information</param>
         /// <param name="fallbackTexture">Texture to use if download fails</param>
         /// <returns>Coroutine that handles the download and setting of the texture</returns>
-        public static IEnumerator SetImagePanelTextureFromPhotoArchive(Image destinationImagePanel, PhotoInfo photoInfo, Texture2D fallbackTexture)
+        public static IEnumerator SetImagePanelTextureFromPhotoArchive(Image destinationImagePanel, PhotoInfo photoInfo, Texture2D fallbackTexture, bool cropToRegion = false)
         {        
-            var downloadCoroutine = DownloadAndProcessImage(photoInfo.FullPathToFileName, (ExifOrientation)photoInfo.Orientation.Value, fallbackTexture);
+            var downloadCoroutine = DownloadAndProcessImage(photoInfo, fallbackTexture);
             yield return downloadCoroutine;
             
-            var (downloaded, finalOrientation) = ((Texture2D, ExifOrientation))downloadCoroutine.Current;
-            SetImagePanelTexture(destinationImagePanel, downloaded, finalOrientation);
+            var (downloaded, resultingPhotoInfo) = ((Texture2D, PhotoInfo))downloadCoroutine.Current;
+            // Now do some magic: the downloaded texture is the full resolution image, but we need to crop it to the region of the person
+            SetImagePanelTexture(destinationImagePanel, downloaded, resultingPhotoInfo, cropToRegion);
+        }
+
+        /// <summary>
+        /// Parses an XML region string into a Rect.
+        /// </summary>
+        /// <param name="regionXml">XML string containing region information with x, y, width, and height attributes</param>
+        /// <returns>A Rect representing the region, or a default Rect(0,0,0,0) if parsing fails</returns>
+        public static Rect ParseRegionXml(string regionXml)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(regionXml))
+                    return new Rect(0, 0, 0, 0);
+
+                XmlDocument doc = new XmlDocument();
+                doc.LoadXml(regionXml);
+                var rectElement = doc.DocumentElement;
+
+                return new Rect(
+                    float.Parse(rectElement.GetAttribute("x")),
+                    float.Parse(rectElement.GetAttribute("y")),
+                    float.Parse(rectElement.GetAttribute("width")),
+                    float.Parse(rectElement.GetAttribute("height"))
+                );
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"Failed to parse region XML: {ex.Message}");
+                return new Rect(0, 0, 0, 0);
+            }
         }
     }
 } 
