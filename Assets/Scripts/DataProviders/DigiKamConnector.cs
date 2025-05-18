@@ -106,101 +106,11 @@ namespace Assets.Scripts.DataProviders
             }
         }
 
-        //This is Deprecated, use GetPhotoInfoForPrimaryThumbnailForPersonFromDataBase instead
-        public byte[] Deprecated_GetPrimaryThumbnailForPersonFromDataBase(int ownerId)
+        public PhotoInfo GetPhotoInfoForPrimaryThumbnailForPersonFromDataBase(int ownerId)
         {
-            byte[] imageToReturn = null;
-
-            // Get the tag ID for this owner ID
-            int tagId = GetTagIdForOwnerId(ownerId);
-            if (tagId == -1)
-            {
-                Debug.LogWarning($"No tag found for owner ID {ownerId}");
-                return null;
-            }
-
-            int limitListSizeTo = 1;
-            string conn = "URI=file:" + _digiKamDataBaseFileNameWithFullPath;
-            IDbConnection dbconn;
-            dbconn = (IDbConnection)new SqliteConnection(conn);
-            dbconn.Open();
-            IDbCommand dbcmd = dbconn.CreateCommand();
-
-            AttachThumbnailsDatabase(dbcmd);
-            // A note about AlbumRoots:
-            // My usage of DigiKam I have seen the label be "Photos" as well as "Pictures"
-            // So, I will just use the id of 1 for the AlbumRoot
-            string QUERYTHUMBNAILS = $@"
-                SELECT 
-                    tags.id as tagId,
-                    tags.name,
-                    paths.thumbId,
-                    images.id as ""imageId"",
-                    tnails.type,
-                    tnails.modificationDate,
-                    tnails.orientationHint as ""orientation"",
-                    'C:' || 
-                    (SELECT specificPath FROM AlbumRoots WHERE AlbumRoots.id = 1) ||
-                        CASE
-                            WHEN albums.relativePath = '/' THEN '/'
-                            ELSE albums.relativePath || '/'
-                        END || 
-                    TRIM(images.name, '/') as ""fullPathToFileName"",
-                    region.value as ""region"",
-                    tnails.data as 'PGFImageData'
-                FROM Tags tags
-                LEFT JOIN Images images 
-                    ON tags.icon = images.id
-                LEFT JOIN Albums albums 
-                    ON images.album = albums.id
-                LEFT JOIN ImageTagProperties region 
-                    ON tags.icon = region.imageid 
-                    AND tags.id = region.tagid
-                INNER JOIN [thumbnails-digikam].FilePaths paths 
-                    ON fullPathToFileName = paths.path
-                INNER JOIN [thumbnails-digikam].Thumbnails tnails 
-                    ON paths.thumbId = tnails.id
-                WHERE tags.id = {tagId} 
-                    AND images.album IS NOT NULL;";
-
-            string sqlQuery = QUERYTHUMBNAILS;
-            dbcmd.CommandText = sqlQuery;
-            IDataReader reader = dbcmd.ExecuteReader();
-            int currentArrayIndex = 0;
-            while (reader.Read() && currentArrayIndex < limitListSizeTo) {
-                string pathToFullResolutionImage = (string)reader["fullPathToFileName"];
-                // now read in the string value for region
-                string region = (string)reader["region"];
-                var orient64 = reader["orientation"] as Int64?;
-                // orientation is an INT64 in the DB
-                int orientation = (int)orient64;
-                // Parse XML string
-                Rect faceRegion = ImageUtils.ParseRegionXml(region, 0, 0);
-
-                imageToReturn = LoadAndProcessImage(pathToFullResolutionImage, faceRegion, orientation);
- 
-                currentArrayIndex++;
-            }
-            reader.Close();
-            reader = null;
-            dbcmd.Dispose();
-            dbcmd = null;
-            dbconn.Close();
-            dbconn = null;
-            return imageToReturn;
-        }
-        public PhotoInfo GetPhotoInfoForPrimaryThumbnailForPersonFromDataBase(int ownerId, bool verbose = false)
-        {
-            // if verbose is true, we will log the SQL query and all results
-            if (verbose)    {
-                Debug.Log($"Gettering ready to get Thumbnail for Person {ownerId} with an SQL Query");
-            }
             PhotoInfo photoInfo = null;
             // Get the tag ID for this owner ID
             int tagId = GetTagIdForOwnerId(ownerId);
-            if (verbose)    {
-                Debug.Log($"Tag ID for owner ID {ownerId} is {tagId}");
-            }
             if (tagId == -1)
             {
                 Debug.LogWarning($"No tag found for owner ID {ownerId}");
@@ -255,30 +165,16 @@ namespace Assets.Scripts.DataProviders
             while (reader.Read() && currentArrayIndex < limitListSizeTo) { 
                 string fullPathToFileName = reader["fullPathToFileName"] as string;
                 string region = reader["region"] as string;
-                if (verbose)    {
-                    Debug.Log($"Current Array Index: {currentArrayIndex}");
-                    Debug.Log($"Full Path to File Name: {fullPathToFileName}");
-                    Debug.Log($"Region string: {region}");
-                }
                 var imageWidth = (float)((reader["imageWidth"] as Int64?) ?? 0);
                 var imageHeight = (float)((reader["imageHeight"] as Int64?) ?? 0);
-                if (verbose)    {
-                    Debug.Log($"Image Width: {imageWidth}, Image Height: {imageHeight}");
-                }
                 // Parse XML string
-                Rect faceRegion = ImageUtils.ParseRegionXml(region, imageWidth, imageHeight, verbose);
+                Rect faceRegion = ImageUtils.ParseRegionXml(region, imageWidth, imageHeight);
                 // orientation is an INT64 in the DB
                 var orient64 = reader["orientation"] as Int64?;
                 int orientation = (int)orient64;
-                if (verbose)    {
-                    Debug.Log($"Int orientation: {orientation}");
-                }
                 // I want to bound the orientation to a valid ExifOrientation enum value
                 orientation = (int)Mathf.Clamp(orientation, 1, 8);  
                 var exitOrientation = (ExifOrientation)orientation;
-                if (verbose)    {
-                    Debug.Log($"ExifOrientation: {exitOrientation}");
-                }
                 if (!string.IsNullOrEmpty(fullPathToFileName))
                 {
                     photoInfo = new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation);
@@ -298,74 +194,6 @@ namespace Assets.Scripts.DataProviders
             return photoInfo;
         }
 
-        /// <summary>
-        /// Loads and processes an image file, applying face region cropping and orientation.
-        /// </summary>
-        /// <param name="pathToFullResolutionImage">Full path to the image file</param>
-        /// <param name="faceRegion">The region of the face to crop</param>
-        /// <param name="orientation">The EXIF orientation value</param>
-        /// <returns>Processed image as byte array, or null if processing fails</returns>
-        private byte[] LoadAndProcessImage(string pathToFullResolutionImage, Rect faceRegion, int orientation)
-        {
-            if (!System.IO.File.Exists(pathToFullResolutionImage))
-            {
-                Debug.LogWarning($"Image file not found: {pathToFullResolutionImage}");
-                return null;
-            }
-
-            try
-            {
-                // Load the full image into a byte array
-                byte[] fullImageBytes = System.IO.File.ReadAllBytes(pathToFullResolutionImage);
-                return ProcessAndCropImage(fullImageBytes, faceRegion, orientation);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"Error reading image file {pathToFullResolutionImage}: {ex.Message}");
-                return null;
-            }
-        }
-        private byte[] ProcessAndCropImage(byte[] fullImageBytes, Rect faceRegion, int orientation)
-        {
-            // Create a texture from the bytes
-            Texture2D fullTexture = new Texture2D(2, 2);
-            fullTexture.LoadImage(fullImageBytes);
-            
-            // Get a square bounded region for the face
-            RectInt squareRegion = ImageUtils.GetSquareBoundedRegion(fullTexture, faceRegion);
-
-            //The image need EXIF orientation applied to it
-         //   fullTexture = ImageUtils.ApplyExifOrientation(fullTexture, orientation);
-            
-            // Create a new texture for the square cropped region
-            Texture2D croppedTexture = new Texture2D(squareRegion.width, squareRegion.height);
-
-            //We need to flip the image vertically because the coo
-            int flippedY = fullTexture.height - (squareRegion.y + squareRegion.height);
-            
-            // Copy the pixels from the square region
-            Color[] pixels = fullTexture.GetPixels(squareRegion.x, flippedY, 
-                                                 squareRegion.width, squareRegion.height);
-            croppedTexture.SetPixels(0, 0, squareRegion.width, squareRegion.height, pixels);
-            croppedTexture.Apply();
-            
-            // Convert back to bytes
-            byte[] processedImage = croppedTexture.EncodeToPNG();
-            
-            // Clean up
-            if (Application.isPlaying)
-            {
-                UnityEngine.Object.Destroy(fullTexture);
-                UnityEngine.Object.Destroy(croppedTexture);
-            }
-            else
-            {
-                UnityEngine.Object.DestroyImmediate(fullTexture);
-                UnityEngine.Object.DestroyImmediate(croppedTexture);
-            }
-
-            return processedImage;
-        }
 
         public List<PhotoInfo> GetPhotoInfoListForPersonFromDataBase(int ownerId)
         {

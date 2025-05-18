@@ -106,21 +106,18 @@ public class PersonDetailsHandler : MonoBehaviour
                 personObject.gender == Assets.Scripts.Enums.PersonGenderType.Male ? maleImage :
                 personObject.gender == Assets.Scripts.Enums.PersonGenderType.Female ? femaleImage : unknownGenderImage;
 
-        bool verbose = false;
-        var photoInfo = _pictureProvider.GetThumbnailPhotoInfoForPerson(personObject.dataBaseOwnerId, 2024, verbose: verbose);
+        var photoInfo = _pictureProvider.GetThumbnailPhotoInfoForPerson(personObject.dataBaseOwnerId, 2024);
         if (photoInfo != null)
         {
-         var destinationImagePanel = imageGameObject.GetComponent<Image>();
-         var fallbackTexture = fallbackSprite.texture;
-         // Thumbnails are meant to be cropped to the region of the person
-         StartCoroutine(ImageUtils.SetImagePanelTextureFromPhotoArchive(destinationImagePanel, photoInfo, fallbackTexture, cropToFaceRegion: true, verbose: verbose));
+            var destinationImagePanel = imageGameObject.GetComponent<Image>();
+            var fallbackTexture = fallbackSprite.texture;
+            // Thumbnails are meant to be cropped to the region of the person
+            StartCoroutine(ImageUtils.SetImagePanelTextureFromPhotoArchive(destinationImagePanel, photoInfo, fallbackTexture, cropToFaceRegion: true));
         }
         else
         {
-            if (verbose) Debug.Log($"Photo Info is null, using fallback sprite {fallbackSprite.name}");
-             imageGameObject.GetComponent<Image>().sprite = fallbackSprite; 
+            imageGameObject.GetComponent<Image>().sprite = fallbackSprite; 
         }
-                  
     }
 
     private void resetSceneToThisRootPerson()

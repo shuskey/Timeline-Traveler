@@ -41,7 +41,7 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
             };
         }
 
-        public PhotoInfo GetThumbnailPhotoInfoForPerson(int personId, int year, bool verbose = false)
+        public PhotoInfo GetThumbnailPhotoInfoForPerson(int personId, int year)
         {
             return new PhotoInfo("MockPhoto.jpg", new Rect(0, 0, 100, 100), ExifOrientation.TopLeft, "MockPhoto.jpg", "Mock Photo");
         }

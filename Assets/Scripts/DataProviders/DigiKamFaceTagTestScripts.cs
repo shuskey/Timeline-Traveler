@@ -29,39 +29,6 @@ namespace Assets.Scripts.DataProviders
             _connector = new DigiKamConnector(_rootsMagicDbPath, _digiKamDbPath);
         }
 
-        [Test]
-        public void GetPrimaryThumbnailForPersonFromDataBase_WhenPersonExists_ReturnsCroppedImage()
-        {
-            // Act
-            // Use a known person ID from your Kennedy database
-            var result = _connector.Deprecated_GetPrimaryThumbnailForPersonFromDataBase(_ownerIDForJFK);
-
-            // Assert
-            result.Should().NotBeNull("because the person exists and has a face region defined");
-            
-            // Verify the image data
-            var resultTexture = new Texture2D(2, 2);
-            resultTexture.LoadImage(result);
-            resultTexture.Should().NotBeNull("because the returned data should be valid PNG image data");
-            
-            // The resulting image should be a reasonable face crop size
-            resultTexture.width.Should().BeGreaterThan(0, "because we should have a valid face region");
-            resultTexture.height.Should().BeGreaterThan(0, "because we should have a valid face region");
-              UnityEngine.Object.DestroyImmediate(resultTexture);
-        }
-
-        [Test]
-        public void GetPrimaryThumbnailForPersonFromDataBase_WhenPersonDoesNotExist_ReturnsNull()
-        {
-            // Act
-            // Use an ID we know doesn't exist in the sample database
-            var result = _connector.Deprecated_GetPrimaryThumbnailForPersonFromDataBase(999999);
-
-            // Assert
-            result.Should().BeNull("because the person ID does not exist in the database");
-        }
-
-
         [TearDown]
         public void Cleanup()
         {

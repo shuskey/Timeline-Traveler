@@ -176,33 +176,6 @@ namespace Assets.Scripts.Utilities
             return finalTexture;
         }
 
-        /// <summary>
-        /// Applies EXIF orientation transformation to a Rect.
-        /// </summary>
-        public static Rect ApplyExifOrientation(Rect region, float imageWidth, float imageHeight, ExifOrientation orientation)
-        {
-            switch (orientation)
-            {
-                case ExifOrientation.TopLeft:     // Normal
-                    return region;
-                case ExifOrientation.TopRight:    // Mirrored
-                    return new Rect(region.x, imageHeight - (region.y + region.height), region.width, region.height);
-                case ExifOrientation.BottomRight: // Rotated 180
-                    return new Rect(imageWidth - (region.x + region.width), imageHeight - (region.y + region.height), region.width, region.height);
-                case ExifOrientation.BottomLeft:  // Mirrored and rotated 180
-                    return new Rect(imageWidth - (region.x + region.width), region.y, region.width, region.height);
-                case ExifOrientation.LeftTop:     // Mirrored and rotated 270
-                    return new Rect(imageHeight - (region.y + region.height), region.x, region.height, region.width);
-                case ExifOrientation.RightTop:    // Rotated 90
-                    return new Rect(region.y, region.x, region.height, region.width);
-                case ExifOrientation.RightBottom: // Mirrored and rotated 90
-                    return new Rect(region.y, region.x, -region.height, region.width);
-                case ExifOrientation.LeftBottom:  //Rotated 270
-                    return new Rect(region.y, region.x, region.height, region.width);
-                default:
-                    return region;
-            }
-        }
 
         public static Rect ApplyInverseExifOrientation(Rect region, float imageWidth, float imageHeight, ExifOrientation orientation)
         {
@@ -263,7 +236,7 @@ namespace Assets.Scripts.Utilities
         /// <param name="crop">Whether to crop the image to a square</param>
         /// <param name="maxTextureSize">Maximum size for the texture (will be resized if larger)</param>
         /// <returns>A tuple containing the created sprite and its rotation angle</returns>
-        public static (Sprite sprite, float rotation) CreateSpriteFromTexture(Texture2D textureToSet, PhotoInfo photoInfo, bool cropToFaceRegion = false, int maxTextureSize = 780, bool verbose = false)
+        public static (Sprite sprite, float rotation) CreateSpriteFromTexture(Texture2D textureToSet, PhotoInfo photoInfo, bool cropToFaceRegion = false, int maxTextureSize = 780)
         {
             try
             {
@@ -272,40 +245,16 @@ namespace Assets.Scripts.Utilities
 
                 if (cropToFaceRegion)
                 {
-                    if (verbose) 
-                    {
-                        Debug.Log($"CreateSpriteFromTexture Called with cropToFaceRegion true");
-                        Debug.Log($"Photo Info: {photoInfo.PicturePathInArchive}");
-                        Debug.Log($"Photo Info: {photoInfo.ExifOrientation}");
-                        Debug.Log($"Photo Info: {photoInfo.Region}");
-                        Debug.Log($"Photo Info: {photoInfo.ItemLabel}");
-                        Debug.Log($"Photo Info: {photoInfo.FullPathToFileName}");
-                        Debug.Log($"Photo Info: {photoInfo.PicturePathInArchive}");
-                        Debug.Log($"Texture To Set: {textureToSet.name}");
-                        Debug.Log($"Max Texture Size: {maxTextureSize}");
-                    }
                     finalTexture = CreateSquareTextureFaceRegionMaxSize(textureToSet, photoInfo, maxTextureSize);
                 } else {
                     finalTexture = CreateSquareTextureMaxSize(textureToSet, maxTextureSize);
                 }
 
                 // Get sprite rect and rotation based on orientation
-                if (verbose) {
-                    Debug.Log($"GetSpriteRectAndRotationForOrientation Called");
-                    Debug.Log($"Orientation: {orientation}");
-                    Debug.Log($"Final Texture: {finalTexture.name}");
-                }
-
                 var (spriteRect, rotation) = GetSpriteRectAndRotationForOrientation(finalTexture, orientation);
-                if (verbose) {
-                    Debug.Log($"GetSpriteRectAndRotationForOrientation returns spriteRect: {spriteRect.x}, {spriteRect.y}, {spriteRect.width}, {spriteRect.height} and rotation: {rotation}");
-                }
 
                 // Create sprite with the adjusted rect that may mirror the image based on orientation  
                 Sprite sprite = Sprite.Create(finalTexture, spriteRect, new Vector2(0.5f, 0.5f), 100f);
-                if (verbose) {
-                    Debug.Log($"CreateSpriteFromTexture returns sprite name: {sprite.name} and rotation: {rotation}");
-                }
                 return (sprite, rotation);
             }
             catch (Exception ex)
@@ -323,7 +272,7 @@ namespace Assets.Scripts.Utilities
         /// <param name="photoInfo">The photo information containing path and orientation</param>
         /// <param name="fallbackTexture">Texture to use if download fails</param>
         /// <returns>Coroutine that yields the downloaded texture</returns>
-        public static IEnumerator DownloadAndProcessImage(PhotoInfo photoInfo, Texture2D fallbackTexture, bool verbose = false)
+        public static IEnumerator DownloadAndProcessImage(PhotoInfo photoInfo, Texture2D fallbackTexture)
         {        
             Texture2D downloaded = null;
             UnityWebRequest request = UnityWebRequestTexture.GetTexture(photoInfo.PicturePathInArchive);
@@ -331,7 +280,6 @@ namespace Assets.Scripts.Utilities
             
             if (request.result == UnityWebRequest.Result.ProtocolError)
             {
-                if (verbose) Debug.Log($"Error downloading photo:{photoInfo.PicturePathInArchive} error: {request.error}");
                 Debug.LogWarning($"Error downloading photo:{photoInfo.PicturePathInArchive} error: {request.error}");
                 downloaded = fallbackTexture;
                 photoInfo.ExifOrientation = ExifOrientation.TopLeft;
@@ -358,27 +306,23 @@ namespace Assets.Scripts.Utilities
         /// <param name="textureToSet">The texture to set</param>
         /// <param name="orientation">EXIF orientation of the image</param>
         /// <param name="cropToFaceRegion">Whether to crop the image to a square</param>
-        public static void SetImagePanelTexture(Image destinationImagePanel, Texture2D textureToSet, PhotoInfo resultingPhotoInfo = null, bool cropToFaceRegion = false, bool verbose = false)
+        public static void SetImagePanelTexture(Image destinationImagePanel, Texture2D textureToSet, PhotoInfo resultingPhotoInfo = null, bool cropToFaceRegion = false)
         {
             if (destinationImagePanel == null)
             {
-                if (verbose) Debug.Log($"SetImagePanelTexture Called with destinationImagePanel null");
                 Debug.LogWarning("Destination image panel is null");
                 return;
             }            
             if (resultingPhotoInfo == null)
             {
-                if (verbose) Debug.Log($"SetImagePanelTexture Called with resultingPhotoInfo null");
                 resultingPhotoInfo = new PhotoInfo(textureToSet.name, new Rect(0, 0, textureToSet.width, textureToSet.height), ExifOrientation.TopLeft);                
             }
 
             // Use the utility method to create the sprite and get rotation
-            (Sprite sprite, float rotation) = CreateSpriteFromTexture(textureToSet, resultingPhotoInfo, cropToFaceRegion, verbose: verbose);
-            if (verbose) Debug.Log($"CreateSpriteFromTexture returns sprite name: {sprite.name} and rotation: {rotation}");
+            (Sprite sprite, float rotation) = CreateSpriteFromTexture(textureToSet, resultingPhotoInfo, cropToFaceRegion);
 
             if (sprite == null)
             {   
-                if (verbose) Debug.Log($"SetImagePanelTexture Called with sprite null");
                 Debug.LogWarning("Failed to create sprite from texture");
                 return;
             }
@@ -395,33 +339,13 @@ namespace Assets.Scripts.Utilities
         /// <param name="photoInfo">The photo information</param>
         /// <param name="fallbackTexture">Texture to use if download fails</param>
         /// <returns>Coroutine that handles the download and setting of the texture</returns>
-        public static IEnumerator SetImagePanelTextureFromPhotoArchive(Image destinationImagePanel, PhotoInfo photoInfo, Texture2D fallbackTexture, bool cropToFaceRegion = false, bool verbose = false)
+        public static IEnumerator SetImagePanelTextureFromPhotoArchive(Image destinationImagePanel, PhotoInfo photoInfo, Texture2D fallbackTexture, bool cropToFaceRegion = false)
         {        
-            if (verbose) {
-                // log the photo info
-                Debug.Log($"SetImagePanelTextureFromPhotoArchive Called");
-                Debug.Log($"Photo Info: {photoInfo.PicturePathInArchive}");
-                Debug.Log($"Photo Info: {photoInfo.ExifOrientation}");
-                Debug.Log($"Photo Info: {photoInfo.Region}");
-                Debug.Log($"Photo Info: {photoInfo.ItemLabel}");
-                Debug.Log($"Photo Info: {photoInfo.FullPathToFileName}");
-                Debug.Log($"Photo Info: {photoInfo.PicturePathInArchive}");
-            }
             var downloadCoroutine = DownloadAndProcessImage(photoInfo, fallbackTexture);
             yield return downloadCoroutine;
-            if (verbose) Debug.Log($"DownloadAndProcessImage Coroutine Completed");
             var (downloaded, resultingPhotoInfo) = ((Texture2D, PhotoInfo))downloadCoroutine.Current;
-            if (verbose) {
-                Debug.Log($"DownloadAndProcessImage complete, returning with photo info:");
-                Debug.Log($"Photo Info: {photoInfo.PicturePathInArchive}");
-                Debug.Log($"Photo Info: {photoInfo.ExifOrientation}");
-                Debug.Log($"Photo Info: {photoInfo.Region}");
-                Debug.Log($"Photo Info: {photoInfo.ItemLabel}");
-                Debug.Log($"Photo Info: {photoInfo.FullPathToFileName}");
-                Debug.Log($"Photo Info: {photoInfo.PicturePathInArchive}");
-            }
             // Now do some magic: the downloaded texture is the full resolution image, but we need to crop it to the region of the person
-            SetImagePanelTexture(destinationImagePanel, downloaded, resultingPhotoInfo, cropToFaceRegion, verbose: verbose);
+            SetImagePanelTexture(destinationImagePanel, downloaded, resultingPhotoInfo, cropToFaceRegion);
         }
 
         /// <summary>
@@ -429,33 +353,22 @@ namespace Assets.Scripts.Utilities
         /// </summary>
         /// <param name="regionXml">XML string containing region information with x, y, width, and height attributes</param>
         /// <returns>A Rect representing the region, or a default Rect(0,0,0,0) if parsing fails</returns>
-        public static Rect ParseRegionXml(string regionXml, float imageWidth, float imageHeight, bool verbose = false)
+        public static Rect ParseRegionXml(string regionXml, float imageWidth, float imageHeight)
         {
             //yFlipped is needed because the y coordinate in the XML is the top of the image, but we need the bottom of the image for Unity Texture2D
             try
             {
                 if (string.IsNullOrEmpty(regionXml)) {
-                    if (verbose)    {
-                        Debug.Log($"Region XML is empty");
-                    }
                     return new Rect(0, 0, 0, 0);
                 }
 
                 XmlDocument doc = new XmlDocument();
                 doc.LoadXml(regionXml);
                 var rectElement = doc.DocumentElement;
-                if (verbose)    {
-                    Debug.Log($"Region XML: {regionXml}");
-                    Debug.Log($"Parameters Passed in: Image Width: {imageWidth}, Image Height: {imageHeight}");                            
-                    Debug.Log($"XML Doc ExtractedRect Element Face Region(x,y,width,height): {rectElement.GetAttribute("x")}, {rectElement.GetAttribute("y")}, {rectElement.GetAttribute("width")}, {rectElement.GetAttribute("height")}");
-                }
                 
                 var y = float.Parse(rectElement.GetAttribute("y"));
                 var height = float.Parse(rectElement.GetAttribute("height"));
                 var yFlipped = imageHeight - (y + height);
-                if (verbose)    {
-                    Debug.Log($"Y Flipped: {yFlipped}");
-                }
 
                 var returnRect = new Rect(
                     float.Parse(rectElement.GetAttribute("x")),
@@ -463,9 +376,6 @@ namespace Assets.Scripts.Utilities
                     float.Parse(rectElement.GetAttribute("width")),
                     float.Parse(rectElement.GetAttribute("height"))
                 );
-                if (verbose)    {
-                    Debug.Log($"Returned Rect (NO flipped Y) (x,y,width,height): {returnRect.x}, {returnRect.y}, {returnRect.width}, {returnRect.height}");
-                }
                 return returnRect;  
             }
             catch (Exception ex)
