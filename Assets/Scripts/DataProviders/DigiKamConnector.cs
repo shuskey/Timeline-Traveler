@@ -11,9 +11,12 @@ using Assets.Scripts.Utilities;
 
 namespace Assets.Scripts.DataProviders
 {
+    /// <summary>
+    /// Connector class for interacting with DigiKam photo database and RootsMagic database.
+    /// Handles retrieval of photo information and face tags for persons in the family tree.
+    /// </summary>
     public class DigiKamConnector : DataProviderBase
     {
-
         public List<DigiKamFaceTag> faceTagList;
         private Dictionary<int, int> _ownerIdToTagIdMap;
         private string _rootsMagicDataBaseFileNameWithFullPath;  // usually *.rmtree, *.rmgc, or *.sqlite
@@ -21,6 +24,11 @@ namespace Assets.Scripts.DataProviders
         private string _digiKamThumbnailsDataBaseFileNameWithFullPath;  // usually thumbnails-digikam.db
         static string DigiKam_Thumbnails_DataBaseFileNameOnly = "thumbnails-digikam.db";
 
+        /// <summary>
+        /// Initializes a new instance of the DigiKamConnector with paths to the RootsMagic and DigiKam databases.
+        /// </summary>
+        /// <param name="RootMagicDataBaseFileName">Full path to the RootsMagic database file</param>
+        /// <param name="DigiKamDataBaseFileName">Full path to the DigiKam database file</param>
         public DigiKamConnector(string RootMagicDataBaseFileName, string DigiKamDataBaseFileName)           
         {
             _rootsMagicDataBaseFileNameWithFullPath = RootMagicDataBaseFileName;
@@ -32,6 +40,9 @@ namespace Assets.Scripts.DataProviders
             BuildOwnerIdToTagIdMap();
         }
 
+        /// <summary>
+        /// Builds a mapping between RootsMagic owner IDs and DigiKam tag IDs.
+        /// </summary>
         private void BuildOwnerIdToTagIdMap()
         {
             using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
@@ -59,11 +70,20 @@ namespace Assets.Scripts.DataProviders
             }
         }
 
+        /// <summary>
+        /// Gets the DigiKam tag ID associated with a RootsMagic owner ID.
+        /// </summary>
+        /// <param name="ownerId">The RootsMagic owner ID to look up</param>
+        /// <returns>The corresponding DigiKam tag ID, or -1 if not found</returns>
         public int GetTagIdForOwnerId(int ownerId)
         {
             return _ownerIdToTagIdMap.TryGetValue(ownerId, out int tagId) ? tagId : -1;
         }
 
+        /// <summary>
+        /// Checks if all required database files are present in the expected locations.
+        /// </summary>
+        /// <returns>True if all required database files exist, false otherwise</returns>
         public bool AreAllDatabaseFilesPresent()
         {
             if (!System.IO.File.Exists(_rootsMagicDataBaseFileNameWithFullPath)) {
@@ -81,6 +101,11 @@ namespace Assets.Scripts.DataProviders
             return true;    
         }
 
+        /// <summary>
+        /// Checks if a specific database file exists in the DigiKam folder.
+        /// </summary>
+        /// <param name="filename">The name of the database file to check</param>
+        /// <returns>True if the file exists, false otherwise</returns>
         private bool DoesThisDBFileExistInDigiKamFolder(string filename)
         {
             var folderOnly = System.IO.Path.GetDirectoryName(_digiKamDataBaseFileNameWithFullPath);
@@ -88,6 +113,10 @@ namespace Assets.Scripts.DataProviders
             return System.IO.File.Exists(filenameToCheck);
         }
 
+        /// <summary>
+        /// Attaches the DigiKam thumbnails database to the current database connection if not already attached.
+        /// </summary>
+        /// <param name="dbcmd">The database command object to use for the attachment</param>
         private void AttachThumbnailsDatabase(IDbCommand dbcmd)
         {
             // First check if already attached
@@ -106,6 +135,11 @@ namespace Assets.Scripts.DataProviders
             }
         }
 
+        /// <summary>
+        /// Retrieves the primary thumbnail photo information for a person from the database.
+        /// </summary>
+        /// <param name="ownerId">The RootsMagic owner ID of the person</param>
+        /// <returns>A PhotoInfo object containing the photo details, or null if no photo is found</returns>
         public PhotoInfo GetPhotoInfoForPrimaryThumbnailForPersonFromDataBase(int ownerId)
         {
             PhotoInfo photoInfo = null;
@@ -194,7 +228,11 @@ namespace Assets.Scripts.DataProviders
             return photoInfo;
         }
 
-
+        /// <summary>
+        /// Retrieves a list of all photo information for a person from the database.
+        /// </summary>
+        /// <param name="ownerId">The RootsMagic owner ID of the person</param>
+        /// <returns>A list of PhotoInfo objects containing the photo details</returns>
         public List<PhotoInfo> GetPhotoInfoListForPersonFromDataBase(int ownerId)
         {
             List<PhotoInfo> photoList = new List<PhotoInfo>();

@@ -1,6 +1,3 @@
-# Get the script's directory
-$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
-
 # Construct the path to rootsmagic_utils.exe
 $utilsPath = ".\rootsmagic_utils.exe"
 

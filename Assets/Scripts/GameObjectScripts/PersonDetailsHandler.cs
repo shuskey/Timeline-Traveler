@@ -117,6 +117,7 @@ public class PersonDetailsHandler : MonoBehaviour
         else
         {
             imageGameObject.GetComponent<Image>().sprite = fallbackSprite; 
+            imageGameObject.GetComponent<Image>().transform.localRotation = Quaternion.Euler(0, 0, 0);   
         }
     }
 
