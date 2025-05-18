@@ -106,7 +106,8 @@ namespace Assets.Scripts.DataProviders
             }
         }
 
-        public byte[] GetPrimaryThumbnailForPersonFromDataBase(int ownerId)
+        //This is Deprecated, use GetPhotoInfoForPrimaryThumbnailForPersonFromDataBase instead
+        public byte[] Deprecated_GetPrimaryThumbnailForPersonFromDataBase(int ownerId)
         {
             byte[] imageToReturn = null;
 
@@ -174,7 +175,7 @@ namespace Assets.Scripts.DataProviders
                 // orientation is an INT64 in the DB
                 int orientation = (int)orient64;
                 // Parse XML string
-                Rect faceRegion = ImageUtils.ParseRegionXml(region);
+                Rect faceRegion = ImageUtils.ParseRegionXml(region, 0, 0);
 
                 imageToReturn = LoadAndProcessImage(pathToFullResolutionImage, faceRegion, orientation);
  
@@ -188,11 +189,18 @@ namespace Assets.Scripts.DataProviders
             dbconn = null;
             return imageToReturn;
         }
-        public PhotoInfo GetPhotoInfoForPrimaryThumbnailForPersonFromDataBase(int ownerId)
+        public PhotoInfo GetPhotoInfoForPrimaryThumbnailForPersonFromDataBase(int ownerId, bool verbose = false)
         {
+            // if verbose is true, we will log the SQL query and all results
+            if (verbose)    {
+                Debug.Log($"Gettering ready to get Thumbnail for Person {ownerId} with an SQL Query");
+            }
             PhotoInfo photoInfo = null;
             // Get the tag ID for this owner ID
             int tagId = GetTagIdForOwnerId(ownerId);
+            if (verbose)    {
+                Debug.Log($"Tag ID for owner ID {ownerId} is {tagId}");
+            }
             if (tagId == -1)
             {
                 Debug.LogWarning($"No tag found for owner ID {ownerId}");
@@ -218,7 +226,7 @@ namespace Assets.Scripts.DataProviders
                     images.id as ""imageId"",
                     tnails.type,
                     tnails.modificationDate,
-                    tnails.orientationHint as ""orientation"",
+                    tnails.orientationHint as orientation,
                     'C:' || 
                     (SELECT specificPath FROM AlbumRoots WHERE AlbumRoots.id = 1) ||
                         CASE
@@ -226,20 +234,17 @@ namespace Assets.Scripts.DataProviders
                             ELSE albums.relativePath || '/'
                         END || 
                     TRIM(images.name, '/') as ""fullPathToFileName"",
+                    info.width as imageWidth,
+                    info.height as imageHeight,
                     region.value as ""region"",
                     tnails.data as 'PGFImageData'
                 FROM Tags tags
-                LEFT JOIN Images images 
-                    ON tags.icon = images.id
-                LEFT JOIN Albums albums 
-                    ON images.album = albums.id
-                LEFT JOIN ImageTagProperties region 
-                    ON tags.icon = region.imageid 
-                    AND tags.id = region.tagid
-                INNER JOIN [thumbnails-digikam].FilePaths paths 
-                    ON fullPathToFileName = paths.path
-                INNER JOIN [thumbnails-digikam].Thumbnails tnails 
-                    ON paths.thumbId = tnails.id
+                LEFT JOIN Images images ON tags.icon = images.id
+                LEFT JOIN ImageInformation info ON images.id = info.imageid
+                LEFT JOIN Albums albums ON images.album = albums.id
+                LEFT JOIN ImageTagProperties region ON tags.icon = region.imageid AND tags.id = region.tagid
+                INNER JOIN [thumbnails-digikam].FilePaths paths ON fullPathToFileName = paths.path
+                INNER JOIN [thumbnails-digikam].Thumbnails tnails ON paths.thumbId = tnails.id
                 WHERE tags.id = {tagId} 
                     AND images.album IS NOT NULL;";
 
@@ -250,16 +255,30 @@ namespace Assets.Scripts.DataProviders
             while (reader.Read() && currentArrayIndex < limitListSizeTo) { 
                 string fullPathToFileName = reader["fullPathToFileName"] as string;
                 string region = reader["region"] as string;
-                  
+                if (verbose)    {
+                    Debug.Log($"Current Array Index: {currentArrayIndex}");
+                    Debug.Log($"Full Path to File Name: {fullPathToFileName}");
+                    Debug.Log($"Region string: {region}");
+                }
+                var imageWidth = (float)((reader["imageWidth"] as Int64?) ?? 0);
+                var imageHeight = (float)((reader["imageHeight"] as Int64?) ?? 0);
+                if (verbose)    {
+                    Debug.Log($"Image Width: {imageWidth}, Image Height: {imageHeight}");
+                }
                 // Parse XML string
-                Rect faceRegion = ImageUtils.ParseRegionXml(region);
-                var orient64 = reader["orientation"] as Int64?;
+                Rect faceRegion = ImageUtils.ParseRegionXml(region, imageWidth, imageHeight, verbose);
                 // orientation is an INT64 in the DB
+                var orient64 = reader["orientation"] as Int64?;
                 int orientation = (int)orient64;
+                if (verbose)    {
+                    Debug.Log($"Int orientation: {orientation}");
+                }
                 // I want to bound the orientation to a valid ExifOrientation enum value
                 orientation = (int)Mathf.Clamp(orientation, 1, 8);  
                 var exitOrientation = (ExifOrientation)orientation;
-                
+                if (verbose)    {
+                    Debug.Log($"ExifOrientation: {exitOrientation}");
+                }
                 if (!string.IsNullOrEmpty(fullPathToFileName))
                 {
                     photoInfo = new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation);
@@ -380,10 +399,12 @@ namespace Assets.Scripts.DataProviders
                               || images.name 
                             as ""fullPathToFileName"",
                             region.value as ""region"",
-                        info.orientation as ""orientation""
+                            info.width as imageWidth,
+                            info.height as imageHeight,
+                            info.orientation as orientation
                       FROM ImageTags imagetags
                       LEFT JOIN Images images ON imagetags.imageid = images.id
-                      LEFT JOIN ImageInformation info ON imagetags.imageid = info.imageid 
+                      LEFT JOIN ImageInformation info ON images.id = info.imageid 
                       LEFT JOIN Albums albums ON images.album = albums.id
                       LEFT JOIN ImageTagProperties region ON imagetags.imageid = region.imageid AND imagetags.tagid = region.tagid 
                       WHERE imagetags.tagid={tagId}";
@@ -395,7 +416,10 @@ namespace Assets.Scripts.DataProviders
                         {
                             string fullPathToFileName = reader["fullPathToFileName"] as string;
                             string region = reader["region"] as string;
-                            Rect faceRegion = ImageUtils.ParseRegionXml(region);
+                            var imageWidth = (float)((reader["imageWidth"] as Int64?) ?? 0);
+                            var imageHeight = (float)((reader["imageHeight"] as Int64?) ?? 0);
+                            
+                            Rect faceRegion = ImageUtils.ParseRegionXml(region, imageWidth, imageHeight);
                             var orient64 = reader["orientation"] as Int64?;
                             // orientation is an INT64 in the DB
                             int orientation = (int)orient64;

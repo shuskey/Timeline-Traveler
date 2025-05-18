@@ -60,14 +60,14 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
            return _connector.GetPhotoInfoListForPersonFromDataBase(personId);
         }
 
-        public PhotoInfo GetThumbnailPhotoInfoForPerson(int personId, int year)
+        public PhotoInfo GetThumbnailPhotoInfoForPerson(int personId, int year, bool verbose = false)
         {
             if (!_isInitialized)
             {
                 Debug.LogError("DigiKamFamilyHistoryPictureProvider not initialized");
                 return null;
             }
-            return _connector.GetPhotoInfoForPrimaryThumbnailForPersonFromDataBase(personId);
+            return _connector.GetPhotoInfoForPrimaryThumbnailForPersonFromDataBase(personId, verbose: verbose);
         }
     }
 } 

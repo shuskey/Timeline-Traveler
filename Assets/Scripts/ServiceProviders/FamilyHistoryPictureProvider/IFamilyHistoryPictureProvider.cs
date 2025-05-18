@@ -25,6 +25,6 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
         /// <returns>List of tuples containing the photo texture and its associated metadata</returns>
         List<PhotoInfo> GetPhotoInfoListForPerson(int personId, int year);
 
-        PhotoInfo GetThumbnailPhotoInfoForPerson(int personId, int year);
+        PhotoInfo GetThumbnailPhotoInfoForPerson(int personId, int year, bool verbose = false);
     }
 } 

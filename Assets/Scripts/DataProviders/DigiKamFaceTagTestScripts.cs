@@ -34,7 +34,7 @@ namespace Assets.Scripts.DataProviders
         {
             // Act
             // Use a known person ID from your Kennedy database
-            var result = _connector.GetPrimaryThumbnailForPersonFromDataBase(_ownerIDForJFK);
+            var result = _connector.Deprecated_GetPrimaryThumbnailForPersonFromDataBase(_ownerIDForJFK);
 
             // Assert
             result.Should().NotBeNull("because the person exists and has a face region defined");
@@ -55,7 +55,7 @@ namespace Assets.Scripts.DataProviders
         {
             // Act
             // Use an ID we know doesn't exist in the sample database
-            var result = _connector.GetPrimaryThumbnailForPersonFromDataBase(999999);
+            var result = _connector.Deprecated_GetPrimaryThumbnailForPersonFromDataBase(999999);
 
             // Assert
             result.Should().BeNull("because the person ID does not exist in the database");
