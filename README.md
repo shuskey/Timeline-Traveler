@@ -1,3 +1,5 @@
 # Timeline-Traveler
 3D open world experience for your family history
 Timeline Traveler is a unique family history exploration game that combines genealogy with visual storytelling. Players navigate through time and family trees, viewing historical photos of their ancestors that are pulled from a DigiKam photo database. The game features a 3D environment where players can move through time, and as they do so, they'll see detailed information about their ancestors including birth and death dates, generation information, and most notably, actual historical photographs of their family members. The game intelligently handles these historical photos and can even focus on specific faces within the photos. Players can explore their family tree in an interactive way, making it an immersive journey through time and ancestry. The experience blends the traditional family tree exploration with modern gaming elements, creating a personal journey through time and ancestry.
+![image](https://github.com/user-attachments/assets/8809bca2-8812-45f6-8e41-ba5f4c1c8528)
+
