@@ -1,5 +1,5 @@
 -- RootsMagic to digiKam tag import
--- Generated: Thu Mar 27 05:15:55 2025
+-- Generated: Sun May 18 11:41:01 2025
 
 --
 -- INSTRUCTIONS FOR IMPORTING TAGS INTO DIGIKAM:
@@ -18,6 +18,9 @@
 --       and check for any special characters in tag names.
 -- Note: All people will be imported as tags under a 'RootsMagic' parent tag
 --       (unless a different parent tag name was specified).
+-- Note: A helper script may have been deployed to your digikam folder that contains something like:
+-- .\rootsmagic_utils.exe -d '..\RootMagic\Kennedy.rmtree'
+-- sqlite3 ".\digikam4.db" ".read tags.sql"
 --
 
 BEGIN TRANSACTION;
@@ -753,5 +756,55 @@ INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'perso
 INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'George Winchester Moran 1989-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
 INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '146' FROM Tags t WHERE t.name='George Winchester Moran 1989-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
 INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'George Winchester Moran 1989-unknown' FROM Tags t WHERE t.name='George Winchester Moran 1989-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+
+-- Create tag for: Exif Sample Test 1980-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'Exif Sample Test 1980-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '147' FROM Tags t WHERE t.name='Exif Sample Test 1980-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'Exif Sample Test 1980-unknown' FROM Tags t WHERE t.name='Exif Sample Test 1980-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+
+-- Create tag for: EXIF1 Top-left Test 2001-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'EXIF1 Top-left Test 2001-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '148' FROM Tags t WHERE t.name='EXIF1 Top-left Test 2001-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'EXIF1 Top-left Test 2001-unknown' FROM Tags t WHERE t.name='EXIF1 Top-left Test 2001-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+
+-- Create tag for: EXIF2 Top-right Test 2002-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'EXIF2 Top-right Test 2002-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '149' FROM Tags t WHERE t.name='EXIF2 Top-right Test 2002-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'EXIF2 Top-right Test 2002-unknown' FROM Tags t WHERE t.name='EXIF2 Top-right Test 2002-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+
+-- Create tag for: EXIF3 Bottom-right Test 2003-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'EXIF3 Bottom-right Test 2003-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '150' FROM Tags t WHERE t.name='EXIF3 Bottom-right Test 2003-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'EXIF3 Bottom-right Test 2003-unknown' FROM Tags t WHERE t.name='EXIF3 Bottom-right Test 2003-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+
+-- Create tag for: EXIF4 Bottom-left Test 2004-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'EXIF4 Bottom-left Test 2004-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '151' FROM Tags t WHERE t.name='EXIF4 Bottom-left Test 2004-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'EXIF4 Bottom-left Test 2004-unknown' FROM Tags t WHERE t.name='EXIF4 Bottom-left Test 2004-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+
+-- Create tag for: EXIT5 Left-top Test 2005-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'EXIT5 Left-top Test 2005-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '152' FROM Tags t WHERE t.name='EXIT5 Left-top Test 2005-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'EXIT5 Left-top Test 2005-unknown' FROM Tags t WHERE t.name='EXIT5 Left-top Test 2005-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+
+-- Create tag for: EXIF6 Right-top Test 2006-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'EXIF6 Right-top Test 2006-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '153' FROM Tags t WHERE t.name='EXIF6 Right-top Test 2006-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'EXIF6 Right-top Test 2006-unknown' FROM Tags t WHERE t.name='EXIF6 Right-top Test 2006-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+
+-- Create tag for: EXIF7 Right-bottom Test 2007-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'EXIF7 Right-bottom Test 2007-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '154' FROM Tags t WHERE t.name='EXIF7 Right-bottom Test 2007-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'EXIF7 Right-bottom Test 2007-unknown' FROM Tags t WHERE t.name='EXIF7 Right-bottom Test 2007-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+
+-- Create tag for: EXIF8  Left-bottom Test 2008-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'EXIF8  Left-bottom Test 2008-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '155' FROM Tags t WHERE t.name='EXIF8  Left-bottom Test 2008-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'EXIF8  Left-bottom Test 2008-unknown' FROM Tags t WHERE t.name='EXIF8  Left-bottom Test 2008-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+
+-- Create tag for: Exif Mom Test unknown-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'Exif Mom Test unknown-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '156' FROM Tags t WHERE t.name='Exif Mom Test unknown-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'Exif Mom Test unknown-unknown' FROM Tags t WHERE t.name='Exif Mom Test unknown-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
 
 COMMIT;
