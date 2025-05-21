@@ -58,7 +58,8 @@ public class HallOfFamilyPhotos : MonoBehaviour
             var allPhotos = _pictureProvider.GetPhotoInfoListForPerson(newfocusPerson.dataBaseOwnerID, birthDate);
             var photoCount = allPhotos.Count;
 
-            for (int age = 0; age < lifeSpan; age++)
+            // If the person has no life span, set the loop to at least add 1 photo panel
+            for (int age = 0; age < Math.Max(1, lifeSpan); age++)
             {
                 int year = birthDate + age;
                 Vector3 position = new Vector3(x - 5.5f, y + 2f, (year) * 5 + 2.5f);
