@@ -2,10 +2,10 @@
     "name": "DataProviderTests",
     "rootNamespace": "",
     "references": [
-        "UnityEngine.TestRunner",
-        "UnityEditor.TestRunner",
-        "BoundfoxStudios.FluentAssertions",
-        "DataProvidersAssembly",
+        "GUID:27619889b8ba8c24980f49ee34dbb44a",
+        "GUID:0acc523941302664db1f4e527237feb3",
+        "GUID:e372c541aba5148868e12aa078ca7c20",
+        "GUID:9abb440172bc7ec4488c0cdd5faa9717",
         "GUID:8efbf3eb5741f0d4a9a1531d2f9dedf1"
     ],
     "includePlatforms": [
@@ -17,7 +17,7 @@
     "precompiledReferences": [
         "nunit.framework.dll"
     ],
-    "autoReferenced": false,
+    "autoReferenced": true,
     "defineConstraints": [
         "UNITY_INCLUDE_TESTS"
     ],

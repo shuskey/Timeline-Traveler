@@ -168,8 +168,8 @@ public class PersonNode : MonoBehaviour
     public void SetLifeSpan(int birthDate, float age, bool isLiving)
     {
         var myScaleThisPlatformComponent = gameObject.transform.GetChild(ScaleThisChildIndex);
-        // We want to scale the platform to the age of the person
-        myScaleThisPlatformComponent.transform.localScale = new Vector3(1.0f, 1.0f, Mathf.Max(0.01f, age * 5));
+        // We want to scale the platform to the age of the person, with a minimum length of 5
+        myScaleThisPlatformComponent.transform.localScale = new Vector3(1.0f, 1.0f, Mathf.Max(5.0f, age * 5));
         //myPlatformComponent.transform.localPosition = new Vector3(0, 0, age / 2f);
         lifeSpan = age;
         this.birthDate = birthDate;

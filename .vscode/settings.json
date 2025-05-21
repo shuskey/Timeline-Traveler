@@ -56,5 +56,6 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "Timeline-Traveler.sln"
+    "dotnet.defaultSolution": "Timeline-Traveler.sln",
+    "cmake.sourceDirectory": "C:/Users/shuskey/Github/Timeline-Traveler/Packages/GitHubSub/RootsMagicUtilities"
 }
