@@ -679,4 +679,126 @@ public class Tribe : MonoBehaviour
 	{
 		Debug.Log("OnStart canceled");
 	}
+
+	public void LoadNextLevelOfDescendancyForPerson(int personId, int currentGeneration, PersonGenderType personGender)
+	{
+		bool thisIsAHusbandQuery = personGender == PersonGenderType.Male;
+		// Get the person's marriages
+		var marriages = _dataProvider.GetMarriages(personId, useHusbandQuery: thisIsAHusbandQuery);
+		foreach (var marriage in marriages)
+		{
+			// Get or create spouse
+			var spouseId = marriage.wifeId;
+			if (!PersonExistsInGeneration(spouseId, currentGeneration))
+			{
+				// Calculate appropriate xOffset for spouse placement
+				float spouseXOffset = CalculateNextAvailableXOffset(currentGeneration);
+				
+				var spouseList = _dataProvider.GetPerson(spouseId, generation: currentGeneration, spouseXOffset, spouseNumber: 0);
+				if (spouseList.Count > 0)
+				{
+					var spouse = spouseList[0];
+					listOfPersonsPerGeneration[currentGeneration].Add(spouse);
+					spouse.personNodeGameObject = CreatePersonGameObject(spouse, globalSpringType);
+					
+					// Refresh positioning for the current generation after adding spouse
+					RefreshGenerationPositioning(currentGeneration);
+				}
+			}
+
+			// Get children for this marriage
+			var children = _dataProvider.GetChildren(marriage.familyId);
+			var nextGeneration = currentGeneration + 1;
+			var childCount = children.Count;
+			var childIndex = 0;
+
+			// Calculate starting xOffset for new children - place them to the right of existing people
+			float startingXOffset = CalculateNextAvailableXOffset(nextGeneration);
+
+			foreach (var child in children)
+			{
+				if (!PersonExistsInGeneration(child.childId, nextGeneration))
+				{
+					// Calculate xOffset for this child to ensure proper spacing
+					float childXOffset = startingXOffset + (childIndex * 0.1f); // 0.1f spacing between siblings
+					
+					var childList = _dataProvider.GetPerson(child.childId, generation: nextGeneration, childXOffset, spouseNumber: 0);
+					if (childList.Count > 0)
+					{
+						var childPerson = childList[0];
+						listOfPersonsPerGeneration[nextGeneration].Add(childPerson);
+						childPerson.personNodeGameObject = CreatePersonGameObject(childPerson, globalSpringType);
+
+						// Create parent-child connections
+						var parentPerson = listOfPersonsPerGeneration[currentGeneration].FirstOrDefault(p => p.dataBaseOwnerId == personId);
+						var parentSpouse = listOfPersonsPerGeneration[currentGeneration].FirstOrDefault(p => p.dataBaseOwnerId == spouseId);
+						
+						if (parentPerson != null && childPerson.personNodeGameObject != null)
+						{
+							AssignParents(
+								childPerson.personNodeGameObject,
+								parentSpouse?.personNodeGameObject,
+								parentPerson.personNodeGameObject,
+								child.relationToMother,
+								child.relationToFather
+							);
+						}
+					}
+				}
+				childIndex++;
+			}
+			
+			// After adding new people for this marriage, refresh positioning for this generation
+			if (children.Count > 0)
+			{
+				RefreshGenerationPositioning(nextGeneration);
+			}
+		}
+	}
+
+	/// <summary>
+	/// Calculate the next available xOffset for a generation, placing new people to the right
+	/// </summary>
+	private float CalculateNextAvailableXOffset(int generation)
+	{
+		if (generation > numberOfGenerations || listOfPersonsPerGeneration[generation] == null || listOfPersonsPerGeneration[generation].Count == 0)
+		{
+			return 0.0f; // Start at 0 if generation is empty
+		}
+
+		// Find the maximum xOffset currently in this generation
+		float maxXOffset = listOfPersonsPerGeneration[generation].Max(p => p.xOffset);
+		
+		// Add some spacing to place new people to the right
+		return maxXOffset + 0.2f; // 0.2f gap before starting new children
+	}
+
+	/// <summary>
+	/// Refresh positioning for all people in a generation after dynamic loading
+	/// </summary>
+	private void RefreshGenerationPositioning(int generation)
+	{
+		if (generation > numberOfGenerations || listOfPersonsPerGeneration[generation] == null)
+			return;
+
+		var numberOfPersonsInThisGeneration = listOfPersonsPerGeneration[generation].Count;
+		var indexIntoPersonsInThisGeneration = 0;
+
+		// Re-sort and re-index all people in this generation
+		foreach (var personToAdd in listOfPersonsPerGeneration[generation].OrderBy(x => x.xOffset))
+		{
+			personToAdd.numberOfPersonsInThisGeneration = numberOfPersonsInThisGeneration;
+			personToAdd.indexIntoPersonsInThisGeneration = indexIntoPersonsInThisGeneration;
+
+			// Recalculate world position using the same logic as initial setup
+			if (personToAdd.personNodeGameObject != null)
+			{
+				var x = indexIntoPersonsInThisGeneration * personSpacing - (numberOfPersonsInThisGeneration * personSpacing) / 2 + personSpacing / 2;
+				var currentPos = personToAdd.personNodeGameObject.transform.position;
+				personToAdd.personNodeGameObject.transform.position = new Vector3(x, currentPos.y, currentPos.z);
+			}
+
+			indexIntoPersonsInThisGeneration++;
+		}
+	}
 }

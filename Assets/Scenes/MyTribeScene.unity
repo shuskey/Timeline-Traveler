@@ -2801,9 +2801,6 @@ MonoBehaviour:
   focusPerson: {fileID: 0}
   previousFocusPerson: {fileID: 0}
   familyPhotoPanelPrefab: {fileID: 1579663936856624987, guid: e78581a219092584a9957302997ac827, type: 3}
-  photoArchiveDrivePath: C:\Users\shuskey\OneDrive\Pictures\Family History\Hughes
-    Reunion
-  thumbnailSubFolderName: Thumb400
 --- !u!4 &1917470389
 Transform:
   m_ObjectHideFlags: 0

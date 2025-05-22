@@ -31,6 +31,7 @@ public class PersonNode : MonoBehaviour
     public (int original, int updated) birthDateQuality;
     public (int original, int updated) deathDateQuality;
     public string dateQualityInformationString = "";
+    public int GenerationDepth => person?.generation ?? 0;
 
     private bool debugAddMotion = false;
     private Rigidbody myRigidbody;
@@ -107,7 +108,14 @@ public class PersonNode : MonoBehaviour
         personDetailsHandlerScript.DisplayThisPerson(person, currentDate);
 
         StartCoroutine(hallOfFamilyPhotosGameObject.GetComponent<HallOfFamilyPhotos>().SetFocusPersonNode(this));
-        StartCoroutine(hallOfHistoryGameObject.GetComponent<HallOfHistory>().SetFocusPersonNode(this));        
+        StartCoroutine(hallOfHistoryGameObject.GetComponent<HallOfHistory>().SetFocusPersonNode(this));
+
+        // Request loading next level of descendancy
+        var tribe = GetComponentInParent<Tribe>();
+        if (tribe != null)
+        {
+            tribe.LoadNextLevelOfDescendancyForPerson(dataBaseOwnerID, GenerationDepth, person.gender);
+        }
     }
 
     public void ClearPersonDetails()
