@@ -21,7 +21,10 @@ public class Tribe : MonoBehaviour
 	private bool dataLoadComplete = false;
 	private int updateFramesToWaist = 120;
 	private int startingIdForTree;
-	private int numberOfGenerations = 5;
+	//make this a SerializeField
+	[SerializeField]
+	[Tooltip("Maximum number of generations to on each side")]
+	private int numberOfGenerations = 12;
 	private PersonDetailsHandler personDetailsHandlerScript;
 	private Transform lastTeleportTransform;
 	private Vector3 lastTeleportOffset;
@@ -609,7 +612,8 @@ public class Tribe : MonoBehaviour
 		else if (tribeType == TribeType.Centered)
 		{
 			// Lets do a 5/5 split 5 generations of Ancsecters and 5 generations of Descendants
-			var generationsOnEachSide = 10;
+			var generationsOnEachSide = numberOfGenerations;
+			// Centered puts a generation on each side minimum
 			numberOfGenerations = generationsOnEachSide + generationsOnEachSide + 1;
 			NewUpEnoughListOfPersonsPerGeneration(numberOfGenerations);
 			StartCoroutine(GetNextLevelOfDescendancyForThisPersonIdDataBaseOnlyAsync(startingIdForTree, generationsOnEachSide, xOffSet: 0.0f, xRange: 1.0f, centerByThisOffset: 1));
@@ -685,11 +689,18 @@ public class Tribe : MonoBehaviour
 		bool thisIsAHusbandQuery = personGender == PersonGenderType.Male;
 		// Get the person's marriages
 		var marriages = _dataProvider.GetMarriages(personId, useHusbandQuery: thisIsAHusbandQuery);
+		
+		// Get the person who initiated this expansion for date fixing
+		var originatingPerson = getPersonForDataBaseOwnerId(personId, currentGeneration);
+		
 		foreach (var marriage in marriages)
 		{
-			// Get or create spouse
-			var spouseId = marriage.wifeId;
-			if (!PersonExistsInGeneration(spouseId, currentGeneration))
+			// Get correct spouse ID based on the person's gender
+			var spouseId = thisIsAHusbandQuery ? marriage.wifeId : marriage.husbandId;
+			var spouseAlreadyExists = PersonExistsInGeneration(spouseId, currentGeneration);
+			Person spousePerson = null;
+			
+			if (!spouseAlreadyExists)
 			{
 				// Calculate appropriate xOffset for spouse placement
 				float spouseXOffset = CalculateNextAvailableXOffset(currentGeneration);
@@ -697,13 +708,36 @@ public class Tribe : MonoBehaviour
 				var spouseList = _dataProvider.GetPerson(spouseId, generation: currentGeneration, spouseXOffset, spouseNumber: 0);
 				if (spouseList.Count > 0)
 				{
-					var spouse = spouseList[0];
-					listOfPersonsPerGeneration[currentGeneration].Add(spouse);
-					spouse.personNodeGameObject = CreatePersonGameObject(spouse, globalSpringType);
+					spousePerson = spouseList[0];
+					listOfPersonsPerGeneration[currentGeneration].Add(spousePerson);
+					spousePerson.personNodeGameObject = CreatePersonGameObject(spousePerson, globalSpringType);
 					
 					// Refresh positioning for the current generation after adding spouse
 					RefreshGenerationPositioning(currentGeneration);
 				}
+			}
+			else
+			{
+				spousePerson = getPersonForDataBaseOwnerId(spouseId, currentGeneration);
+			}
+			
+			// Apply the same date fixing logic as in initial setup
+			if (originatingPerson != null && spousePerson != null)
+			{
+				originatingPerson.FixUpDatesForViewingWithMarriageDate(marriage.marriageYear, spousePerson);
+				spousePerson.FixUpDatesForViewingWithMarriageDate(marriage.marriageYear, originatingPerson);
+				
+				// Create the marriage connection (visual connection between spouses)
+				int marriageYearToUse = originatingPerson.FixUpAndReturnMarriageDate(marriage.marriageYear);
+				bool divorcedOrAnnuledFlag = marriage.divorcedYear != 0 || marriage.annulledYear != 0;
+				int divorcedOrAnnuledDate = marriage.divorcedYear != 0 ? marriage.divorcedYear : marriage.annulledYear;
+				
+				CreateMarriage(
+					thisIsAHusbandQuery ? spousePerson.personNodeGameObject : originatingPerson.personNodeGameObject, // wife
+					thisIsAHusbandQuery ? originatingPerson.personNodeGameObject : spousePerson.personNodeGameObject, // husband
+					marriageYearToUse,
+					divorcedOrAnnuledFlag,
+					divorcedOrAnnuledDate);
 			}
 
 			// Get children for this marriage
@@ -799,6 +833,87 @@ public class Tribe : MonoBehaviour
 			}
 
 			indexIntoPersonsInThisGeneration++;
+		}
+	}
+
+	/// <summary>
+	/// Dynamically load parents for the specified person and create parent-child connections
+	/// </summary>
+	public void LoadNextLevelOfAncestryForPerson(int personId, int currentGeneration)
+	{
+		// Get the parents of the specified person
+		var parentsList = _dataProvider.GetParents(personId);
+		
+		if (parentsList.Count == 0)
+			return; // No parents to load
+		
+		var parentGeneration = currentGeneration - 1;
+		if (parentGeneration < 0)
+			return; // Can't go beyond generation 0
+		
+		// Ensure the parent generation list exists
+		if (listOfPersonsPerGeneration[parentGeneration] == null)
+			listOfPersonsPerGeneration[parentGeneration] = new List<Person>();
+		
+		// Get the child person for creating connections
+		var childPerson = getPersonForDataBaseOwnerId(personId, currentGeneration);
+		
+		foreach (var parentage in parentsList)
+		{
+			Person motherPerson = null;
+			Person fatherPerson = null;
+			
+			// Add mother if she doesn't exist
+			if (parentage.motherId != 0 && !PersonExistsInGeneration(parentage.motherId, parentGeneration))
+			{
+				float motherXOffset = CalculateNextAvailableXOffset(parentGeneration);
+				var motherList = _dataProvider.GetPerson(parentage.motherId, generation: parentGeneration, motherXOffset, spouseNumber: 0);
+				if (motherList.Count > 0)
+				{
+					motherPerson = motherList[0];
+					listOfPersonsPerGeneration[parentGeneration].Add(motherPerson);
+					motherPerson.personNodeGameObject = CreatePersonGameObject(motherPerson, globalSpringType);
+				}
+			}
+			else if (parentage.motherId != 0)
+			{
+				motherPerson = getPersonForDataBaseOwnerId(parentage.motherId, parentGeneration);
+			}
+			
+			// Add father if he doesn't exist
+			if (parentage.fatherId != 0 && !PersonExistsInGeneration(parentage.fatherId, parentGeneration))
+			{
+				float fatherXOffset = CalculateNextAvailableXOffset(parentGeneration);
+				var fatherList = _dataProvider.GetPerson(parentage.fatherId, generation: parentGeneration, fatherXOffset, spouseNumber: 0);
+				if (fatherList.Count > 0)
+				{
+					fatherPerson = fatherList[0];
+					listOfPersonsPerGeneration[parentGeneration].Add(fatherPerson);
+					fatherPerson.personNodeGameObject = CreatePersonGameObject(fatherPerson, globalSpringType);
+				}
+			}
+			else if (parentage.fatherId != 0)
+			{
+				fatherPerson = getPersonForDataBaseOwnerId(parentage.fatherId, parentGeneration);
+			}
+			
+			// Create parent-child connections if we have the child and at least one parent
+			if (childPerson?.personNodeGameObject != null)
+			{
+				AssignParents(
+					childPerson.personNodeGameObject,
+					motherPerson?.personNodeGameObject,
+					fatherPerson?.personNodeGameObject,
+					parentage.relationToMother,
+					parentage.relationToFather
+				);
+			}
+		}
+		
+		// Refresh positioning for the parent generation after adding new people
+		if (parentsList.Count > 0)
+		{
+			RefreshGenerationPositioning(parentGeneration);
 		}
 	}
 }

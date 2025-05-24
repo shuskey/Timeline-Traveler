@@ -661,6 +661,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8d4cc490207113000a9fc690bffcab7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  numberOfGenerations: 1
   timeBarrierYear: 0
   personPrefab: {fileID: 5941765939252972054, guid: 5e0a7b6b97087d64ba65ee58eb6dedaa, type: 3}
   playerControllerPrefab: {fileID: 1436149188537377315, guid: d6c6db37bd8152b469b58389e1e93487, type: 3}

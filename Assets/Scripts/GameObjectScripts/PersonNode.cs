@@ -115,6 +115,7 @@ public class PersonNode : MonoBehaviour
         if (tribe != null)
         {
             tribe.LoadNextLevelOfDescendancyForPerson(dataBaseOwnerID, GenerationDepth, person.gender);
+            tribe.LoadNextLevelOfAncestryForPerson(dataBaseOwnerID, GenerationDepth);
         }
     }
 
