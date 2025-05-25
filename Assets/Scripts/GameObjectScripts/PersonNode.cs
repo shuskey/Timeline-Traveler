@@ -137,11 +137,29 @@ public class PersonNode : MonoBehaviour
     public void SetHallOfHistoryGameObject(GameObject hallOfHistory)
     {
         this.hallOfHistoryGameObject = hallOfHistory;
+        
+        // Establish physical parent-child relationship so hall of history moves with PersonNode
+        if (hallOfHistory != null)
+        {
+            hallOfHistory.transform.SetParent(this.transform, false);
+            // Position it relative to the PersonNode (offset from family photos to avoid overlap)
+            hallOfHistory.transform.localPosition = new Vector3(3f, 4f, 0); // To the right and above the person
+            hallOfHistory.transform.localRotation = Quaternion.identity;
+        }
     }
 
     public void SetHallOfFamilyPhotosGameObject(GameObject hallOfFamilyPhotos)
     {
         this.hallOfFamilyPhotosGameObject = hallOfFamilyPhotos;
+        
+        // Establish physical parent-child relationship so hall of family photos moves with PersonNode
+        if (hallOfFamilyPhotos != null)
+        {
+            hallOfFamilyPhotos.transform.SetParent(this.transform, false);
+            // Position it relative to the PersonNode (adjust these values as needed for your scene)
+            hallOfFamilyPhotos.transform.localPosition = new Vector3(0, 5f, 0); // Above the person
+            hallOfFamilyPhotos.transform.localRotation = Quaternion.identity;
+        }
     }
 
     public void SetGlobalSpringType(GlobalSpringType globalSpringType)

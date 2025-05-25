@@ -23,8 +23,8 @@ public class Tribe : MonoBehaviour
 	private int startingIdForTree;
 	//make this a SerializeField
 	[SerializeField]
-	[Tooltip("Maximum number of generations to on each side")]
-	private int numberOfGenerations = 12;
+	[Tooltip("Number of generations to load on each side (dynamically expandable)")]
+	private int numberOfGenerations = 2;
 	private PersonDetailsHandler personDetailsHandlerScript;
 	private Transform lastTeleportTransform;
 	private Vector3 lastTeleportOffset;
@@ -52,7 +52,7 @@ public class Tribe : MonoBehaviour
 
 	private int maximumNumberOfPeopleInAGeneration = 0;
 	private IFamilyHistoryDataProvider _dataProvider;
-	private List<Person>[] listOfPersonsPerGeneration = new List<Person>[25];
+	private Dictionary<int, List<Person>> listOfPersonsPerGeneration = new Dictionary<int, List<Person>>();
 	private int personOfInterestIndexInList = 0;
 
 	const int PlatformChildIndex = 0;
@@ -113,11 +113,11 @@ public class Tribe : MonoBehaviour
         } 		
 	}
 
-	void NewUpEnoughListOfPersonsPerGeneration(int numberOfGenerations)
+	void EnsureGenerationExists(int generation)
 	{
-		for (var depth = 0; depth <= numberOfGenerations; depth++)
+		if (!listOfPersonsPerGeneration.ContainsKey(generation))
 		{
-			listOfPersonsPerGeneration[depth] = new List<Person>();
+			listOfPersonsPerGeneration[generation] = new List<Person>();
 		}
 	}
 
@@ -141,6 +141,7 @@ public class Tribe : MonoBehaviour
 			{
 				if (!PersonExistsInGeneration(personWeAreAdding.dataBaseOwnerId, depth))
 				{
+					EnsureGenerationExists(depth);
 					listOfPersonsPerGeneration[depth].Add(personWeAreAdding);
 				}
 			}
@@ -171,6 +172,7 @@ public class Tribe : MonoBehaviour
 			var personWeAreAdding = personList[0];
 			if (!PersonExistsInGeneration(personWeAreAdding.dataBaseOwnerId, numberOfGenerations - depth - centerByThisOffset))
 			{
+				EnsureGenerationExists(numberOfGenerations - depth - centerByThisOffset);
 				listOfPersonsPerGeneration[numberOfGenerations - depth - centerByThisOffset].Add(personWeAreAdding);
 			}
 
@@ -213,6 +215,8 @@ public class Tribe : MonoBehaviour
 
 	private bool PersonExistsInGeneration(int personId, int depth)
 	{
+		if (!listOfPersonsPerGeneration.ContainsKey(depth))
+			return false;
 		return listOfPersonsPerGeneration[depth].Any(p => p.dataBaseOwnerId == personId);
 	}
 
@@ -235,6 +239,7 @@ public class Tribe : MonoBehaviour
 				var spousePersonWeAreAdding = spouseList[0];
 				if (!PersonExistsInGeneration(spousePersonWeAreAdding.dataBaseOwnerId, depth))
 				{
+					EnsureGenerationExists(depth);
 					listOfPersonsPerGeneration[depth].Add(spousePersonWeAreAdding);
 				}
 				forThisPerson.FixUpDatesForViewingWithMarriageDate(marriage.marriageYear, spousePersonWeAreAdding);
@@ -249,7 +254,7 @@ public class Tribe : MonoBehaviour
 
 	void FixUpDatesBasedOffMarriageDates()
 	{
-		for (var depth = 0; depth <= numberOfGenerations; depth++)
+		foreach (var depth in listOfPersonsPerGeneration.Keys)
 		{
 			foreach (var potentialMarriedPerson in listOfPersonsPerGeneration[depth])
 			{
@@ -272,7 +277,7 @@ public class Tribe : MonoBehaviour
 	void CreatePersonGameObjectForMyTribeOfPeople(int startingID, GlobalSpringType globalSpringType = GlobalSpringType.Normal)
     {
 		maximumNumberOfPeopleInAGeneration = 0;
-		for (var depth = 0; depth <= numberOfGenerations; depth++)
+		foreach (var depth in listOfPersonsPerGeneration.Keys)
 		{
 			var numberOfPersonsInThisGeneration = listOfPersonsPerGeneration[depth].Count;
 			if (numberOfPersonsInThisGeneration > maximumNumberOfPeopleInAGeneration)
@@ -294,7 +299,7 @@ public class Tribe : MonoBehaviour
 
 	void HookUpTheMarriages()
 	{
-		for (var depth = 0; depth <= numberOfGenerations; depth++)
+		foreach (var depth in listOfPersonsPerGeneration.Keys)
 		{
 			foreach (var potentialHusbandPerson in listOfPersonsPerGeneration[depth])
 			{
@@ -321,7 +326,7 @@ public class Tribe : MonoBehaviour
 
 	void NowAddChildrenAssignments(TribeType tribeType)
 	{
-		for (var depth = 1; depth <= numberOfGenerations; depth++)
+		foreach (var depth in listOfPersonsPerGeneration.Keys.Where(k => k >= 0).OrderBy(k => k))
 		{
 			foreach (var child in listOfPersonsPerGeneration[depth])
 			{
@@ -340,9 +345,11 @@ public class Tribe : MonoBehaviour
 	}
 
 	GameObject getGameObjectForDataBaseOwnerId(int ownerId, int depth) =>
-				listOfPersonsPerGeneration[depth].FirstOrDefault(x => x.dataBaseOwnerId == ownerId)?.personNodeGameObject;
+				listOfPersonsPerGeneration.ContainsKey(depth) ? 
+				listOfPersonsPerGeneration[depth].FirstOrDefault(x => x.dataBaseOwnerId == ownerId)?.personNodeGameObject : null;
 	Person getPersonForDataBaseOwnerId(int ownerId, int depth) =>
-				listOfPersonsPerGeneration[depth].FirstOrDefault(x => x.dataBaseOwnerId == ownerId);
+				listOfPersonsPerGeneration.ContainsKey(depth) ? 
+				listOfPersonsPerGeneration[depth].FirstOrDefault(x => x.dataBaseOwnerId == ownerId) : null;
 
 	GameObject CreatePersonGameObject(string name, PersonGenderType personGender, int birthEventDate,
 		bool isLiving = true, int deathEventDate = 0,
@@ -567,7 +574,8 @@ public class Tribe : MonoBehaviour
 
 		if (tribeType == TribeType.Ancestry)
 		{
-			NewUpEnoughListOfPersonsPerGeneration(numberOfGenerations);
+			// Clear any existing data
+			listOfPersonsPerGeneration.Clear();
 			StartCoroutine(GetNextLevelOfAncestryForThisPersonIdDataBaseOnlyAsync(startingIdForTree, numberOfGenerations, xOffSet: 0.0f, xRange: 1.0f));
 			//Debug.Log("We are done with Ancestry Recurrsion.");
 
@@ -589,7 +597,8 @@ public class Tribe : MonoBehaviour
 		}
 		else if (tribeType == TribeType.Descendancy)
 		{
-			NewUpEnoughListOfPersonsPerGeneration(numberOfGenerations);
+			// Clear any existing data
+			listOfPersonsPerGeneration.Clear();
 			StartCoroutine(GetNextLevelOfDescendancyForThisPersonIdDataBaseOnlyAsync(startingIdForTree, numberOfGenerations, xOffSet: 0.0f, xRange: 1.0f));
 			//Debug.Log("We are done with Descendacy Recurrsion.");
 
@@ -615,7 +624,8 @@ public class Tribe : MonoBehaviour
 			var generationsOnEachSide = numberOfGenerations;
 			// Centered puts a generation on each side minimum
 			numberOfGenerations = generationsOnEachSide + generationsOnEachSide + 1;
-			NewUpEnoughListOfPersonsPerGeneration(numberOfGenerations);
+			// Clear any existing data
+			listOfPersonsPerGeneration.Clear();
 			StartCoroutine(GetNextLevelOfDescendancyForThisPersonIdDataBaseOnlyAsync(startingIdForTree, generationsOnEachSide, xOffSet: 0.0f, xRange: 1.0f, centerByThisOffset: 1));
 			// With the centered tribe, we want to skip the starting person on the ancestry side
 			StartCoroutine(GetNextLevelOfAncestryForThisPersonIdDataBaseOnlyAsync(startingIdForTree, generationsOnEachSide, xOffSet: 0.0f, xRange: 1.0f, pleaseSkipStartingPerson:true));
@@ -709,6 +719,7 @@ public class Tribe : MonoBehaviour
 				if (spouseList.Count > 0)
 				{
 					spousePerson = spouseList[0];
+					EnsureGenerationExists(currentGeneration);
 					listOfPersonsPerGeneration[currentGeneration].Add(spousePerson);
 					spousePerson.personNodeGameObject = CreatePersonGameObject(spousePerson, globalSpringType);
 					
@@ -760,6 +771,7 @@ public class Tribe : MonoBehaviour
 					if (childList.Count > 0)
 					{
 						var childPerson = childList[0];
+						EnsureGenerationExists(nextGeneration);
 						listOfPersonsPerGeneration[nextGeneration].Add(childPerson);
 						childPerson.personNodeGameObject = CreatePersonGameObject(childPerson, globalSpringType);
 
@@ -795,7 +807,7 @@ public class Tribe : MonoBehaviour
 	/// </summary>
 	private float CalculateNextAvailableXOffset(int generation)
 	{
-		if (generation > numberOfGenerations || listOfPersonsPerGeneration[generation] == null || listOfPersonsPerGeneration[generation].Count == 0)
+		if (!listOfPersonsPerGeneration.ContainsKey(generation) || listOfPersonsPerGeneration[generation].Count == 0)
 		{
 			return 0.0f; // Start at 0 if generation is empty
 		}
@@ -812,7 +824,7 @@ public class Tribe : MonoBehaviour
 	/// </summary>
 	private void RefreshGenerationPositioning(int generation)
 	{
-		if (generation > numberOfGenerations || listOfPersonsPerGeneration[generation] == null)
+		if (!listOfPersonsPerGeneration.ContainsKey(generation))
 			return;
 
 		var numberOfPersonsInThisGeneration = listOfPersonsPerGeneration[generation].Count;
@@ -848,12 +860,9 @@ public class Tribe : MonoBehaviour
 			return; // No parents to load
 		
 		var parentGeneration = currentGeneration - 1;
-		if (parentGeneration < 0)
-			return; // Can't go beyond generation 0
 		
 		// Ensure the parent generation list exists
-		if (listOfPersonsPerGeneration[parentGeneration] == null)
-			listOfPersonsPerGeneration[parentGeneration] = new List<Person>();
+		EnsureGenerationExists(parentGeneration);
 		
 		// Get the child person for creating connections
 		var childPerson = getPersonForDataBaseOwnerId(personId, currentGeneration);
@@ -871,6 +880,7 @@ public class Tribe : MonoBehaviour
 				if (motherList.Count > 0)
 				{
 					motherPerson = motherList[0];
+					EnsureGenerationExists(parentGeneration);
 					listOfPersonsPerGeneration[parentGeneration].Add(motherPerson);
 					motherPerson.personNodeGameObject = CreatePersonGameObject(motherPerson, globalSpringType);
 				}
@@ -888,6 +898,7 @@ public class Tribe : MonoBehaviour
 				if (fatherList.Count > 0)
 				{
 					fatherPerson = fatherList[0];
+					EnsureGenerationExists(parentGeneration);
 					listOfPersonsPerGeneration[parentGeneration].Add(fatherPerson);
 					fatherPerson.personNodeGameObject = CreatePersonGameObject(fatherPerson, globalSpringType);
 				}
