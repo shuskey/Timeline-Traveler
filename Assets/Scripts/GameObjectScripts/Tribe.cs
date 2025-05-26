@@ -40,6 +40,9 @@ public class Tribe : MonoBehaviour
 	public GameObject marriageConnectionPrefab;
 	public GameObject hallOfHistoryGameObject;
 	public GameObject hallOfFamilyPhotosGameObject;
+	[SerializeField]
+	[Tooltip("Enable Hall of History feature on person platforms")]
+	private bool EnableHallOfHistory = false;
 	public float marriageEdgepfXScale = 0.4f;
 	public GameObject bubblepf;
 	public GameObject parentPlatformBirthBubble;
@@ -383,7 +386,10 @@ public class Tribe : MonoBehaviour
 		personObjectScript.addMyBirthQualityBubble();
 		personObjectScript.SetGlobalSpringType(globalSpringType);
 		//personObjectScript.SetThumbnailForPerson(rootsMagicFileName, digiKamFileName);
-		personObjectScript.SetHallOfHistoryGameObject(hallOfHistoryGameObject);
+		if (EnableHallOfHistory)
+		{
+			personObjectScript.SetHallOfHistoryGameObject(hallOfHistoryGameObject);
+		}
 		personObjectScript.SetHallOfFamilyPhotosGameObject(hallOfFamilyPhotosGameObject);
 
 		//TODO use gender to set the color of the platform	
@@ -418,7 +424,10 @@ public class Tribe : MonoBehaviour
 
 		var personObjectScript = personGameObject.GetComponent<PersonNode>();
 
-		StartCoroutine(hallOfHistoryGameObject.GetComponent<HallOfHistory>().SetFocusPersonNode(personObjectScript));
+		if (EnableHallOfHistory)
+		{
+			StartCoroutine(hallOfHistoryGameObject.GetComponent<HallOfHistory>().SetFocusPersonNode(personObjectScript));
+		}
 		
 		return playerGameObject;
 	}
@@ -459,7 +468,10 @@ public class Tribe : MonoBehaviour
 		var targetPerson = personNodeGameObjects[personOfInterestIndexInList];
 		teleporter.TeleportTo(targetPerson.transform, new Vector3(0, 0.5f, 0), ticksToHoldHere: 25);
 		var personObjectScript = targetPerson.GetComponent<PersonNode>();
-		StartCoroutine(hallOfHistoryGameObject.GetComponent<HallOfHistory>().SetFocusPersonNode(personObjectScript));
+		if (EnableHallOfHistory)
+		{
+			StartCoroutine(hallOfHistoryGameObject.GetComponent<HallOfHistory>().SetFocusPersonNode(personObjectScript));
+		}
 	}
 
 	private void CreatePlayerFollowCameraObject(GameObject target)

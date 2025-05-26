@@ -108,6 +108,7 @@ public class PersonNode : MonoBehaviour
         personDetailsHandlerScript.DisplayThisPerson(person, currentDate);
 
         StartCoroutine(hallOfFamilyPhotosGameObject.GetComponent<HallOfFamilyPhotos>().SetFocusPersonNode(this));
+        if (hallOfHistoryGameObject != null)  // Game option set in tribe scene 
         StartCoroutine(hallOfHistoryGameObject.GetComponent<HallOfHistory>().SetFocusPersonNode(this));
 
         // Request loading next level of descendancy
