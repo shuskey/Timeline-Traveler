@@ -16,14 +16,16 @@ namespace Assets.Scripts.Utilities
         public ExifOrientation ExifOrientation { get; set; }
         public string PicturePathInArchive { get; set; }
         public string ItemLabel { get; set; }
+        public int TagId { get; set; }
 
-        public PhotoInfo(string fullPathToFileName, Rect region, ExifOrientation orientation, string picturePathInArchive = null, string itemLabel = null)
+        public PhotoInfo(string fullPathToFileName, Rect region, ExifOrientation orientation, string picturePathInArchive = null, string itemLabel = null, int tagId = -1)
         {
             FullPathToFileName = fullPathToFileName;
             Region = region;
             ExifOrientation = orientation;
             PicturePathInArchive = picturePathInArchive ?? fullPathToFileName;
             ItemLabel = itemLabel ?? Path.GetFileNameWithoutExtension(fullPathToFileName);
+            TagId = tagId;
         }
     }
 

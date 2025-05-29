@@ -211,7 +211,9 @@ namespace Assets.Scripts.DataProviders
                 var exitOrientation = (ExifOrientation)orientation;
                 if (!string.IsNullOrEmpty(fullPathToFileName))
                 {
-                    photoInfo = new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation);
+                    var tagIdFromQuery = reader["tagId"] as Int64?;
+                    int tagIdInt = (int)(tagIdFromQuery ?? -1);
+                    photoInfo = new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation, tagId: tagIdInt);
                 }
                 else
                 {
@@ -295,7 +297,7 @@ namespace Assets.Scripts.DataProviders
                            
                             if (!string.IsNullOrEmpty(fullPathToFileName))
                             {
-                                photoList.Add(new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation));
+                                photoList.Add(new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation, tagId: tagId));
                             }
                         }
                     }

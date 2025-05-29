@@ -27,6 +27,7 @@ public class PersonDetailsHandler : MonoBehaviour
     public GameObject currentAgeObject;
     public GameObject dateQualityInformationGameObject;
     public GameObject recordIdGameObject;
+    public GameObject digiKamTagIdGameObject;
 
     private StarterAssetsInputs _input;
     private ThirdPersonController thirdPersonController;
@@ -106,18 +107,44 @@ public class PersonDetailsHandler : MonoBehaviour
                 personObject.gender == Assets.Scripts.Enums.PersonGenderType.Male ? maleImage :
                 personObject.gender == Assets.Scripts.Enums.PersonGenderType.Female ? femaleImage : unknownGenderImage;
 
-        var photoInfo = _pictureProvider.GetThumbnailPhotoInfoForPerson(personObject.dataBaseOwnerId, 2024);
-        if (photoInfo != null)
+        if (_pictureProvider != null && personObject != null)
         {
-            var destinationImagePanel = imageGameObject.GetComponent<Image>();
-            var fallbackTexture = fallbackSprite.texture;
-            // Thumbnails are meant to be cropped to the region of the person
-            StartCoroutine(ImageUtils.SetImagePanelTextureFromPhotoArchive(destinationImagePanel, photoInfo, fallbackTexture, cropToFaceRegion: true));
+            var photoInfo = _pictureProvider.GetThumbnailPhotoInfoForPerson(personObject.dataBaseOwnerId, 2024);
+            if (photoInfo != null)
+            {
+                var destinationImagePanel = imageGameObject.GetComponent<Image>();
+                var fallbackTexture = fallbackSprite.texture;
+                // Thumbnails are meant to be cropped to the region of the person
+                StartCoroutine(ImageUtils.SetImagePanelTextureFromPhotoArchive(destinationImagePanel, photoInfo, fallbackTexture, cropToFaceRegion: true));
+                
+                // Display the DigiKam TagId if available
+                if (digiKamTagIdGameObject != null)
+                {
+                    digiKamTagIdGameObject.GetComponent<Text>().text = photoInfo.TagId != -1 ? $"DigiKam Tag ID: {photoInfo.TagId}" : "DigiKam Tag ID: Not found";
+                }
+            }
+            else
+            {
+                imageGameObject.GetComponent<Image>().sprite = fallbackSprite; 
+                imageGameObject.GetComponent<Image>().transform.localRotation = Quaternion.Euler(0, 0, 0);
+                
+                // Clear DigiKam TagId when no photo info
+                if (digiKamTagIdGameObject != null)
+                {
+                    digiKamTagIdGameObject.GetComponent<Text>().text = "DigiKam Tag ID: No photo found";
+                }
+            }
         }
         else
         {
             imageGameObject.GetComponent<Image>().sprite = fallbackSprite; 
-            imageGameObject.GetComponent<Image>().transform.localRotation = Quaternion.Euler(0, 0, 0);   
+            imageGameObject.GetComponent<Image>().transform.localRotation = Quaternion.Euler(0, 0, 0);
+            
+            // Clear DigiKam TagId when no picture provider or no person
+            if (digiKamTagIdGameObject != null)
+            {
+                digiKamTagIdGameObject.GetComponent<Text>().text = (personObject == null) ? "" : "DigiKam Tag ID: Provider not available";
+            }
         }
     }
 
