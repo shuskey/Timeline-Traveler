@@ -23,6 +23,7 @@ public class FamilyPhotoHallPanel : MonoBehaviour
     private int numberOfEvents = 0;
     private TextMeshPro dateTextFieldName;
     private TextMeshPro titleTextFieldName;
+    private TextMeshPro errorMessageTextFieldName;
     private Texture2D familyPhotoImage_Texture;    
     // --- ADDED FIELDS FOR CLEANUP ---
     private RenderTexture currentRenderTexture; // Track the current RenderTexture
@@ -35,13 +36,56 @@ public class FamilyPhotoHallPanel : MonoBehaviour
         
         dateTextFieldName = textMeshProObjects[0];
         titleTextFieldName = textMeshProObjects[1];
-
+        errorMessageTextFieldName = textMeshProObjects[2];
         familyPhotoImage_Texture = noImageThisEvent_Sprite.texture;
     }
 
     private void Start()
     {
-      
+        // Initially hide the error message
+        HideErrorMessage();
+    }
+
+    private void ShowErrorMessage(string message)
+    {
+        if (errorMessageTextFieldName != null)
+        {
+            errorMessageTextFieldName.text = message;
+            // Show the parent object to make the error message visible
+            if (errorMessageTextFieldName.transform.parent != null)
+            {
+                errorMessageTextFieldName.transform.parent.gameObject.SetActive(true);
+            }
+        }
+    }
+
+    private void HideErrorMessage()
+    {
+        if (errorMessageTextFieldName != null)
+        {
+            errorMessageTextFieldName.text = "";
+            // Hide the parent object to make the error message invisible
+            if (errorMessageTextFieldName.transform.parent != null)
+            {
+                errorMessageTextFieldName.transform.parent.gameObject.SetActive(false);
+            }
+        }
+    }
+
+    private IEnumerator LoadImageWithErrorHandling(Image destinationImagePanel, PhotoInfo photoInfo, Texture2D fallbackTexture)
+    {
+        // Start the image loading coroutine
+        yield return StartCoroutine(ImageUtils.SetImagePanelTextureFromPhotoArchive(destinationImagePanel, photoInfo, fallbackTexture));
+        
+        // After image loading is complete, check for error messages and update the error field
+        if (!string.IsNullOrEmpty(photoInfo.ErrorMessage))
+        {
+            ShowErrorMessage(photoInfo.ErrorMessage);
+        }
+        else
+        {
+            HideErrorMessage();
+        }
     }
 
     public void LoadFamilyPhotosForYearAndPerson(int personOwnerID, int year, PhotoInfo photoInfo)
@@ -60,24 +104,37 @@ public class FamilyPhotoHallPanel : MonoBehaviour
     {
         photoInfoList.Clear();
         numberOfEvents = 0;
+        currentEventIndex = 0; // Reset the event index as well
+        HideErrorMessage();
         DisplayHallPanelImageTexture();
+        // Update the title to reflect that there are no photos
+        titleTextFieldName.text = currentlySelectedEventTitle();
     }
 
     public void DisplayHallPanelImageTexture()
     {
         var destinationImagePanel = GetUICanvasImagePanel();
+        if (destinationImagePanel == null)
+        {
+            ShowErrorMessage("Image panel not found - UI setup error");
+            return;
+        }
+        
         if (numberOfEvents == 0)
         {
             ImageUtils.SetImagePanelTexture(destinationImagePanel, noPhotosThisYear_Sprite.texture);
+            ShowErrorMessage($"No photos found for year {year}");
             return;
         }
         var familPhotoToShow = photoInfoList[currentEventIndex];
         if (string.IsNullOrEmpty(familPhotoToShow.PicturePathInArchive))
         {
             ImageUtils.SetImagePanelTexture(destinationImagePanel, noImageThisEvent_Sprite.texture);
+            string fileName = !string.IsNullOrEmpty(familPhotoToShow.FullPathToFileName) ? familPhotoToShow.FullPathToFileName : "Unknown file";
+            ShowErrorMessage($"No image path available for photo '{fileName}'");
             return;
         }
-        StartCoroutine(ImageUtils.SetImagePanelTextureFromPhotoArchive(destinationImagePanel, familPhotoToShow, noImageThisEvent_Sprite.texture));
+        StartCoroutine(LoadImageWithErrorHandling(destinationImagePanel, familPhotoToShow, noImageThisEvent_Sprite.texture));
     }
 
     public string currentlySelectedEventTitle()

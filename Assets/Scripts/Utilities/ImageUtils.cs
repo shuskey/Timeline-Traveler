@@ -17,6 +17,7 @@ namespace Assets.Scripts.Utilities
         public string PicturePathInArchive { get; set; }
         public string ItemLabel { get; set; }
         public int TagId { get; set; }
+        public string ErrorMessage { get; set; }
 
         public PhotoInfo(string fullPathToFileName, Rect region, ExifOrientation orientation, string picturePathInArchive = null, string itemLabel = null, int tagId = -1)
         {
@@ -26,6 +27,7 @@ namespace Assets.Scripts.Utilities
             PicturePathInArchive = picturePathInArchive ?? fullPathToFileName;
             ItemLabel = itemLabel ?? Path.GetFileNameWithoutExtension(fullPathToFileName);
             TagId = tagId;
+            ErrorMessage = "";
         }
     }
 
@@ -246,6 +248,7 @@ namespace Assets.Scripts.Utilities
                 Debug.LogError($"Error in CreateSpriteFromTexture: {ex.Message}");
                 Debug.LogError("Texture attempted to be created: " + textureToSet.name);
                 Debug.LogError("Texture orientation attempted to be created: " + photoInfo.ExifOrientation);
+                photoInfo.ErrorMessage = $"Failed to create sprite from texture '{photoInfo.PicturePathInArchive}': {ex.Message}";
                 return (null, 0f);
             }
         }
@@ -269,6 +272,23 @@ namespace Assets.Scripts.Utilities
                 downloaded = fallbackTexture;
                 photoInfo.ExifOrientation = ExifOrientation.TopLeft;
                 photoInfo.Region = new Rect(0, 0, 0, 0);
+                photoInfo.ErrorMessage = $"Network protocol error for '{photoInfo.PicturePathInArchive}': {request.error}";
+            }
+            else if (request.result == UnityWebRequest.Result.ConnectionError)
+            {
+                Debug.LogWarning($"Connection error downloading photo:{photoInfo.PicturePathInArchive} error: {request.error}");
+                downloaded = fallbackTexture;
+                photoInfo.ExifOrientation = ExifOrientation.TopLeft;
+                photoInfo.Region = new Rect(0, 0, 0, 0);
+                photoInfo.ErrorMessage = $"Connection error for '{photoInfo.PicturePathInArchive}': {request.error}";
+            }
+            else if (request.result == UnityWebRequest.Result.DataProcessingError)
+            {
+                Debug.LogWarning($"Data processing error downloading photo:{photoInfo.PicturePathInArchive} error: {request.error}");
+                downloaded = fallbackTexture;
+                photoInfo.ExifOrientation = ExifOrientation.TopLeft;
+                photoInfo.Region = new Rect(0, 0, 0, 0);
+                photoInfo.ErrorMessage = $"Data processing error for '{photoInfo.PicturePathInArchive}': {request.error}";
             }
             else
             {
@@ -279,6 +299,12 @@ namespace Assets.Scripts.Utilities
                     downloaded = fallbackTexture;
                     photoInfo.ExifOrientation = ExifOrientation.TopLeft;
                     photoInfo.Region = new Rect(0, 0, 0, 0);
+                    photoInfo.ErrorMessage = $"Downloaded image data is null for '{photoInfo.PicturePathInArchive}' - using fallback image";
+                }
+                else
+                {
+                    // Clear error message on successful download
+                    photoInfo.ErrorMessage = "";
                 }
             }
             yield return (downloaded, photoInfo);

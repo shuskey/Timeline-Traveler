@@ -1,5 +1,5 @@
 -- RootsMagic to digiKam tag import
--- Generated: Sun May 18 11:41:01 2025
+-- Generated: Thu May 29 13:25:13 2025
 
 --
 -- INSTRUCTIONS FOR IMPORTING TAGS INTO DIGIKAM:
@@ -782,10 +782,10 @@ INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'EXIF4 Bottom-left 
 INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '151' FROM Tags t WHERE t.name='EXIF4 Bottom-left Test 2004-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
 INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'EXIF4 Bottom-left Test 2004-unknown' FROM Tags t WHERE t.name='EXIF4 Bottom-left Test 2004-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
 
--- Create tag for: EXIT5 Left-top Test 2005-unknown
-INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'EXIT5 Left-top Test 2005-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
-INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '152' FROM Tags t WHERE t.name='EXIT5 Left-top Test 2005-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
-INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'EXIT5 Left-top Test 2005-unknown' FROM Tags t WHERE t.name='EXIT5 Left-top Test 2005-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+-- Create tag for: EXIF5 Left-top Test 2005-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'EXIF5 Left-top Test 2005-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '152' FROM Tags t WHERE t.name='EXIF5 Left-top Test 2005-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'EXIF5 Left-top Test 2005-unknown' FROM Tags t WHERE t.name='EXIF5 Left-top Test 2005-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
 
 -- Create tag for: EXIF6 Right-top Test 2006-unknown
 INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'EXIF6 Right-top Test 2006-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
@@ -802,9 +802,44 @@ INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'EXIF8  Left-bottom
 INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '155' FROM Tags t WHERE t.name='EXIF8  Left-bottom Test 2008-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
 INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'EXIF8  Left-bottom Test 2008-unknown' FROM Tags t WHERE t.name='EXIF8  Left-bottom Test 2008-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
 
--- Create tag for: Exif Mom Test unknown-unknown
-INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'Exif Mom Test unknown-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
-INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '156' FROM Tags t WHERE t.name='Exif Mom Test unknown-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
-INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'Exif Mom Test unknown-unknown' FROM Tags t WHERE t.name='Exif Mom Test unknown-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+-- Create tag for: Exif Mom Test 1981-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'Exif Mom Test 1981-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '156' FROM Tags t WHERE t.name='Exif Mom Test 1981-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'Exif Mom Test 1981-unknown' FROM Tags t WHERE t.name='Exif Mom Test 1981-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+
+-- Create tag for: File Formats Test 1950-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'File Formats Test 1950-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '157' FROM Tags t WHERE t.name='File Formats Test 1950-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'File Formats Test 1950-unknown' FROM Tags t WHERE t.name='File Formats Test 1950-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+
+-- Create tag for: Bad Formats Dad Test 1983-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'Bad Formats Dad Test 1983-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '158' FROM Tags t WHERE t.name='Bad Formats Dad Test 1983-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'Bad Formats Dad Test 1983-unknown' FROM Tags t WHERE t.name='Bad Formats Dad Test 1983-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+
+-- Create tag for: Bad Formats Mom Testing 1983-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'Bad Formats Mom Testing 1983-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '159' FROM Tags t WHERE t.name='Bad Formats Mom Testing 1983-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'Bad Formats Mom Testing 1983-unknown' FROM Tags t WHERE t.name='Bad Formats Mom Testing 1983-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+
+-- Create tag for: Format 1 Test 2000-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'Format 1 Test 2000-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '160' FROM Tags t WHERE t.name='Format 1 Test 2000-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'Format 1 Test 2000-unknown' FROM Tags t WHERE t.name='Format 1 Test 2000-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+
+-- Create tag for: Format 2 Test 2003-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'Format 2 Test 2003-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '161' FROM Tags t WHERE t.name='Format 2 Test 2003-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'Format 2 Test 2003-unknown' FROM Tags t WHERE t.name='Format 2 Test 2003-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+
+-- Create tag for: Format 3 Test 2006-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'Format 3 Test 2006-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '162' FROM Tags t WHERE t.name='Format 3 Test 2006-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'Format 3 Test 2006-unknown' FROM Tags t WHERE t.name='Format 3 Test 2006-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
+
+-- Create tag for: Format 4 Test 2009-unknown
+INSERT OR IGNORE INTO Tags (name, pid, icon, iconkde) SELECT 'Format 4 Test 2009-unknown', id, NULL, 'user' FROM Tags WHERE name='RootsMagic';
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'rootsmagic_owner_id', '163' FROM Tags t WHERE t.name='Format 4 Test 2009-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'rootsmagic_owner_id');
+INSERT OR IGNORE INTO TagProperties (tagid, property, value) SELECT t.id, 'person', 'Format 4 Test 2009-unknown' FROM Tags t WHERE t.name='Format 4 Test 2009-unknown' AND NOT EXISTS (SELECT 1 FROM TagProperties tp                WHERE tp.tagid = t.id                AND tp.property = 'person');
 
 COMMIT;

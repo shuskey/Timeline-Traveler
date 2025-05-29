@@ -28,6 +28,7 @@ public class PersonDetailsHandler : MonoBehaviour
     public GameObject dateQualityInformationGameObject;
     public GameObject recordIdGameObject;
     public GameObject digiKamTagIdGameObject;
+    public GameObject errorMessageTextField;
 
     private StarterAssetsInputs _input;
     private ThirdPersonController thirdPersonController;
@@ -87,6 +88,12 @@ public class PersonDetailsHandler : MonoBehaviour
     {
         personObject = null;
         DisplayThisPerson(personObject);
+        
+        // Clear error message when clearing person display
+        if (errorMessageTextField != null)
+        {
+            errorMessageTextField.GetComponent<Text>().text = "";
+        }
     }
 
     public void DisplayThisPerson(Person personToDisplay, int currentDate = 0)
@@ -115,7 +122,7 @@ public class PersonDetailsHandler : MonoBehaviour
                 var destinationImagePanel = imageGameObject.GetComponent<Image>();
                 var fallbackTexture = fallbackSprite.texture;
                 // Thumbnails are meant to be cropped to the region of the person
-                StartCoroutine(ImageUtils.SetImagePanelTextureFromPhotoArchive(destinationImagePanel, photoInfo, fallbackTexture, cropToFaceRegion: true));
+                StartCoroutine(LoadImageWithErrorHandling(destinationImagePanel, photoInfo, fallbackTexture, true));
                 
                 // Display the DigiKam TagId if available
                 if (digiKamTagIdGameObject != null)
@@ -133,6 +140,13 @@ public class PersonDetailsHandler : MonoBehaviour
                 {
                     digiKamTagIdGameObject.GetComponent<Text>().text = "DigiKam Tag ID: No photo found";
                 }
+                
+                // Set error message for no photo available
+                if (errorMessageTextField != null)
+                {
+                    string personName = $"{personObject.givenName} {personObject.surName}".Trim();
+                    errorMessageTextField.GetComponent<Text>().text = $"No Image Available for {personName} (ID: {personObject.dataBaseOwnerId})";
+                }
             }
         }
         else
@@ -144,6 +158,25 @@ public class PersonDetailsHandler : MonoBehaviour
             if (digiKamTagIdGameObject != null)
             {
                 digiKamTagIdGameObject.GetComponent<Text>().text = (personObject == null) ? "" : "DigiKam Tag ID: Provider not available";
+            }
+            
+            // Set appropriate error message based on the condition
+            if (errorMessageTextField != null)
+            {
+                if (personObject == null)
+                {
+                    errorMessageTextField.GetComponent<Text>().text = "";
+                }
+                else if (_pictureProvider == null)
+                {
+                    string personName = $"{personObject.givenName} {personObject.surName}".Trim();
+                    errorMessageTextField.GetComponent<Text>().text = $"Image provider not configured for {personName} (ID: {personObject.dataBaseOwnerId})";
+                }
+                else
+                {
+                    string personName = $"{personObject.givenName} {personObject.surName}".Trim();
+                    errorMessageTextField.GetComponent<Text>().text = $"Image provider unavailable for {personName} (ID: {personObject.dataBaseOwnerId})";
+                }
             }
         }
     }
@@ -169,5 +202,24 @@ public class PersonDetailsHandler : MonoBehaviour
     public void OnStartInputAction()
     {
         resetSceneToThisRootPerson();
+    }
+
+    private IEnumerator LoadImageWithErrorHandling(Image destinationImagePanel, PhotoInfo photoInfo, Texture2D fallbackTexture, bool cropToFaceRegion)
+    {
+        // Start the image loading coroutine
+        yield return StartCoroutine(ImageUtils.SetImagePanelTextureFromPhotoArchive(destinationImagePanel, photoInfo, fallbackTexture, cropToFaceRegion));
+        
+        // After image loading is complete, check for error messages and update the error field
+        if (errorMessageTextField != null)
+        {
+            if (!string.IsNullOrEmpty(photoInfo.ErrorMessage))
+            {
+                errorMessageTextField.GetComponent<Text>().text = photoInfo.ErrorMessage;
+            }
+            else
+            {
+                errorMessageTextField.GetComponent<Text>().text = "";
+            }
+        }
     }
 } 
