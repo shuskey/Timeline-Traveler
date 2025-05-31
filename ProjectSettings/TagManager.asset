@@ -6,11 +6,17 @@ TagManager:
   tags:
   - CinemachineTarget
   - GenderColor
+  - PersonDetailsPanel
+  - EventDetailsPanel
+  - TimeBarrier
+  - FamilyPhotoDetailsPanel
+  - PersonName
+  - ChildName
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - Interactable Panels
   - Water
   - UI
   - 

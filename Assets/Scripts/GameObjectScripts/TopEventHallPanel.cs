@@ -8,7 +8,7 @@ using UnityEngine.Networking;
 using Assets.Scripts.DataProviders;
 using UnityEngine.UI;
 
-public class TopEventHallPanel : MonoBehaviour
+public class TopEventHallPanel : MonoBehaviour, IInteractablePanel
 {    
     public string topEventsDataBaseFileName;
     public Texture2D noEventsThisYear_Texture;

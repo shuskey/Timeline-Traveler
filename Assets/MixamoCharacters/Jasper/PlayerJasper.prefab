@@ -815,6 +815,7 @@ GameObject:
   - component: {fileID: 8916545566975811900}
   - component: {fileID: -3255266203251106704}
   - component: {fileID: 1333330615125456910}
+  - component: {fileID: 1791100949536631717}
   m_Layer: 8
   m_Name: PlayerJasper
   m_TagString: Player
@@ -1067,6 +1068,9 @@ MonoBehaviour:
   onDebugNextPersonOfInterest:
     m_PersistentCalls:
       m_Calls: []
+  onDebugPreviousPersonOfInterest:
+    m_PersistentCalls:
+      m_Calls: []
   onZCoordinateChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -1089,6 +1093,10 @@ MonoBehaviour:
   menu: 0
   start: 0
   debugNextPersonOfInterest: 0
+  debugPreviousPersonOfInterest: 0
+  previous: 0
+  next: 0
+  interact: 0
   analogMovement: 0
   cursorLocked: 1
   cursorInputForLook: 1
@@ -1105,6 +1113,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   depthOfFallWhenIDie: -30
+--- !u!114 &1791100949536631717
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1436149188537377315}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 26f9df557d59bf0469d88a1c086389a3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  layerMask:
+    serializedVersion: 2
+    m_Bits: 8
+  maxDistance: 10
+  nameOfInteractableDescriptionfield: 
 --- !u!1 &1465847704762027382
 GameObject:
   m_ObjectHideFlags: 0

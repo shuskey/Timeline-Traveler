@@ -12,7 +12,7 @@ using UnityEngine.UI;
 using Random = UnityEngine.Random;
 using Assets.Scripts.Utilities;
 
-public class FamilyPhotoHallPanel : MonoBehaviour
+public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
 {    
     public Sprite noPhotosThisYear_Sprite;
     public Sprite noImageThisEvent_Sprite;
@@ -28,6 +28,9 @@ public class FamilyPhotoHallPanel : MonoBehaviour
     // --- ADDED FIELDS FOR CLEANUP ---
     private RenderTexture currentRenderTexture; // Track the current RenderTexture
     private Texture2D currentDownloadedTexture; // Track the current downloaded Texture2D
+    
+    // Details handler reference
+    private FamilyPhotoDetailsHandler familyPhotoDetailsHandlerScript;
 
     // Awake is called when instantiated
     void Awake()
@@ -44,6 +47,17 @@ public class FamilyPhotoHallPanel : MonoBehaviour
     {
         // Initially hide the error message
         HideErrorMessage();
+        
+        // Find the photo details panel
+        GameObject[] familyPhotoDetailsPanel = GameObject.FindGameObjectsWithTag("FamilyPhotoDetailsPanel");
+        if (familyPhotoDetailsPanel.Length > 0)
+        {
+            familyPhotoDetailsHandlerScript = familyPhotoDetailsPanel[0].transform.GetComponent<FamilyPhotoDetailsHandler>();
+        }
+        else
+        {
+            Debug.LogWarning("FamilyPhotoDetailsPanel not found! Make sure there's a GameObject with tag 'FamilyPhotoDetailsPanel'");
+        }
     }
 
     private void ShowErrorMessage(string message)
@@ -77,6 +91,16 @@ public class FamilyPhotoHallPanel : MonoBehaviour
         // Start the image loading coroutine
         yield return StartCoroutine(ImageUtils.SetImagePanelTextureFromPhotoArchive(destinationImagePanel, photoInfo, fallbackTexture));
         
+        // Store the current texture for the details panel
+        if (destinationImagePanel.sprite != null && destinationImagePanel.sprite.texture != null)
+        {
+            familyPhotoImage_Texture = destinationImagePanel.sprite.texture as Texture2D;
+        }
+        else
+        {
+            familyPhotoImage_Texture = fallbackTexture;
+        }
+        
         // After image loading is complete, check for error messages and update the error field
         if (!string.IsNullOrEmpty(photoInfo.ErrorMessage))
         {
@@ -92,8 +116,26 @@ public class FamilyPhotoHallPanel : MonoBehaviour
     {
         this.year = year;
         
+        photoInfoList.Clear();
         photoInfoList.Add(photoInfo);
-        numberOfEvents = 1;
+        numberOfEvents = photoInfoList.Count;
+        currentEventIndex = 0;
+        DisplayHallPanelImageTexture();
+        dateTextFieldName.text = year.ToString();
+        titleTextFieldName.text = currentlySelectedEventTitle();
+    }
+
+    public void LoadFamilyPhotosForYearAndPerson(int personOwnerID, int year, List<PhotoInfo> photoInfos)
+    {
+        this.year = year;
+        
+        photoInfoList.Clear();
+        if (photoInfos != null && photoInfos.Count > 0)
+        {
+            photoInfoList.AddRange(photoInfos);
+        }
+        numberOfEvents = photoInfoList.Count;
+        currentEventIndex = 0;
         DisplayHallPanelImageTexture();
         dateTextFieldName.text = year.ToString();
         titleTextFieldName.text = currentlySelectedEventTitle();
@@ -174,6 +216,90 @@ public class FamilyPhotoHallPanel : MonoBehaviour
             return null;
         }
         return image;
+    }
+
+    // IInteractablePanel implementation
+    public void DisplayDetailsInEventDetailsPanel()
+    {
+        Debug.Log($"[FamilyPhotoHallPanel] DisplayDetailsInEventDetailsPanel called. numberOfEvents: {numberOfEvents}, familyPhotoDetailsHandlerScript null: {familyPhotoDetailsHandlerScript == null}");
+        
+        if (numberOfEvents != 0 && familyPhotoDetailsHandlerScript != null)
+        {
+            var currentPhoto = photoInfoList[currentEventIndex];
+            Debug.Log($"[FamilyPhotoHallPanel] Displaying photo: {currentPhoto?.ItemLabel} for year {year}");
+            
+            familyPhotoDetailsHandlerScript.DisplayThisPhoto(currentPhoto,
+                                                     currentEventIndex,
+                                                     numberOfEvents,
+                                                     familyPhotoImage_Texture,
+                                                     year);
+        }
+        else
+        {
+            Debug.LogWarning($"[FamilyPhotoHallPanel] Cannot display details - numberOfEvents: {numberOfEvents}, handler is null: {familyPhotoDetailsHandlerScript == null}");
+        }
+    }
+
+    public void ClearEventDetailsPanel()
+    {
+        if (familyPhotoDetailsHandlerScript != null)
+        {
+            familyPhotoDetailsHandlerScript.ClearPhotoDisplay();
+        }
+    }
+
+    public void NextEventInPanel()
+    {
+        if (numberOfEvents > 1)
+        {
+            currentEventIndex++;
+            if (currentEventIndex >= numberOfEvents)
+                currentEventIndex = 0;
+            DisplayHallPanelImageTexture();
+            titleTextFieldName.text = currentlySelectedEventTitle();
+        }
+    }
+
+    public void PreviousEventInPanel()
+    {
+        if (numberOfEvents > 1)
+        {
+            currentEventIndex--;
+            if (currentEventIndex < 0)
+                currentEventIndex = numberOfEvents - 1;
+            DisplayHallPanelImageTexture();
+            titleTextFieldName.text = currentlySelectedEventTitle();
+        }
+    }
+
+    public void InteractWithPanel()
+    {
+        if (numberOfEvents != 0)
+        {
+            var currentPhoto = photoInfoList[currentEventIndex];
+            if (!string.IsNullOrEmpty(currentPhoto.FullPathToFileName))
+            {
+                try
+                {
+                    // Open the photo in the default system image viewer
+                    System.Diagnostics.Process.Start(currentPhoto.FullPathToFileName);
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogWarning($"Could not open photo: {ex.Message}");
+                    // Fallback: try opening the directory containing the photo
+                    try
+                    {
+                        string directory = System.IO.Path.GetDirectoryName(currentPhoto.FullPathToFileName);
+                        System.Diagnostics.Process.Start(directory);
+                    }
+                    catch (System.Exception ex2)
+                    {
+                        Debug.LogError($"Could not open photo or directory: {ex2.Message}");
+                    }
+                }
+            }
+        }
     }
 
     void OnDestroy()

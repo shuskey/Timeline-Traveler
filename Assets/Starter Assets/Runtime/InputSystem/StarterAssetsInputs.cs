@@ -19,6 +19,11 @@ namespace StarterAssets
 		public bool start;
 		public bool debugNextPersonOfInterest;
 		public bool debugPreviousPersonOfInterest;
+		
+		[Header("Interaction Input Values")]
+		public bool previous;
+		public bool next;
+		public bool interact;
 
 		[Header("Movement Settings")]
 		public bool analogMovement;
@@ -69,6 +74,21 @@ namespace StarterAssets
 		public void OnDebugPreviousPersonOfInterest(InputValue value)
 		{
 			DebugPreviousPersonOfInterestInput(value.isPressed);
+		}
+
+		public void OnPrevious(InputValue value)
+		{
+			PreviousInput(value.isPressed);
+		}
+
+		public void OnNext(InputValue value)
+		{
+			NextInput(value.isPressed);
+		}
+
+		public void OnInteract(InputValue value)
+		{
+			InteractInput(value.isPressed);
 		}
 #endif
 
@@ -121,6 +141,21 @@ namespace StarterAssets
 		private void DebugPreviousPersonOfInterestInput(bool newDebugPreviousPersonOfInterestState)
 		{
 			debugPreviousPersonOfInterest = newDebugPreviousPersonOfInterestState;
+		}
+		
+		private void PreviousInput(bool newPreviousState)
+		{
+			previous = newPreviousState;
+		}
+
+		private void NextInput(bool newNextState)
+		{
+			next = newNextState;
+		}
+
+		private void InteractInput(bool newInteractState)
+		{
+			interact = newInteractState;
 		}
 		
 	}
