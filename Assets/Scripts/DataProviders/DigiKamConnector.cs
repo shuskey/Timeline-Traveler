@@ -180,11 +180,22 @@ namespace Assets.Scripts.DataProviders
                     TRIM(images.name, '/') as ""fullPathToFileName"",
                     info.width as imageWidth,
                     info.height as imageHeight,
+                    info.rating as imageRating,
+                    info.creationDate as creationDate,
+                    info.digitizationDate as digitizationDate,
                     region.value as ""region"",
-                    tnails.data as 'PGFImageData'
+                    tnails.data as 'PGFImageData',
+                    metadata.make as cameraMake,
+                    metadata.model as cameraModel,
+                    metadata.lens as cameraLens,
+                    positions.latitudeNumber as positionLatitude,
+                    positions.longitudeNumber as positionLongitude,
+                    positions.altitude as positionAltitude
                 FROM Tags tags
                 LEFT JOIN Images images ON tags.icon = images.id
                 LEFT JOIN ImageInformation info ON images.id = info.imageid
+                LEFT JOIN ImageMetadata metadata ON images.id = metadata.imageid
+                LEFT JOIN ImagePositions positions ON images.id = positions.imageid
                 LEFT JOIN Albums albums ON images.album = albums.id
                 LEFT JOIN ImageTagProperties region ON tags.icon = region.imageid AND tags.id = region.tagid
                 INNER JOIN [thumbnails-digikam].FilePaths paths ON fullPathToFileName = paths.path
@@ -201,6 +212,32 @@ namespace Assets.Scripts.DataProviders
                 string region = reader["region"] as string;
                 var imageWidth = (float)((reader["imageWidth"] as Int64?) ?? 0);
                 var imageHeight = (float)((reader["imageHeight"] as Int64?) ?? 0);
+                var imageRating = (int)((reader["imageRating"] as Int64?) ?? 0);
+                
+                // Handle datetime fields
+                DateTime? creationDate = null;
+                DateTime? digitizationDate = null;
+                if (reader["creationDate"] != DBNull.Value && reader["creationDate"] != null)
+                {
+                    if (DateTime.TryParse(reader["creationDate"].ToString(), out DateTime creation))
+                        creationDate = creation;
+                }
+                if (reader["digitizationDate"] != DBNull.Value && reader["digitizationDate"] != null)
+                {
+                    if (DateTime.TryParse(reader["digitizationDate"].ToString(), out DateTime digitization))
+                        digitizationDate = digitization;
+                }
+                
+                // Handle camera metadata
+                string cameraMake = reader["cameraMake"] as string ?? "";
+                string cameraModel = reader["cameraModel"] as string ?? "";
+                string cameraLens = reader["cameraLens"] as string ?? "";
+                
+                // Handle GPS coordinates
+                float positionLatitude = (float)((reader["positionLatitude"] as double?) ?? 0.0);
+                float positionLongitude = (float)((reader["positionLongitude"] as double?) ?? 0.0);
+                float positionAltitude = (float)((reader["positionAltitude"] as double?) ?? 0.0);
+                
                 // Parse XML string
                 Rect faceRegion = ImageUtils.ParseRegionXml(region, imageWidth, imageHeight);
                 // orientation is an INT64 in the DB
@@ -213,7 +250,13 @@ namespace Assets.Scripts.DataProviders
                 {
                     var tagIdFromQuery = reader["tagId"] as Int64?;
                     int tagIdInt = (int)(tagIdFromQuery ?? -1);
-                    photoInfo = new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation, tagId: tagIdInt);
+                    var imageId = (int)((reader["imageId"] as Int64?) ?? -1);
+                    photoInfo = new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation, 
+                                            tagId: tagIdInt, imageId: imageId, imageRating: imageRating,
+                                            creationDate: creationDate, digitizationDate: digitizationDate,
+                                            cameraMake: cameraMake, cameraModel: cameraModel, cameraLens: cameraLens,
+                                            positionLatitude: positionLatitude, positionLongitude: positionLongitude, 
+                                            positionAltitude: positionAltitude);
                 }
                 else
                 {
@@ -266,13 +309,25 @@ namespace Assets.Scripts.DataProviders
                               END
                               || images.name 
                             as ""fullPathToFileName"",
+                            images.id as ""imageId"",
                             region.value as ""region"",
                             info.width as imageWidth,
                             info.height as imageHeight,
-                            info.orientation as orientation
+                            info.orientation as orientation,
+                            info.rating as imageRating,
+                            info.creationDate as creationDate,
+                            info.digitizationDate as digitizationDate,
+                            metadata.make as cameraMake,
+                            metadata.model as cameraModel,
+                            metadata.lens as cameraLens,
+                            positions.latitudeNumber as positionLatitude,
+                            positions.longitudeNumber as positionLongitude,
+                            positions.altitude as positionAltitude
                       FROM ImageTags imagetags
                       LEFT JOIN Images images ON imagetags.imageid = images.id
                       LEFT JOIN ImageInformation info ON images.id = info.imageid 
+                      LEFT JOIN ImageMetadata metadata ON images.id = metadata.imageid
+                      LEFT JOIN ImagePositions positions ON images.id = positions.imageid
                       LEFT JOIN Albums albums ON images.album = albums.id
                       LEFT JOIN ImageTagProperties region ON imagetags.imageid = region.imageid AND imagetags.tagid = region.tagid 
                       WHERE imagetags.tagid={tagId}";
@@ -286,6 +341,32 @@ namespace Assets.Scripts.DataProviders
                             string region = reader["region"] as string;
                             var imageWidth = (float)((reader["imageWidth"] as Int64?) ?? 0);
                             var imageHeight = (float)((reader["imageHeight"] as Int64?) ?? 0);
+                            var imageRating = (int)((reader["imageRating"] as Int64?) ?? 0);
+                            var imageId = (int)((reader["imageId"] as Int64?) ?? -1);
+                            
+                            // Handle datetime fields
+                            DateTime? creationDate = null;
+                            DateTime? digitizationDate = null;
+                            if (reader["creationDate"] != DBNull.Value && reader["creationDate"] != null)
+                            {
+                                if (DateTime.TryParse(reader["creationDate"].ToString(), out DateTime creation))
+                                    creationDate = creation;
+                            }
+                            if (reader["digitizationDate"] != DBNull.Value && reader["digitizationDate"] != null)
+                            {
+                                if (DateTime.TryParse(reader["digitizationDate"].ToString(), out DateTime digitization))
+                                    digitizationDate = digitization;
+                            }
+                            
+                            // Handle camera metadata
+                            string cameraMake = reader["cameraMake"] as string ?? "";
+                            string cameraModel = reader["cameraModel"] as string ?? "";
+                            string cameraLens = reader["cameraLens"] as string ?? "";
+                            
+                            // Handle GPS coordinates
+                            float positionLatitude = (float)((reader["positionLatitude"] as double?) ?? 0.0);
+                            float positionLongitude = (float)((reader["positionLongitude"] as double?) ?? 0.0);
+                            float positionAltitude = (float)((reader["positionAltitude"] as double?) ?? 0.0);
                             
                             Rect faceRegion = ImageUtils.ParseRegionXml(region, imageWidth, imageHeight);
                             var orient64 = reader["orientation"] as Int64?;
@@ -297,7 +378,12 @@ namespace Assets.Scripts.DataProviders
                            
                             if (!string.IsNullOrEmpty(fullPathToFileName))
                             {
-                                photoList.Add(new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation, tagId: tagId));
+                                photoList.Add(new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation, 
+                                                          tagId: tagId, imageId: imageId, imageRating: imageRating,
+                                                          creationDate: creationDate, digitizationDate: digitizationDate,
+                                                          cameraMake: cameraMake, cameraModel: cameraModel, cameraLens: cameraLens,
+                                                          positionLatitude: positionLatitude, positionLongitude: positionLongitude, 
+                                                          positionAltitude: positionAltitude));
                             }
                         }
                     }

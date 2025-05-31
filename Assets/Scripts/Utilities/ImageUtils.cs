@@ -18,8 +18,25 @@ namespace Assets.Scripts.Utilities
         public string ItemLabel { get; set; }
         public int TagId { get; set; }
         public string ErrorMessage { get; set; }
+        
+        // Extended database fields
+        public int ImageId { get; set; }
+        public int ImageRating { get; set; }
+        public DateTime? CreationDate { get; set; }
+        public DateTime? DigitizationDate { get; set; }
+        public string CameraMake { get; set; }
+        public string CameraModel { get; set; }
+        public string CameraLens { get; set; }
+        public float PositionLatitude { get; set; }
+        public float PositionLongitude { get; set; }
+        public float PositionAltitude { get; set; }
 
-        public PhotoInfo(string fullPathToFileName, Rect region, ExifOrientation orientation, string picturePathInArchive = null, string itemLabel = null, int tagId = -1)
+        public PhotoInfo(string fullPathToFileName, Rect region, ExifOrientation orientation, 
+                        string picturePathInArchive = null, string itemLabel = null, int tagId = -1,
+                        int imageId = -1, int imageRating = 0, DateTime? creationDate = null, 
+                        DateTime? digitizationDate = null, string cameraMake = null, 
+                        string cameraModel = null, string cameraLens = null,
+                        float positionLatitude = 0f, float positionLongitude = 0f, float positionAltitude = 0f)
         {
             FullPathToFileName = fullPathToFileName;
             Region = region;
@@ -28,6 +45,18 @@ namespace Assets.Scripts.Utilities
             ItemLabel = itemLabel ?? Path.GetFileNameWithoutExtension(fullPathToFileName);
             TagId = tagId;
             ErrorMessage = "";
+            
+            // Initialize extended fields
+            ImageId = imageId;
+            ImageRating = imageRating;
+            CreationDate = creationDate;
+            DigitizationDate = digitizationDate;
+            CameraMake = cameraMake ?? "";
+            CameraModel = cameraModel ?? "";
+            CameraLens = cameraLens ?? "";
+            PositionLatitude = positionLatitude;
+            PositionLongitude = positionLongitude;
+            PositionAltitude = positionAltitude;
         }
     }
 
