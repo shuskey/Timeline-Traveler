@@ -74,14 +74,12 @@ public class ClickToInteract : MonoBehaviour
         // Clear Previous if applicable
         if (previousItemToInteractWith != null && previousItemToInteractWith != itemToInteractWith)
         {
-            Debug.Log($"[ClickToInteract] Clearing previous item: {previousItemToInteractWith.GetType().Name}");
             previousItemToInteractWith.ClearEventDetailsPanel();
             previousItemToInteractWith = null;
         }
         // Select Current if applicable
         if (itemToInteractWith != null)
         {
-            Debug.Log($"[ClickToInteract] Selecting new item: {itemToInteractWith.GetType().Name}");
             previousItemToInteractWith = itemToInteractWith;
             itemToInteractWith.DisplayDetailsInEventDetailsPanel();
         }
@@ -96,24 +94,12 @@ public class ClickToInteract : MonoBehaviour
 
         if (Physics.Raycast(ray, out hitInfo, maxDistance, layerMask))
         {
-            Debug.Log($"[ClickToInteract] Raycast hit: {hitInfo.collider.name} on layer {hitInfo.collider.gameObject.layer}");
-            
             // Try to get a component that implements IInteractablePanel
             var panel = hitInfo.collider.GetComponent<TopEventHallPanel>();
-            if (panel != null) 
-            {
-                Debug.Log($"[ClickToInteract] Found TopEventHallPanel: {hitInfo.collider.name}");
-                return panel;
-            }
+            if (panel != null) return panel;
             
             var photoPanel = hitInfo.collider.GetComponent<FamilyPhotoHallPanel>();
-            if (photoPanel != null) 
-            {
-                Debug.Log($"[ClickToInteract] Found FamilyPhotoHallPanel: {hitInfo.collider.name}");
-                return photoPanel;
-            }
-            
-            Debug.LogWarning($"[ClickToInteract] Hit object {hitInfo.collider.name} but no IInteractablePanel component found");
+            if (photoPanel != null) return photoPanel;
         }
         return null;
     }

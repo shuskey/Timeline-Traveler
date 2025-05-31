@@ -22,8 +22,8 @@ public class FamilyPhotoDetailsHandler : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        // Removed HideDetailsDialog() to make it behave like PersonDetailsHandler
-        // The panel will now be visible by default until explicitly hidden
+        HideDetailsDialog();
+        // This will become visible when an interaction occurs
     }
 
     public void ClearPhotoDisplay()
