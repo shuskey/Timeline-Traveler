@@ -143,18 +143,20 @@ public class FamilyPhotoDetailsHandler : MonoBehaviour
         if (photo.PositionLatitude != 0 || photo.PositionLongitude != 0)
         {
             var gpsInfo = new System.Text.StringBuilder();
-            gpsInfo.AppendLine($"Lat: {photo.PositionLatitude:F6}°");
-            gpsInfo.AppendLine($"Lng: {photo.PositionLongitude:F6}°");
+            gpsInfo.AppendLine($"Lat: {photo.PositionLatitude:F6}° Lng: {photo.PositionLongitude:F6}°");
             
             if (photo.PositionAltitude != 0)
             {
                 gpsInfo.AppendLine($"Alt: {photo.PositionAltitude:F1}m");
             }
             
-            return gpsInfo.ToString().Trim();
+            string result = gpsInfo.ToString().Trim();
+            return result;
         }
-        
-        return "No GPS data";
+        else
+        {
+            return "No GPS data";
+        }
     }
 
     private void ShowDetailsDialog()

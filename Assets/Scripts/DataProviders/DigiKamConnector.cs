@@ -234,9 +234,9 @@ namespace Assets.Scripts.DataProviders
                 string cameraLens = reader["cameraLens"] as string ?? "";
                 
                 // Handle GPS coordinates
-                float positionLatitude = (float)((reader["positionLatitude"] as double?) ?? 0.0);
-                float positionLongitude = (float)((reader["positionLongitude"] as double?) ?? 0.0);
-                float positionAltitude = (float)((reader["positionAltitude"] as double?) ?? 0.0);
+                float positionLatitude = (float)((reader["positionLatitude"] as float?) ?? 0.0f);
+                float positionLongitude = (float)((reader["positionLongitude"] as float?) ?? 0.0f);
+                float positionAltitude = (float)((reader["positionAltitude"] as float?) ?? 0.0f);
                 
                 // Parse XML string
                 Rect faceRegion = ImageUtils.ParseRegionXml(region, imageWidth, imageHeight);
@@ -364,10 +364,11 @@ namespace Assets.Scripts.DataProviders
                             string cameraLens = reader["cameraLens"] as string ?? "";
                             
                             // Handle GPS coordinates
-                            float positionLatitude = (float)((reader["positionLatitude"] as double?) ?? 0.0);
-                            float positionLongitude = (float)((reader["positionLongitude"] as double?) ?? 0.0);
-                            float positionAltitude = (float)((reader["positionAltitude"] as double?) ?? 0.0);
+                            float positionLatitude = (float)((reader["positionLatitude"] as float?) ?? 0.0f);
+                            float positionLongitude = (float)((reader["positionLongitude"] as float?) ?? 0.0f);
+                            float positionAltitude = (float)((reader["positionAltitude"] as float?) ?? 0.0f);
                             
+                            // Parse XML string
                             Rect faceRegion = ImageUtils.ParseRegionXml(region, imageWidth, imageHeight);
                             var orient64 = reader["orientation"] as Int64?;
                             // orientation is an INT64 in the DB
