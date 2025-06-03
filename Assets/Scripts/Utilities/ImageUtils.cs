@@ -17,7 +17,7 @@ namespace Assets.Scripts.Utilities
         public Rect Region { get; set; }
         public ExifOrientation ExifOrientation { get; set; }
         public string PicturePathInArchive { get; set; }
-        public string ItemLabel { get; set; }
+        public string FileName { get; set; }
         public int TagId { get; set; }
         public string ErrorMessage { get; set; }
         
@@ -32,23 +32,24 @@ namespace Assets.Scripts.Utilities
         public float PositionLatitude { get; set; }
         public float PositionLongitude { get; set; }
         public float PositionAltitude { get; set; }
+        public string Description { get; set; }
         
         // Tag dictionary - Key: TagId, Value: PhotoTag containing tag name and parent ID
         public Dictionary<int, PhotoTag> Tags { get; set; }
 
         public PhotoInfo(string fullPathToFileName, Rect region, ExifOrientation orientation, 
-                        string picturePathInArchive = null, string itemLabel = null, int tagId = -1,
+                        string picturePathInArchive = null, string fileName = null, int tagId = -1,
                         int imageId = -1, int imageRating = 0, DateTime? creationDate = null, 
                         DateTime? digitizationDate = null, string cameraMake = null, 
                         string cameraModel = null, string cameraLens = null,
                         float positionLatitude = 0f, float positionLongitude = 0f, float positionAltitude = 0f,
-                        Dictionary<int, PhotoTag> tags = null)
+                        Dictionary<int, PhotoTag> tags = null, string description = null)
         {
             FullPathToFileName = fullPathToFileName;
             Region = region;
             ExifOrientation = orientation;
             PicturePathInArchive = picturePathInArchive ?? fullPathToFileName;
-            ItemLabel = itemLabel ?? Path.GetFileNameWithoutExtension(fullPathToFileName);
+            FileName = fileName ?? Path.GetFileName(fullPathToFileName);
             TagId = tagId;
             ErrorMessage = "";
             
@@ -63,6 +64,7 @@ namespace Assets.Scripts.Utilities
             PositionLatitude = positionLatitude;
             PositionLongitude = positionLongitude;
             PositionAltitude = positionAltitude;
+            Description = description;
             
             // Initialize tag dictionary
             Tags = tags ?? new Dictionary<int, PhotoTag>();

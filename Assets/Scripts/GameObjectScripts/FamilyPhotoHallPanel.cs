@@ -183,7 +183,7 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
     {
         if (numberOfEvents == 0)
             return $"Year {year}: No photos.";
-        var stringToReturn = photoInfoList[currentEventIndex].ItemLabel;
+        var stringToReturn = photoInfoList[currentEventIndex].FileName;
         if (string.IsNullOrEmpty(stringToReturn))
             return "No title found for this photo";
         return stringToReturn[0].ToString().ToUpper() + stringToReturn.Substring(1);
@@ -226,7 +226,7 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
         if (numberOfEvents != 0 && familyPhotoDetailsHandlerScript != null)
         {
             var currentPhoto = photoInfoList[currentEventIndex];
-            Debug.Log($"[FamilyPhotoHallPanel] Displaying photo: {currentPhoto?.ItemLabel} for year {year}");
+            Debug.Log($"[FamilyPhotoHallPanel] Displaying photo: {currentPhoto?.FileName} for year {year}");
             
             familyPhotoDetailsHandlerScript.DisplayThisPhoto(currentPhoto,
                                                      currentEventIndex,

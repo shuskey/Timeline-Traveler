@@ -222,6 +222,79 @@ namespace Assets.Scripts.DataProviders
         }
 
         /// <summary>
+        /// Retrieves and assembles the description for an image from the ImageComments table.
+        /// Combines Description (type 3), Headline (type 2), and Comments (type 1) with ". " separator.
+        /// </summary>
+        /// <param name="imageId">The image ID to get description for</param>
+        /// <returns>Assembled description string, or null if no comments found</returns>
+        private string GetDescriptionForImage(int imageId)
+        {
+            if (imageId <= 0)
+            {
+                return null;
+            }
+
+            string description = null;
+            string headline = null;
+            var comments = new List<string>();
+
+            using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        SELECT type, comment
+                        FROM ImageComments
+                        WHERE imageid = @imageId
+                        ORDER BY type, id";
+                    
+                    var parameter = new SqliteParameter("@imageId", imageId);
+                    cmd.Parameters.Add(parameter);
+                    
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            int type = reader.GetInt32("type");
+                            string comment = reader.GetString("comment");
+                            
+                            if (!string.IsNullOrWhiteSpace(comment))
+                            {
+                                switch (type)
+                                {
+                                    case 1: // Comments
+                                        comments.Add(comment.Trim());
+                                        break;
+                                    case 2: // Headline
+                                        headline = comment.Trim();
+                                        break;
+                                    case 3: // Description
+                                        description = comment.Trim();
+                                        break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Assemble the final description string
+            var parts = new List<string>();
+            
+            if (!string.IsNullOrEmpty(description))
+                parts.Add(description);
+            
+            if (!string.IsNullOrEmpty(headline))
+                parts.Add(headline);
+            
+            if (comments.Count > 0)
+                parts.AddRange(comments);
+
+            return parts.Count > 0 ? string.Join(". ", parts) : null;
+        }
+
+        /// <summary>
         /// Retrieves the primary thumbnail photo information for a person from the database.
         /// </summary>
         /// <param name="ownerId">The RootsMagic owner ID of the person</param>
@@ -341,12 +414,15 @@ namespace Assets.Scripts.DataProviders
                     // Get all tags for this image
                     var imageTags = GetTagsForImage(imageId);
                     
+                    // Get description for this image
+                    var imageDescription = GetDescriptionForImage(imageId);
+                    
                     photoInfo = new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation, 
                                             tagId: tagIdInt, imageId: imageId, imageRating: imageRating,
                                             creationDate: creationDate, digitizationDate: digitizationDate,
                                             cameraMake: cameraMake, cameraModel: cameraModel, cameraLens: cameraLens,
                                             positionLatitude: positionLatitude, positionLongitude: positionLongitude, 
-                                            positionAltitude: positionAltitude, tags: imageTags);
+                                            positionAltitude: positionAltitude, tags: imageTags, description: imageDescription);
                 }
                 else
                 {
@@ -472,12 +548,15 @@ namespace Assets.Scripts.DataProviders
                                 // Get all tags for this image
                                 var imageTags = GetTagsForImage(imageId);
                                 
+                                // Get description for this image
+                                var imageDescription = GetDescriptionForImage(imageId);
+                                
                                 photoList.Add(new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation, 
                                                           tagId: tagId, imageId: imageId, imageRating: imageRating,
                                                           creationDate: creationDate, digitizationDate: digitizationDate,
                                                           cameraMake: cameraMake, cameraModel: cameraModel, cameraLens: cameraLens,
                                                           positionLatitude: positionLatitude, positionLongitude: positionLongitude, 
-                                                          positionAltitude: positionAltitude, tags: imageTags));
+                                                          positionAltitude: positionAltitude, tags: imageTags, description: imageDescription));
                             }
                         }
                     }

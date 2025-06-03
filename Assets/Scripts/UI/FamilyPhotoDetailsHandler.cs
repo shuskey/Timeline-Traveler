@@ -45,12 +45,12 @@ public class FamilyPhotoDetailsHandler : MonoBehaviour
 
     public void DisplayThisPhoto(PhotoInfo photoToDisplay, int currentPhotoIndex, int numberOfPhotos, Texture2D photoTexture, int year)
     {
-        Debug.Log($"[FamilyPhotoDetailsHandler] DisplayThisPhoto called for photo: {photoToDisplay?.ItemLabel}, year: {year}");
+        Debug.Log($"[FamilyPhotoDetailsHandler] DisplayThisPhoto called for photo: {photoToDisplay?.FileName}, year: {year}");
         
         photoInfoObject = photoToDisplay;
 
         // Title and year
-        string title = !string.IsNullOrEmpty(photoInfoObject.ItemLabel) ? photoInfoObject.ItemLabel : "Unknown Photo";
+        string title = !string.IsNullOrEmpty(photoInfoObject.Description) ? photoInfoObject.Description : photoInfoObject.FileName;
         yearAndTitleGameObject.GetComponent<Text>().text = $"{year} - {title}";
 
         // Photo metadata description
@@ -70,8 +70,7 @@ public class FamilyPhotoDetailsHandler : MonoBehaviour
         panelCountGameObject.GetComponent<Text>().text = $"Photo: {photoTally}";
 
         // Instructions
-        additionalInstructionsGameObject.GetComponent<Text>().text = "            ^   or E to open photo\n" + 
-                                                                     " Previous < or > Next";
+        additionalInstructionsGameObject.GetComponent<Text>().text = " ^ or E to open photo. Previous < or > Next";
 
         // Set the image
         if (photoTexture != null)
@@ -238,8 +237,8 @@ public class FamilyPhotoDetailsHandler : MonoBehaviour
 
             if (pathComponents.Count > 0)
             {
-                // Join path components with " > " separator (tip first, then parents)
-                locationStrings.Add(string.Join(" > ", pathComponents));
+                // Join path components with " " separator (tip first, then parents)
+                locationStrings.Add(string.Join(" ", pathComponents));
             }
         }
 
