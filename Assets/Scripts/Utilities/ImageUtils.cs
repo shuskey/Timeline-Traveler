@@ -6,6 +6,8 @@ using UnityEngine.Networking;
 using System.Collections;
 using UnityEngine.UI;
 using System.Xml;
+using System.Collections.Generic;
+using Assets.Scripts.DataObjects;
 
 namespace Assets.Scripts.Utilities
 {
@@ -30,13 +32,17 @@ namespace Assets.Scripts.Utilities
         public float PositionLatitude { get; set; }
         public float PositionLongitude { get; set; }
         public float PositionAltitude { get; set; }
+        
+        // Tag dictionary - Key: TagId, Value: PhotoTag containing tag name and parent ID
+        public Dictionary<int, PhotoTag> Tags { get; set; }
 
         public PhotoInfo(string fullPathToFileName, Rect region, ExifOrientation orientation, 
                         string picturePathInArchive = null, string itemLabel = null, int tagId = -1,
                         int imageId = -1, int imageRating = 0, DateTime? creationDate = null, 
                         DateTime? digitizationDate = null, string cameraMake = null, 
                         string cameraModel = null, string cameraLens = null,
-                        float positionLatitude = 0f, float positionLongitude = 0f, float positionAltitude = 0f)
+                        float positionLatitude = 0f, float positionLongitude = 0f, float positionAltitude = 0f,
+                        Dictionary<int, PhotoTag> tags = null)
         {
             FullPathToFileName = fullPathToFileName;
             Region = region;
@@ -57,6 +63,9 @@ namespace Assets.Scripts.Utilities
             PositionLatitude = positionLatitude;
             PositionLongitude = positionLongitude;
             PositionAltitude = positionAltitude;
+            
+            // Initialize tag dictionary
+            Tags = tags ?? new Dictionary<int, PhotoTag>();
         }
     }
 

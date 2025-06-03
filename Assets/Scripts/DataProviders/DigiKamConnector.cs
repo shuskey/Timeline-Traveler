@@ -18,6 +18,7 @@ namespace Assets.Scripts.DataProviders
     public class DigiKamConnector : DataProviderBase
     {
         public List<DigiKamFaceTag> faceTagList;
+        public int LocationsTagId { get; private set; }
         private Dictionary<int, int> _ownerIdToTagIdMap;
         private string _rootsMagicDataBaseFileNameWithFullPath;  // usually *.rmtree, *.rmgc, or *.sqlite
         private string _digiKamDataBaseFileNameWithFullPath;     // usually digikam4.db
@@ -29,7 +30,8 @@ namespace Assets.Scripts.DataProviders
         /// </summary>
         /// <param name="RootMagicDataBaseFileName">Full path to the RootsMagic database file</param>
         /// <param name="DigiKamDataBaseFileName">Full path to the DigiKam database file</param>
-        public DigiKamConnector(string RootMagicDataBaseFileName, string DigiKamDataBaseFileName)           
+        /// <param name="locationsTagName">Name of the base locations tag (default: "Locations")</param>
+        public DigiKamConnector(string RootMagicDataBaseFileName, string DigiKamDataBaseFileName, string locationsTagName = "Locations")           
         {
             _rootsMagicDataBaseFileNameWithFullPath = RootMagicDataBaseFileName;
             _digiKamDataBaseFileNameWithFullPath = DigiKamDataBaseFileName;
@@ -38,6 +40,7 @@ namespace Assets.Scripts.DataProviders
             faceTagList = new List<DigiKamFaceTag>();
             _ownerIdToTagIdMap = new Dictionary<int, int>();
             BuildOwnerIdToTagIdMap();
+            LocationsTagId = GetBaseTagIdByName(locationsTagName);
         }
 
         /// <summary>
@@ -68,6 +71,40 @@ namespace Assets.Scripts.DataProviders
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Retrieves the tag ID for a base tag (pid = 0) with the specified name.
+        /// </summary>
+        /// <param name="tagName">The name of the base tag to find</param>
+        /// <returns>The tag ID if found, or -1 if not found</returns>
+        private int GetBaseTagIdByName(string tagName)
+        {
+            using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        SELECT id 
+                        FROM Tags 
+                        WHERE name = @tagName AND (pid = 0 OR pid IS NULL)";
+                    
+                    var parameter = new SqliteParameter("@tagName", tagName);
+                    cmd.Parameters.Add(parameter);
+                    
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            return reader.GetInt32(0);
+                        }
+                    }
+                }
+            }
+            
+            Debug.LogWarning($"Base tag with name '{tagName}' not found");
+            return -1;
         }
 
         /// <summary>
@@ -133,6 +170,55 @@ namespace Assets.Scripts.DataProviders
                 dbcmd.CommandText = $"ATTACH DATABASE '{_digiKamThumbnailsDataBaseFileNameWithFullPath}' as 'thumbnails-digikam';";
                 dbcmd.ExecuteNonQuery();
             }
+        }
+
+        /// <summary>
+        /// Retrieves all tags associated with an image from the DigiKam database.
+        /// </summary>
+        /// <param name="imageId">The image ID to get tags for</param>
+        /// <returns>A dictionary of tags keyed by TagId</returns>
+        private Dictionary<int, PhotoTag> GetTagsForImage(int imageId)
+        {
+            var tags = new Dictionary<int, PhotoTag>();
+
+            if (imageId <= 0)
+            {
+                return tags; // Return empty dictionary for invalid image IDs
+            }
+
+            using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        SELECT t.id as TagId, 
+                               t.name as TagName,
+                               COALESCE(t.pid, 0) as ParentTagId
+                        FROM ImageTags it
+                        JOIN Tags t ON it.tagid = t.id
+                        WHERE it.imageid = @imageId";
+                    
+                    var parameter = new SqliteParameter("@imageId", imageId);
+                    cmd.Parameters.Add(parameter);
+                    
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            int tagId = reader.GetInt32("TagId");
+                            string tagName = reader.GetString("TagName");
+                            int parentTagId = reader.GetInt32("ParentTagId");
+                            
+                            tags[tagId] = new PhotoTag(tagName, tagId, parentTagId);
+                        }
+                        // Add the base Locations tag, this is were the Reverse Geocoding is stored
+                        tags[LocationsTagId] = new PhotoTag("Locations", LocationsTagId, 0);
+                    }
+                }
+            }
+
+            return tags;
         }
 
         /// <summary>
@@ -251,12 +337,16 @@ namespace Assets.Scripts.DataProviders
                     var tagIdFromQuery = reader["tagId"] as Int64?;
                     int tagIdInt = (int)(tagIdFromQuery ?? -1);
                     var imageId = (int)((reader["imageId"] as Int64?) ?? -1);
+                    
+                    // Get all tags for this image
+                    var imageTags = GetTagsForImage(imageId);
+                    
                     photoInfo = new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation, 
                                             tagId: tagIdInt, imageId: imageId, imageRating: imageRating,
                                             creationDate: creationDate, digitizationDate: digitizationDate,
                                             cameraMake: cameraMake, cameraModel: cameraModel, cameraLens: cameraLens,
                                             positionLatitude: positionLatitude, positionLongitude: positionLongitude, 
-                                            positionAltitude: positionAltitude);
+                                            positionAltitude: positionAltitude, tags: imageTags);
                 }
                 else
                 {
@@ -379,12 +469,15 @@ namespace Assets.Scripts.DataProviders
                            
                             if (!string.IsNullOrEmpty(fullPathToFileName))
                             {
+                                // Get all tags for this image
+                                var imageTags = GetTagsForImage(imageId);
+                                
                                 photoList.Add(new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation, 
                                                           tagId: tagId, imageId: imageId, imageRating: imageRating,
                                                           creationDate: creationDate, digitizationDate: digitizationDate,
                                                           cameraMake: cameraMake, cameraModel: cameraModel, cameraLens: cameraLens,
                                                           positionLatitude: positionLatitude, positionLongitude: positionLongitude, 
-                                                          positionAltitude: positionAltitude));
+                                                          positionAltitude: positionAltitude, tags: imageTags));
                             }
                         }
                     }

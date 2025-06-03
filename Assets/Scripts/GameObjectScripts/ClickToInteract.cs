@@ -19,6 +19,7 @@ public class ClickToInteract : MonoBehaviour
 
     private IInteractablePanel itemToInteractWith;
     private IInteractablePanel previousItemToInteractWith;
+    private IInteractablePanel lastFrameItemToInteractWith; // Track previous frame's value for comparison
     private Camera theMainCamera;
 
     private StarterAssetsInputs _input;
@@ -62,8 +63,18 @@ public class ClickToInteract : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        // Store the previous frame's value for comparison
+        lastFrameItemToInteractWith = itemToInteractWith;
+        
+        // Detect the current item to interact with
         itemToInteractWith = detectItemHitByRay();
-        doPanelSelectDeselect();
+        
+        // Only call doPanelSelectDeselect if itemToInteractWith has changed
+        if (lastFrameItemToInteractWith != itemToInteractWith)
+        {
+            doPanelSelectDeselect();
+        }
+        
         DoPrevious();
         DoNext();
         DoInteract();
