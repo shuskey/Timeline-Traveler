@@ -183,9 +183,24 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
     {
         if (numberOfEvents == 0)
             return $"Year {year}: No photos.";
-        var stringToReturn = photoInfoList[currentEventIndex].FileName;
-        if (string.IsNullOrEmpty(stringToReturn))
+        
+        var currentPhoto = photoInfoList[currentEventIndex];
+        
+        // Prioritize description over filename
+        string stringToReturn = null;
+        if (!string.IsNullOrEmpty(currentPhoto.Description))
+        {
+            stringToReturn = currentPhoto.Description;
+        }
+        else if (!string.IsNullOrEmpty(currentPhoto.FileName))
+        {
+            stringToReturn = currentPhoto.FileName;
+        }
+        else
+        {
             return "No title found for this photo";
+        }
+        
         return stringToReturn[0].ToString().ToUpper() + stringToReturn.Substring(1);
     }
 
