@@ -75,14 +75,20 @@ public class FamilyPhotoDetailsHandler : MonoBehaviour
         // Set the image
         if (photoTexture != null)
         {
-            var cropSize = Math.Min(photoTexture.width, photoTexture.height);
-            var xStart = (photoTexture.width - cropSize) / 2;
-            var yStart = (photoTexture.height - cropSize) / 2;
-            imageGameObject.GetComponent<Image>().sprite = Sprite.Create(photoTexture, new Rect(xStart, yStart, cropSize, cropSize), new Vector2(0.5f, 0.5f), 100f);
+            // Use ImageUtils to create sprite with proper EXIF rotation handling
+            var (sprite, rotation) = ImageUtils.CreateSpriteFromTexture(photoTexture, photoInfoObject, cropToFaceRegion: false, maxTextureSize: 780);
+            
+            var imageComponent = imageGameObject.GetComponent<Image>();
+            imageComponent.sprite = sprite;
+            
+            // Apply the EXIF rotation to the image GameObject
+            imageGameObject.transform.rotation = Quaternion.Euler(0, 0, rotation);
         }
         else
         {
             imageGameObject.GetComponent<Image>().sprite = noImageForThisPhoto;
+            // Reset rotation when using fallback image
+            imageGameObject.transform.rotation = Quaternion.identity;
         }
 
         Debug.Log($"[FamilyPhotoDetailsHandler] About to call ShowDetailsDialog()");
