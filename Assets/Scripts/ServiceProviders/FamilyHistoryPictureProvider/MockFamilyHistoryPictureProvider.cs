@@ -33,7 +33,7 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
             return true;
         }
 
-        public List<PhotoInfo> GetPhotoInfoListForPerson(int personId, int year)
+        public List<PhotoInfo> GetPhotoInfoListForPerson(int personId, int? year)
         {
               return new List<PhotoInfo>
             {

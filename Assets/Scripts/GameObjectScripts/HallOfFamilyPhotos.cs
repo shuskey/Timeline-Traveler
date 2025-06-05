@@ -54,10 +54,6 @@ public class HallOfFamilyPhotos : MonoBehaviour
             var x = focusPerson.transform.position.x;
             var y = focusPerson.transform.position.y;
 
-            // Get all photos for this person
-            var allPhotos = _pictureProvider.GetPhotoInfoListForPerson(newfocusPerson.dataBaseOwnerID, birthDate);
-            var photoCount = allPhotos.Count;
-
             // If the person has no life span, set the loop to at least add 1 photo panel
             for (int age = 0; age < Math.Max(1, lifeSpan); age++)
             {
@@ -73,13 +69,9 @@ public class HallOfFamilyPhotos : MonoBehaviour
                     panel.transform.SetPositionAndRotation(position, rotation);
                     var panelScript = panel.GetComponent<FamilyPhotoHallPanel>();
                     panelScript.ClearFamilyPhotos();
-                    // Update the photo if we have any
-                    if (photoCount > 0)
-                    {
-                        var photo = allPhotos[age % photoCount];
-
-                        panelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, year, photo);
-                    }
+                    // Get the photos for this yeay (birthDate + age)
+                    var photosForYear = _pictureProvider.GetPhotoInfoListForPerson(newfocusPerson.dataBaseOwnerID, year);
+                    panelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, year, photosForYear);
                 }
                 else
                 {
@@ -87,14 +79,10 @@ public class HallOfFamilyPhotos : MonoBehaviour
                     GameObject newPanel = Instantiate(familyPhotoPanelPrefab, position, rotation);
                     newPanel.transform.parent = transform;
                     newPanel.name = $"FamilyPhotoPanelforAge{age}";
-
                     var panelScript = newPanel.GetComponent<FamilyPhotoHallPanel>();
-                    if (photoCount > 0)
-                    {
-                        var photo = allPhotos[age % photoCount];
-                        panelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, year, photo);
-                    }
-
+                    // Get the photos for this yeay (birthDate + age)
+                    var photosForYear = _pictureProvider.GetPhotoInfoListForPerson(newfocusPerson.dataBaseOwnerID, year);
+                    panelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, year, photosForYear);
                     familyPhotoPanelDictionary.Add(age, newPanel);
                 }
                 yield return null;

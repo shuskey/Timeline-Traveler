@@ -443,8 +443,9 @@ namespace Assets.Scripts.DataProviders
         /// Retrieves a list of all photo information for a person from the database.
         /// </summary>
         /// <param name="ownerId">The RootsMagic owner ID of the person</param>
+        /// <param name="yearFilter">Optional year filter for filtering photos (null for all, -1 for no creation date, int for specific year)</param>
         /// <returns>A list of PhotoInfo objects containing the photo details</returns>
-        public List<PhotoInfo> GetPhotoInfoListForPersonFromDataBase(int ownerId)
+        public List<PhotoInfo> GetPhotoInfoListForPersonFromDataBase(int ownerId, int? yearFilter = null)
         {
             List<PhotoInfo> photoList = new List<PhotoInfo>();
 
@@ -523,6 +524,26 @@ namespace Assets.Scripts.DataProviders
                                 if (DateTime.TryParse(reader["digitizationDate"].ToString(), out DateTime digitization))
                                     digitizationDate = digitization;
                             }
+                            
+                            // Apply year filtering logic
+                            bool includePhoto = true;
+                            if (yearFilter.HasValue)
+                            {
+                                if (yearFilter.Value == -1)
+                                {
+                                    // Option 3: Return only photos with null/empty creation date
+                                    includePhoto = !creationDate.HasValue;
+                                }
+                                else
+                                {
+                                    // Option 2: Return only photos matching the year filter
+                                    includePhoto = creationDate.HasValue && creationDate.Value.Year == yearFilter.Value;
+                                }
+                            }
+                            // Option 1: If yearFilter is null, includePhoto remains true (return all)
+                            
+                            if (!includePhoto)
+                                continue;
                             
                             // Handle camera metadata
                             string cameraMake = reader["cameraMake"] as string ?? "";
