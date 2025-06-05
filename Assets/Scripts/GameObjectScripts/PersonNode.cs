@@ -197,7 +197,10 @@ public class PersonNode : MonoBehaviour
     {
         var myScaleThisPlatformComponent = gameObject.transform.GetChild(ScaleThisChildIndex);
         // We want to scale the platform to the age of the person, with a minimum length of 5
-        myScaleThisPlatformComponent.transform.localScale = new Vector3(1.0f, 1.0f, Mathf.Max(5.0f, age * 5));
+        // Add 1 to include the current year (age represents completed years, but we want to include the current year)
+        // Subtract 0.5 to prevent walking to the very end from triggering the next year
+        float platformLength = (age + 1) * 5 - 0.5f;
+        myScaleThisPlatformComponent.transform.localScale = new Vector3(1.0f, 1.0f, Mathf.Max(5.0f, platformLength));
         //myPlatformComponent.transform.localPosition = new Vector3(0, 0, age / 2f);
         lifeSpan = age;
         this.birthDate = birthDate;

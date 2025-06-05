@@ -129,7 +129,9 @@ public class Tribe : MonoBehaviour
 		var timeBarrierObject = GameObject.FindGameObjectsWithTag("TimeBarrier")[0];
 		if (timeBarrierYear == 0)
 			timeBarrierYear = DateTime.Now.Year;
-		timeBarrierObject.transform.position = new Vector3(0f, 0f, timeBarrierYear * 5 + 0.5f);
+		// Position at the end of the timeBarrierYear (add 5 to place it at the end of the year instead of beginning)
+		// Subtract 0.1 to prevent walking to the very end from triggering the next year
+		timeBarrierObject.transform.position = new Vector3(0f, 0f, (timeBarrierYear + 1) * 5 - 0.1f);
 		timeBarrierObject.transform.localScale = new Vector3((maximumNumberOfPeopleInAGeneration * personSpacing * 10f), 0.1f, (maximumNumberOfPeopleInAGeneration * personSpacing * 10f));
 	}
 
