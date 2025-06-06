@@ -272,6 +272,17 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
                 currentEventIndex = 0;
             DisplayHallPanelImageTexture();
             titleTextFieldName.text = currentlySelectedEventTitle();
+            
+            // Update the details panel if we have a photo handler
+            if (familyPhotoDetailsHandlerScript != null)
+            {
+                var currentPhoto = photoInfoList[currentEventIndex];
+                familyPhotoDetailsHandlerScript.DisplayThisPhoto(currentPhoto,
+                                                         currentEventIndex,
+                                                         numberOfEvents,
+                                                         familyPhotoImage_Texture,
+                                                         year);
+            }
         }
     }
 
@@ -284,6 +295,17 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
                 currentEventIndex = numberOfEvents - 1;
             DisplayHallPanelImageTexture();
             titleTextFieldName.text = currentlySelectedEventTitle();
+            
+            // Update the details panel if we have a photo handler
+            if (familyPhotoDetailsHandlerScript != null)
+            {
+                var currentPhoto = photoInfoList[currentEventIndex];
+                familyPhotoDetailsHandlerScript.DisplayThisPhoto(currentPhoto,
+                                                         currentEventIndex,
+                                                         numberOfEvents,
+                                                         familyPhotoImage_Texture,
+                                                         year);
+            }
         }
     }
 

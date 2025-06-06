@@ -71,7 +71,7 @@ public class ClickToInteract : MonoBehaviour
         
         // Only call doPanelSelectDeselect if itemToInteractWith has changed
         if (lastFrameItemToInteractWith != itemToInteractWith)
-        {
+        {            
             doPanelSelectDeselect();
         }
         

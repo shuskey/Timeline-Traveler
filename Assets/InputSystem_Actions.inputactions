@@ -81,7 +81,7 @@
                     "name": "Previous",
                     "type": "Button",
                     "id": "2776c80d-3c14-4091-8c56-d04ced07a2b0",
-                    "expectedControlType": "Button",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
@@ -90,7 +90,7 @@
                     "name": "Next",
                     "type": "Button",
                     "id": "b7230bb6-fc9b-4f52-8b25-f5e19cb2c2ba",
-                    "expectedControlType": "Button",
+                    "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
@@ -362,7 +362,7 @@
                 {
                     "name": "",
                     "id": "cbac6039-9c09-46a1-b5f2-4e5124ccb5ed",
-                    "path": "<Keyboard>/2",
+                    "path": "<Keyboard>/period",
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
@@ -450,7 +450,7 @@
                 {
                     "name": "",
                     "id": "1534dc16-a6aa-499d-9c3a-22b47347b52a",
-                    "path": "<Keyboard>/1",
+                    "path": "<Keyboard>/comma",
                     "interactions": "",
                     "processors": "",
                     "groups": "Keyboard&Mouse",
@@ -640,6 +640,24 @@
                     "name": "debugPreviousPersonOfInterest",
                     "type": "Button",
                     "id": "7b480cb0-fb1f-425b-955a-7ea2bde43017",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Previous",
+                    "type": "Button",
+                    "id": "286e1ca2-4a27-42d4-b469-53bd69af08ff",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Next",
+                    "type": "Button",
+                    "id": "28fc52aa-7f96-482b-bf89-87563702a01b",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -1068,7 +1086,7 @@
                 {
                     "name": "",
                     "id": "928ab57d-fdf8-4200-a142-c0a8f3fc3307",
-                    "path": "<Keyboard>/1",
+                    "path": "<Keyboard>/m",
                     "interactions": "",
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
@@ -1079,7 +1097,7 @@
                 {
                     "name": "",
                     "id": "9c18259d-b9a7-4022-aa53-08fb73088146",
-                    "path": "<Keyboard>/2",
+                    "path": "<Keyboard>/s",
                     "interactions": "",
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
@@ -1106,6 +1124,28 @@
                     "processors": "",
                     "groups": ";Keyboard&Mouse",
                     "action": "debugPreviousPersonOfInterest",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "97ffe6d3-9eef-42b3-93df-869d6251bb53",
+                    "path": "<Keyboard>/comma",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Previous",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "71046a54-385b-45dd-b98f-590ffd6b86ae",
+                    "path": "<Keyboard>/period",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": ";Keyboard&Mouse",
+                    "action": "Next",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
