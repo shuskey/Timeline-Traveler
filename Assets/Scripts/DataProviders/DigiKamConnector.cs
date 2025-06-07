@@ -448,6 +448,7 @@ namespace Assets.Scripts.DataProviders
         public List<PhotoInfo> GetPhotoInfoListForPersonFromDataBase(int ownerId, int? yearFilter = null)
         {
             List<PhotoInfo> photoList = new List<PhotoInfo>();
+            HashSet<int> processedImageIds = new HashSet<int>(); // Track processed images to avoid duplicates
 
             // Get the tag ID for this owner ID
             int tagId = GetTagIdForOwnerId(ownerId);
@@ -464,7 +465,7 @@ namespace Assets.Scripts.DataProviders
                 using (IDbCommand dbcmd = dbconn.CreateCommand())
                 {
                     string sqlQuery = $@"
-                        SELECT 
+                        SELECT DISTINCT
                             ""C:"" || (
                             SELECT specificPath 
                             FROM AlbumRoots 
@@ -504,12 +505,20 @@ namespace Assets.Scripts.DataProviders
                     {
                         while (reader.Read())
                         {
+                            var imageId = (int)((reader["imageId"] as Int64?) ?? -1);
+                            
+                            // Skip if we've already processed this image
+                            if (processedImageIds.Contains(imageId))
+                            {
+                                continue;
+                            }
+                            processedImageIds.Add(imageId);
+                            
                             string fullPathToFileName = reader["fullPathToFileName"] as string;
                             string region = reader["region"] as string;
                             var imageWidth = (float)((reader["imageWidth"] as Int64?) ?? 0);
                             var imageHeight = (float)((reader["imageHeight"] as Int64?) ?? 0);
                             var imageRating = (int)((reader["imageRating"] as Int64?) ?? 0);
-                            var imageId = (int)((reader["imageId"] as Int64?) ?? -1);
                             
                             // Handle datetime fields
                             DateTime? creationDate = null;

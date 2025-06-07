@@ -29,6 +29,9 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
     private RenderTexture currentRenderTexture; // Track the current RenderTexture
     private Texture2D currentDownloadedTexture; // Track the current downloaded Texture2D
     
+    // Focus tracking
+    private bool hasFocus = false;
+    
     // Details handler reference
     private FamilyPhotoDetailsHandler familyPhotoDetailsHandlerScript;
 
@@ -99,6 +102,18 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
         else
         {
             familyPhotoImage_Texture = fallbackTexture;
+        }
+        
+        // Update the details panel NOW that the image has finished loading and familyPhotoImage_Texture is updated
+        if (familyPhotoDetailsHandlerScript != null && hasFocus)
+        {
+            var currentPhoto = photoInfoList[currentEventIndex];
+            Debug.Log($"[FamilyPhotoHallPanel] Updating details handler after image load: Photo ID={currentPhoto.ImageId}");
+            familyPhotoDetailsHandlerScript.DisplayThisPhoto(currentPhoto,
+                                                     currentEventIndex,
+                                                     numberOfEvents,
+                                                     familyPhotoImage_Texture,
+                                                     year);
         }
         
         // After image loading is complete, check for error messages and update the error field
@@ -238,6 +253,9 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
     {
         Debug.Log($"[FamilyPhotoHallPanel] DisplayDetailsInEventDetailsPanel called. numberOfEvents: {numberOfEvents}, familyPhotoDetailsHandlerScript null: {familyPhotoDetailsHandlerScript == null}");
         
+        // Set focus when this panel is selected
+        hasFocus = true;
+        
         if (numberOfEvents != 0 && familyPhotoDetailsHandlerScript != null)
         {
             var currentPhoto = photoInfoList[currentEventIndex];
@@ -257,6 +275,9 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
 
     public void ClearEventDetailsPanel()
     {
+        // Clear focus when this panel is deselected
+        hasFocus = false;
+        
         if (familyPhotoDetailsHandlerScript != null)
         {
             familyPhotoDetailsHandlerScript.ClearPhotoDisplay();
@@ -273,16 +294,7 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
             DisplayHallPanelImageTexture();
             titleTextFieldName.text = currentlySelectedEventTitle();
             
-            // Update the details panel if we have a photo handler
-            if (familyPhotoDetailsHandlerScript != null)
-            {
-                var currentPhoto = photoInfoList[currentEventIndex];
-                familyPhotoDetailsHandlerScript.DisplayThisPhoto(currentPhoto,
-                                                         currentEventIndex,
-                                                         numberOfEvents,
-                                                         familyPhotoImage_Texture,
-                                                         year);
-            }
+            // Details handler is now updated inside LoadImageWithErrorHandling after the image loads
         }
     }
 
@@ -296,16 +308,7 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
             DisplayHallPanelImageTexture();
             titleTextFieldName.text = currentlySelectedEventTitle();
             
-            // Update the details panel if we have a photo handler
-            if (familyPhotoDetailsHandlerScript != null)
-            {
-                var currentPhoto = photoInfoList[currentEventIndex];
-                familyPhotoDetailsHandlerScript.DisplayThisPhoto(currentPhoto,
-                                                         currentEventIndex,
-                                                         numberOfEvents,
-                                                         familyPhotoImage_Texture,
-                                                         year);
-            }
+            // Details handler is now updated inside LoadImageWithErrorHandling after the image loads
         }
     }
 
