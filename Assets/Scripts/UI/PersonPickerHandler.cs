@@ -15,6 +15,7 @@ public class PersonPickerHandler : MonoBehaviour
 {
     public Text searchStatusText;
     public InputField lastNameFilterField;
+    public InputField firstNameFilterField;
     public Toggle ancestryToggle;
     public Toggle descendancyToggle;
     public Toggle rootPersonToggle;
@@ -41,10 +42,13 @@ public class PersonPickerHandler : MonoBehaviour
 
         nextButton.onClick.AddListener(delegate { NextClicked(); });
 
-        lastNameFilterField.onEndEdit.AddListener(delegate { LastNameFilterFieldEndEdit(lastNameFilterField); });
-        lastNameFilterField.onSubmit.AddListener(delegate { LastNameFilterFieldEndEdit(lastNameFilterField); });
+        lastNameFilterField.onEndEdit.AddListener(delegate { FilterFieldEndEdit(); });
+        lastNameFilterField.onSubmit.AddListener(delegate { FilterFieldEndEdit(); });
+        lastNameFilterField.onValueChanged.AddListener(delegate { FilterFieldChanging(); });
 
-        lastNameFilterField.onValueChanged.AddListener(delegate { LastNameFilterFieldChanging(lastNameFilterField); });
+        firstNameFilterField.onEndEdit.AddListener(delegate { FilterFieldEndEdit(); });
+        firstNameFilterField.onSubmit.AddListener(delegate { FilterFieldEndEdit(); });
+        firstNameFilterField.onValueChanged.AddListener(delegate { FilterFieldChanging(); });
 
         ancestryToggle.onValueChanged.AddListener(delegate { ToggleControl(ancestryToggle); });
         descendancyToggle.onValueChanged.AddListener(delegate { ToggleControl(descendancyToggle); });
@@ -77,6 +81,7 @@ public class PersonPickerHandler : MonoBehaviour
             _dataProvider.Initialize(config);
             
             lastNameFilterField.interactable = true;
+            firstNameFilterField.interactable = true;
             transform.GetComponent<Dropdown>().interactable = true;
             if (PlayerPrefs.HasKey(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_ID) && 
                 PlayerPrefs.HasKey(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_FULL_NAME)) {
@@ -91,6 +96,7 @@ public class PersonPickerHandler : MonoBehaviour
             }
         } else {
             lastNameFilterField.interactable = false;
+            firstNameFilterField.interactable = false;
             transform.GetComponent<Dropdown>().interactable = false;
         }
         return false;
@@ -142,7 +148,7 @@ public class PersonPickerHandler : MonoBehaviour
         }
     }
 
-    void LastNameFilterFieldChanging(InputField input)
+    void FilterFieldChanging()
     {
         ResetDropDown();
     }
@@ -160,11 +166,15 @@ public class PersonPickerHandler : MonoBehaviour
         nextButton.interactable = false;
     }
 
-    void LastNameFilterFieldEndEdit(InputField input)
+    void FilterFieldEndEdit()
     {
-        if (input.text.Length > 0)
+        // Check if at least one filter has content
+        bool hasLastNameFilter = lastNameFilterField.text.Length > 0;
+        bool hasFirstNameFilter = firstNameFilterField.text.Length > 0;
+        
+        if (hasLastNameFilter || hasFirstNameFilter)
         {
-            PopulateDropDownWithMyTribeSubSet(input.text);
+            PopulateDropDownWithMyTribeSubSet(lastNameFilterField.text, firstNameFilterField.text);
             var dropdown = transform.GetComponent<Dropdown>();
 
             if (_personsList.Count > 0)
@@ -176,11 +186,10 @@ public class PersonPickerHandler : MonoBehaviour
             }
             else
                 searchStatusText.text = $"No results available for that search string.";
-
         }
-        else if (input.text.Length == 0)
+        else
         {
-            Debug.Log("Main Input Empty");
+            Debug.Log("Both filter inputs are empty");
             searchStatusText.text = $"No results available for that search string.";
         }
     }
@@ -208,14 +217,37 @@ public class PersonPickerHandler : MonoBehaviour
         nextButton.interactable = false;
     }
 
-    void PopulateDropDownWithMyTribeSubSet(string filterText)
+    void PopulateDropDownWithMyTribeSubSet(string lastNameFilter, string firstNameFilter)
     {
         var dropdown = transform.GetComponent<Dropdown>();
         dropdown.options.Clear();
         dropdown.value = 0;        
         dropdown.RefreshShownValue();
 
-        _personsList = _dataProvider.GetPersonListByLastName(filterText, numberOfPeopleInTribe);
+        // First pass: Filter by last name (or get all if no last name filter)
+        if (!string.IsNullOrEmpty(lastNameFilter))
+        {
+            _personsList = _dataProvider.GetPersonListByLastName(lastNameFilter, numberOfPeopleInTribe);
+        }
+        else
+        {
+            // If no last name filter, we still need some way to get people. 
+            // For now, we'll use an empty string which might return all or none depending on the data provider implementation
+            _personsList = _dataProvider.GetPersonListByLastName("", numberOfPeopleInTribe);
+        }
+
+        // Second pass: Filter by first name if provided
+        if (!string.IsNullOrEmpty(firstNameFilter))
+        {
+            string firstNameFilterWithComma = ", " + firstNameFilter;
+            _personsList = _personsList.Where(person => 
+            {
+                string fullDisplayName = $"{person.surName}, {person.givenName} b{person.birthEventDate} id {person.dataBaseOwnerId}";
+                return fullDisplayName.Contains(firstNameFilterWithComma, StringComparison.OrdinalIgnoreCase);
+            }).ToList();
+        }
+
+        // Populate dropdown with filtered results
         foreach (var person in _personsList)
         {
             dropdown.options.Add(new Dropdown.OptionData() { text = $"{person.surName}, {person.givenName} b{person.birthEventDate} id {person.dataBaseOwnerId}" });

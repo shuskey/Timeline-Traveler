@@ -17,12 +17,20 @@ namespace Assets.Scripts.DataProviders
     /// </summary>
     public class DigiKamConnector : DataProviderBase
     {
+        // Default folder names to exclude from photo results (converted duplicates)
+        public static readonly List<string> DefaultExcludedFolderNames = new List<string> 
+        { 
+            "BMP_Originals", 
+            "HEIC_Originals" 
+        };
+
         public List<DigiKamFaceTag> faceTagList;
         public int LocationsTagId { get; private set; }
         private Dictionary<int, int> _ownerIdToTagIdMap;
         private string _rootsMagicDataBaseFileNameWithFullPath;  // usually *.rmtree, *.rmgc, or *.sqlite
         private string _digiKamDataBaseFileNameWithFullPath;     // usually digikam4.db
         private string _digiKamThumbnailsDataBaseFileNameWithFullPath;  // usually thumbnails-digikam.db
+        private List<string> _excludedFolderNames; // Folder names to exclude from photo results
         static string DigiKam_Thumbnails_DataBaseFileNameOnly = "thumbnails-digikam.db";
 
         /// <summary>
@@ -31,7 +39,8 @@ namespace Assets.Scripts.DataProviders
         /// <param name="RootMagicDataBaseFileName">Full path to the RootsMagic database file</param>
         /// <param name="DigiKamDataBaseFileName">Full path to the DigiKam database file</param>
         /// <param name="locationsTagName">Name of the base locations tag (default: "Locations")</param>
-        public DigiKamConnector(string RootMagicDataBaseFileName, string DigiKamDataBaseFileName, string locationsTagName = "Locations")           
+        /// <param name="excludedFolderNames">List of folder names to exclude from photo results (default: BMP_Originals, HRIC_Originals)</param>
+        public DigiKamConnector(string RootMagicDataBaseFileName, string DigiKamDataBaseFileName, string locationsTagName = "Locations", List<string> excludedFolderNames = null)           
         {
             _rootsMagicDataBaseFileNameWithFullPath = RootMagicDataBaseFileName;
             _digiKamDataBaseFileNameWithFullPath = DigiKamDataBaseFileName;
@@ -39,6 +48,10 @@ namespace Assets.Scripts.DataProviders
             _digiKamThumbnailsDataBaseFileNameWithFullPath = justThePath + "\\" + DigiKam_Thumbnails_DataBaseFileNameOnly;
             faceTagList = new List<DigiKamFaceTag>();
             _ownerIdToTagIdMap = new Dictionary<int, int>();
+            
+            // Initialize excluded folder names with defaults if not provided
+            _excludedFolderNames = excludedFolderNames ?? new List<string>(DefaultExcludedFolderNames);
+            
             BuildOwnerIdToTagIdMap();
             LocationsTagId = GetBaseTagIdByName(locationsTagName);
         }
@@ -115,6 +128,19 @@ namespace Assets.Scripts.DataProviders
         public int GetTagIdForOwnerId(int ownerId)
         {
             return _ownerIdToTagIdMap.TryGetValue(ownerId, out int tagId) ? tagId : -1;
+        }
+
+        /// <summary>
+        /// Checks if a file path should be excluded based on the configured excluded folder names.
+        /// </summary>
+        /// <param name="filePath">The file path to check</param>
+        /// <returns>True if the path should be excluded, false otherwise</returns>
+        private bool ShouldExcludePath(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath) || _excludedFolderNames == null)
+                return false;
+
+            return _excludedFolderNames.Any(folderName => filePath.Contains(folderName));
         }
 
         /// <summary>
@@ -407,6 +433,13 @@ namespace Assets.Scripts.DataProviders
                 var exitOrientation = (ExifOrientation)orientation;
                 if (!string.IsNullOrEmpty(fullPathToFileName))
                 {
+                    // Filter out images from excluded folders (e.g., converted duplicates)
+                    if (ShouldExcludePath(fullPathToFileName))
+                    {
+                        Debug.Log($"Skipping image from excluded folder: {fullPathToFileName}");
+                        continue;
+                    }
+                    
                     var tagIdFromQuery = reader["tagId"] as Int64?;
                     int tagIdInt = (int)(tagIdFromQuery ?? -1);
                     var imageId = (int)((reader["imageId"] as Int64?) ?? -1);
@@ -575,6 +608,12 @@ namespace Assets.Scripts.DataProviders
                            
                             if (!string.IsNullOrEmpty(fullPathToFileName))
                             {
+                                // Filter out images from excluded folders (e.g., converted duplicates)
+                                if (ShouldExcludePath(fullPathToFileName))
+                                {
+                                    continue;
+                                }
+                                
                                 // Get all tags for this image
                                 var imageTags = GetTagsForImage(imageId);
                                 
