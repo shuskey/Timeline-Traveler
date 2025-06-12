@@ -14,7 +14,7 @@ public class DigiKamFileBrowserHandler : MonoBehaviour
 	public Text searchStatusText;
 	public string initialPath = null;
 	public string initialFilename = null;
-    public GameObject imageTagDatabasePickerGameObject;
+    	public GameObject imageTagDatabasePickerGameObject;
 
     private IFamilyHistoryPictureProvider _pictureProvider;
 	// Warning: paths returned by FileBrowser dialogs do not contain a trailing '\' character
@@ -47,7 +47,42 @@ public class DigiKamFileBrowserHandler : MonoBehaviour
 		// Path: C:\Users
 		// Icon: default (folder icon)
 		FileBrowser.AddQuickLink("Users", "C:\\Users", null);
-		if (PlayerPrefs.HasKey(PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH)) {
+
+		// First try to get DigiKam database path from config file
+		string digiKamDatabasePath = null;
+		if (!string.IsNullOrEmpty(CrossSceneInformation.rootsMagicDataFileNameWithFullPath))
+		{
+			digiKamDatabasePath = DigiKamConfigManager.GetDigiKamDatabasePath(
+				CrossSceneInformation.rootsMagicDataFileNameWithFullPath, 
+				PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH);
+		}
+
+		// Check if we found a path from config file or need to fall back to PlayerPrefs
+		if (!string.IsNullOrEmpty(digiKamDatabasePath))
+		{
+			Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath = digiKamDatabasePath;
+			initialFilename = Path.GetFileName(digiKamDatabasePath);
+			initialPath = Path.GetDirectoryName(digiKamDatabasePath);
+			fileSelectedText.text = initialFilename;
+			imageTagDatabasePickerGameObject.GetComponent<ImageTagDatabasePickerHandler>().FileSelectedNowEnableUserInterface(true);
+
+			// Check if this came from config file vs PlayerPrefs
+			string configRootFolder = DigiKamConfigManager.GetDigiKamRootFolderFromConfig(CrossSceneInformation.rootsMagicDataFileNameWithFullPath);
+			if (!string.IsNullOrEmpty(configRootFolder))
+			{
+				// Save the config file path to PlayerPrefs for consistency
+				PlayerPrefs.SetString(PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH, digiKamDatabasePath);
+				PlayerPrefs.Save();
+				
+				searchStatusText.text = "DigiKam database location extracted from digikam.config file.  Press Start.";
+			}
+			else
+			{
+				searchStatusText.text = "DigiKam database location previously identified.  Press Start.";
+			}
+		}
+		else if (PlayerPrefs.HasKey(PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH)) 
+		{
 			Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath = PlayerPrefs.GetString(PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH);
 			initialFilename = Path.GetFileName(Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath);
 			initialPath = Path.GetDirectoryName(Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath);
@@ -56,7 +91,8 @@ public class DigiKamFileBrowserHandler : MonoBehaviour
 
 			searchStatusText.text = "DigiKam database location previously identified.  Press Start.";
 		}
-		else {
+		else 
+		{
 			searchStatusText.text = "Please identify the DigiKam database location.";
 		}
 
@@ -122,6 +158,11 @@ public class DigiKamFileBrowserHandler : MonoBehaviour
                 // Save the path for next time
                 PlayerPrefs.SetString(PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH, result);
                 PlayerPrefs.Save();
+
+                // Update the config file with the new DigiKam association
+                DigiKamConfigManager.CreateOrUpdateDigiKamConfigFromDatabasePath(
+                    CrossSceneInformation.rootsMagicDataFileNameWithFullPath,
+                    result);
             }
             catch (System.Exception ex)
             {

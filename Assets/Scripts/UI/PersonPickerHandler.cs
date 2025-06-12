@@ -60,6 +60,10 @@ public class PersonPickerHandler : MonoBehaviour
         };
 
          _dataProvider.Initialize(config);
+        
+        // Load DigiKam path from config file first, then fall back to PlayerPrefs
+        LoadDigiKamPathFromConfigOrPlayerPrefs();
+        
         // See if we have a previously selected Base PersonId
         CheckIfFileSelectedAndEnableUserInterface();
     }
@@ -74,6 +78,9 @@ public class PersonPickerHandler : MonoBehaviour
                 { PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, PlayerPrefs.GetString(PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH) }
             };
             _dataProvider.Initialize(config);
+
+            // Load DigiKam path from config file first, then fall back to PlayerPrefs
+            LoadDigiKamPathFromConfigOrPlayerPrefs();
             
             fullNameFilterField.interactable = true;
             transform.GetComponent<Dropdown>().interactable = true;
@@ -259,6 +266,52 @@ public class PersonPickerHandler : MonoBehaviour
         foreach (var person in _personsList)
         {
             dropdown.options.Add(new Dropdown.OptionData() { text = $"{person.surName}, {person.givenName} b{person.birthEventDate} id {person.dataBaseOwnerId}" });
+        }
+    }
+
+    /// <summary>
+    /// Creates or updates the digikam.config file in the RootsMagic database directory
+    /// </summary>
+    /// <param name="digiKamRootFolder">The DigiKam root folder path to associate with the current RootsMagic database</param>
+    public void CreateOrUpdateDigiKamConfig(string digiKamRootFolder)
+    {
+        DigiKamConfigManager.CreateOrUpdateDigiKamConfig(
+            Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath, 
+            digiKamRootFolder);
+    }
+
+    /// <summary>
+    /// Convenience method to create or update the config with the DigiKam database directory
+    /// </summary>
+    public void CreateOrUpdateDigiKamConfigWithCurrentPaths()
+    {
+        DigiKamConfigManager.CreateOrUpdateDigiKamConfigFromDatabasePath(
+            Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath,
+            Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath);
+    }
+
+    /// <summary>
+    /// Reads the DigiKam root folder from the config file for the current RootsMagic database
+    /// </summary>
+    /// <returns>The DigiKam root folder path if found, null otherwise</returns>
+    public string GetDigiKamRootFolderFromConfig()
+    {
+        return DigiKamConfigManager.GetDigiKamRootFolderFromConfig(
+            Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath);
+    }
+
+    /// <summary>
+    /// Loads DigiKam path information using config file first, then falling back to PlayerPrefs
+    /// </summary>
+    private void LoadDigiKamPathFromConfigOrPlayerPrefs()
+    {
+        string digiKamDatabasePath = DigiKamConfigManager.GetDigiKamDatabasePath(
+            Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath,
+            PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH);
+        
+        if (!string.IsNullOrEmpty(digiKamDatabasePath))
+        {
+            Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath = digiKamDatabasePath;
         }
     }
 
