@@ -14,8 +14,7 @@ using Assets.Scripts.ServiceProviders;
 public class PersonPickerHandler : MonoBehaviour
 {
     public Text searchStatusText;
-    public InputField lastNameFilterField;
-    public InputField firstNameFilterField;
+    public InputField fullNameFilterField;
     public Toggle ancestryToggle;
     public Toggle descendancyToggle;
     public Toggle rootPersonToggle;
@@ -42,13 +41,9 @@ public class PersonPickerHandler : MonoBehaviour
 
         nextButton.onClick.AddListener(delegate { NextClicked(); });
 
-        lastNameFilterField.onEndEdit.AddListener(delegate { FilterFieldEndEdit(); });
-        lastNameFilterField.onSubmit.AddListener(delegate { FilterFieldEndEdit(); });
-        lastNameFilterField.onValueChanged.AddListener(delegate { FilterFieldChanging(); });
-
-        firstNameFilterField.onEndEdit.AddListener(delegate { FilterFieldEndEdit(); });
-        firstNameFilterField.onSubmit.AddListener(delegate { FilterFieldEndEdit(); });
-        firstNameFilterField.onValueChanged.AddListener(delegate { FilterFieldChanging(); });
+        fullNameFilterField.onEndEdit.AddListener(delegate { FilterFieldEndEdit(); });
+        fullNameFilterField.onSubmit.AddListener(delegate { FilterFieldEndEdit(); });
+        fullNameFilterField.onValueChanged.AddListener(delegate { FilterFieldChanging(); });
 
         ancestryToggle.onValueChanged.AddListener(delegate { ToggleControl(ancestryToggle); });
         descendancyToggle.onValueChanged.AddListener(delegate { ToggleControl(descendancyToggle); });
@@ -80,8 +75,7 @@ public class PersonPickerHandler : MonoBehaviour
             };
             _dataProvider.Initialize(config);
             
-            lastNameFilterField.interactable = true;
-            firstNameFilterField.interactable = true;
+            fullNameFilterField.interactable = true;
             transform.GetComponent<Dropdown>().interactable = true;
             if (PlayerPrefs.HasKey(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_ID) && 
                 PlayerPrefs.HasKey(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_FULL_NAME)) {
@@ -95,8 +89,7 @@ public class PersonPickerHandler : MonoBehaviour
                 ClearStatusTextAndDisableNext();
             }
         } else {
-            lastNameFilterField.interactable = false;
-            firstNameFilterField.interactable = false;
+            fullNameFilterField.interactable = false;
             transform.GetComponent<Dropdown>().interactable = false;
         }
         return false;
@@ -159,7 +152,7 @@ public class PersonPickerHandler : MonoBehaviour
         dropdown.options.Clear();
         dropdown.value = 0;
         dropdown.RefreshShownValue();
-        dropdown.options.Add(new Dropdown.OptionData() { text = $"Enter Last Name Filter Text, to populate this" });
+        dropdown.options.Add(new Dropdown.OptionData() { text = $"Enter Name Filter Text, to populate this" });
 
         searchStatusText.text = "";
 
@@ -168,13 +161,30 @@ public class PersonPickerHandler : MonoBehaviour
 
     void FilterFieldEndEdit()
     {
-        // Check if at least one filter has content
-        bool hasLastNameFilter = lastNameFilterField.text.Length > 0;
-        bool hasFirstNameFilter = firstNameFilterField.text.Length > 0;
+        // Parse the full name filter field for last name and first name parts
+        string fullFilterText = fullNameFilterField.text;
+        string lastNameFilter = "";
+        string firstNameFilter = "";
         
-        if (hasLastNameFilter || hasFirstNameFilter)
+        if (!string.IsNullOrEmpty(fullFilterText))
         {
-            PopulateDropDownWithMyTribeSubSet(lastNameFilterField.text, firstNameFilterField.text);
+            if (fullFilterText.Contains(","))
+            {
+                // Split on comma
+                string[] parts = fullFilterText.Split(',');
+                lastNameFilter = parts[0].Trim();
+                if (parts.Length > 1)
+                {
+                    firstNameFilter = parts[1].Trim();
+                }
+            }
+            else
+            {
+                // No comma, treat entire string as last name filter
+                lastNameFilter = fullFilterText.Trim();
+            }
+            
+            PopulateDropDownWithMyTribeSubSet(lastNameFilter, firstNameFilter);
             var dropdown = transform.GetComponent<Dropdown>();
 
             if (_personsList.Count > 0)
@@ -189,7 +199,7 @@ public class PersonPickerHandler : MonoBehaviour
         }
         else
         {
-            Debug.Log("Both filter inputs are empty");
+            Debug.Log("Filter input is empty");
             searchStatusText.text = $"No results available for that search string.";
         }
     }
@@ -239,11 +249,9 @@ public class PersonPickerHandler : MonoBehaviour
         // Second pass: Filter by first name if provided
         if (!string.IsNullOrEmpty(firstNameFilter))
         {
-            string firstNameFilterWithComma = ", " + firstNameFilter;
             _personsList = _personsList.Where(person => 
             {
-                string fullDisplayName = $"{person.surName}, {person.givenName} b{person.birthEventDate} id {person.dataBaseOwnerId}";
-                return fullDisplayName.Contains(firstNameFilterWithComma, StringComparison.OrdinalIgnoreCase);
+                return person.givenName.Contains(firstNameFilter, StringComparison.OrdinalIgnoreCase);
             }).ToList();
         }
 
