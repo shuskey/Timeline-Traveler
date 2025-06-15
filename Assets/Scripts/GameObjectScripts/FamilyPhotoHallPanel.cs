@@ -168,6 +168,11 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
         titleTextFieldName.text = currentlySelectedEventTitle();
     }
 
+    public void SetPanelTitle(string title)
+    {
+        titleTextFieldName.text = title;
+    }
+
     public void DisplayHallPanelImageTexture()
     {
         var destinationImagePanel = GetUICanvasImagePanel();

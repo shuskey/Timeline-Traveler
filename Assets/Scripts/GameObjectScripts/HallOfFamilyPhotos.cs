@@ -15,6 +15,7 @@ public class HallOfFamilyPhotos : MonoBehaviour
     public PersonNode previousFocusPerson;
     public GameObject familyPhotoPanelPrefab;
     private IDictionary<int, GameObject> familyPhotoPanelDictionary = new Dictionary<int, GameObject>();
+    private GameObject undatedPhotosPanel;
     private bool leaveMeAloneIAmBusy = false;
     private DigiKamFamilyHistoryPictureProvider _pictureProvider;
 
@@ -34,16 +35,48 @@ public class HallOfFamilyPhotos : MonoBehaviour
         }
     }
 
+    private void UpdateUndatedPhotosPanel(PersonNode newfocusPerson, float x, float y, float z)
+    {
+        Vector3 undatedPosition = new Vector3(x, y, z); // Position in front of the person platform
+        Quaternion undatedRotation = Quaternion.Euler(90, 0, 180); // Face the player
+
+        if (undatedPhotosPanel == null)
+        {
+            undatedPhotosPanel = Instantiate(familyPhotoPanelPrefab, undatedPosition, undatedRotation);
+            undatedPhotosPanel.transform.parent = transform;
+            undatedPhotosPanel.name = "UndatedPhotosPanel";
+        }
+        else
+        {
+            undatedPhotosPanel.SetActive(true);
+            undatedPhotosPanel.transform.SetPositionAndRotation(undatedPosition, undatedRotation);
+        }
+
+        var undatedPanelScript = undatedPhotosPanel.GetComponent<FamilyPhotoHallPanel>();
+        undatedPanelScript.ClearFamilyPhotos();
+        var undatedPhotos = _pictureProvider.GetPhotoInfoListForPerson(newfocusPerson.dataBaseOwnerID, -1); // -1 for undated photos
+        undatedPanelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, -1, undatedPhotos);
+        undatedPanelScript.SetPanelTitle("No Dates");
+    }
+
     public IEnumerator SetFocusPersonNode(PersonNode newfocusPerson)
     {
         if (!leaveMeAloneIAmBusy && (previousFocusPerson == null || newfocusPerson.dataBaseOwnerID != previousFocusPerson.dataBaseOwnerID))
         {
             leaveMeAloneIAmBusy = true;
-            
+            // Establish physical parent-child relationship so hall of family photos moves with PersonNode
+            this.transform.SetParent(newfocusPerson.transform, false);
+            this.transform.localPosition = new Vector3(0, 5f, 0); // Above the person
+            this.transform.localRotation = Quaternion.identity;
+
             // Hide all existing panels
             foreach (var panel in familyPhotoPanelDictionary.Values)
             {
                 panel.SetActive(false);
+            }
+            if (undatedPhotosPanel != null)
+            {
+                undatedPhotosPanel.SetActive(false);
             }
 
             previousFocusPerson = newfocusPerson;
@@ -53,6 +86,9 @@ public class HallOfFamilyPhotos : MonoBehaviour
             var lifeSpan = focusPerson.lifeSpan;
             var x = focusPerson.transform.position.x;
             var y = focusPerson.transform.position.y;
+
+            // Update undated photos panel
+            UpdateUndatedPhotosPanel(focusPerson, x, y + 2f, (birthDate) * 5 + 5f);
 
             // If the person has no life span, set the loop to at least add 1 photo panel
             // Use <= to include the current year (lifeSpan represents completed years, but we want to include the current year)

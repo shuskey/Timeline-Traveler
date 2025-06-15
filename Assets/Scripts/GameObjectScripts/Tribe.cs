@@ -56,8 +56,6 @@ public class Tribe : MonoBehaviour
 	private int maximumNumberOfPeopleInAGeneration = 0;
 	private IFamilyHistoryDataProvider _dataProvider;
 	private Dictionary<int, List<Person>> listOfPersonsPerGeneration = new Dictionary<int, List<Person>>();
-	private int personOfInterestIndexInList = 0;
-
 	const int PlatformChildIndex = 0;
 
 	private ThirdPersonController thirdPersonController;
@@ -430,50 +428,10 @@ public class Tribe : MonoBehaviour
 		{
 			StartCoroutine(hallOfHistoryGameObject.GetComponent<HallOfHistory>().SetFocusPersonNode(personObjectScript));
 		}
+		// Enable Hall of Family Photos
+		StartCoroutine(hallOfFamilyPhotosGameObject.GetComponent<HallOfFamilyPhotos>().SetFocusPersonNode(personObjectScript));
 		
 		return playerGameObject;
-	}
-
-	private void OnDebugNextPersonOfInterest()
-	{
-		teleportToPersonOfInterest(1); // 1 for forward
-	}
-
-	private void OnDebugPreviousPersonOfInterest()
-	{
-		teleportToPersonOfInterest(-1); // -1 for backward
-	}
-
-	private void teleportToPersonOfInterest(int direction)
-	{
-		var teleporter = FindFirstObjectByType<ThirdPersonTeleporter>();
-		var personNodeGameObjects = new List<GameObject>();
-		
-		// Get all personNodeGameObjects that are direct children of the tribe
-		foreach (Transform child in transform)
-		{
-			if (child.GetComponent<PersonNode>() != null)
-			{
-				personNodeGameObjects.Add(child.gameObject);
-			}
-		}
-
-		if (personNodeGameObjects.Count == 0)
-			return;
-
-		// Handle wrap around
-		personOfInterestIndexInList = (personOfInterestIndexInList + direction) % personNodeGameObjects.Count;
-		if (personOfInterestIndexInList < 0)
-			personOfInterestIndexInList = personNodeGameObjects.Count - 1;
-
-		// Teleport to the selected person
-		var targetPerson = personNodeGameObjects[personOfInterestIndexInList];
-		teleporter.TeleportTo(targetPerson.transform, new Vector3(0, 0.5f, 0), ticksToHoldHere: 25);
-		var personObjectScript = targetPerson.GetComponent<PersonNode>();
-		if (EnableHallOfHistory)
-		{
-			StartCoroutine(hallOfHistoryGameObject.GetComponent<HallOfHistory>().SetFocusPersonNode(personObjectScript));
-		}
 	}
 
 	private void CreatePlayerFollowCameraObject(GameObject target)
@@ -670,8 +628,6 @@ public class Tribe : MonoBehaviour
 		{
 			thirdPersonController.onMenuPressed.AddListener(OnMenu);
 			thirdPersonController.onStartPressed.AddListener(OnStart);
-			thirdPersonController.onDebugNextPersonOfInterest.AddListener(OnDebugNextPersonOfInterest);
-			thirdPersonController.onDebugPreviousPersonOfInterest.AddListener(OnDebugPreviousPersonOfInterest);
 			controllerSubscribed = true;
 		}
 	}
@@ -682,8 +638,6 @@ public class Tribe : MonoBehaviour
 		{
 			thirdPersonController.onMenuPressed.RemoveListener(OnMenu);
 			thirdPersonController.onStartPressed.RemoveListener(OnStart);
-			thirdPersonController.onDebugNextPersonOfInterest.RemoveListener(OnDebugNextPersonOfInterest);
-			thirdPersonController.onDebugPreviousPersonOfInterest.RemoveListener(OnDebugPreviousPersonOfInterest);
 		}
 	}
 
