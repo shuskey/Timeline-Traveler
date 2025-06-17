@@ -4695,8 +4695,8 @@ MonoBehaviour:
   originalContentDateToggle: {fileID: 1123069909}
   unknownDateToggle: {fileID: 1618890114}
   privateToggle: {fileID: 1971835467}
-  originalContentDateText: {fileID: 2143112709}
-  digiKamTodoText: {fileID: 1990880764}
+  originalContentDateInputField: {fileID: 481388491}
+  digiKamTodoInputField: {fileID: 1308657579}
 --- !u!225 &1784364667
 CanvasGroup:
   m_ObjectHideFlags: 0

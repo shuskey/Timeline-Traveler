@@ -11,8 +11,8 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
     public Toggle originalContentDateToggle;
     public Toggle unknownDateToggle;
     public Toggle privateToggle;
-    public Text originalContentDateText;
-    public Text digiKamTodoText;
+    public InputField originalContentDateInputField;
+    public InputField digiKamTodoInputField;
    
     private CanvasGroup canvasGroup;
     private PhotoInfo currentPhotoInfo;
@@ -66,15 +66,18 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
     {
         currentPhotoInfo = photoInfo;
         onPhotoActionComplete = callback;
-
-        // Initialize UI elements based on PhotoInfo
+        
         if (photoInfo.CreationDate.HasValue)
         {
-            originalContentDateText.text = photoInfo.CreationDate.Value.ToString("yyyy-MM-dd HH:mm:ss");
+            var dateTime = photoInfo.CreationDate.Value;
+
+            string format1 = dateTime.ToString("G");
+            
+            originalContentDateInputField.text = format1;
         }
         else
         {
-            originalContentDateText.text = string.Empty;
+            originalContentDateInputField.text = string.Empty;
         }
 
         // Set toggle states
@@ -95,11 +98,11 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
         // Set DigiKam todo text if it exists
         if (!string.IsNullOrEmpty(photoInfo.DigiKamTodoText))
         {
-            digiKamTodoText.text = photoInfo.DigiKamTodoText;
+            digiKamTodoInputField.text = photoInfo.DigiKamTodoText;
         }
         else
         {
-            digiKamTodoText.text = string.Empty;
+            digiKamTodoInputField.text = string.Empty;
         }
 
         ShowPopup();
