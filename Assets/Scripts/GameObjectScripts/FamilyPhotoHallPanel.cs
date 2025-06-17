@@ -34,6 +34,7 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
     
     // Details handler reference
     private FamilyPhotoDetailsHandler familyPhotoDetailsHandlerScript;
+    private FixOrFlagPhotoHandler fixOrFlagPhotoHandlerScript;
 
     // Awake is called when instantiated
     void Awake()
@@ -53,6 +54,7 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
         
         // Find the photo details panel
         GameObject[] familyPhotoDetailsPanel = GameObject.FindGameObjectsWithTag("FamilyPhotoDetailsPanel");
+        GameObject[] fixOrFlagPhotoPanel = GameObject.FindGameObjectsWithTag("FixOrFlagPhotoPanel");
         if (familyPhotoDetailsPanel.Length > 0)
         {
             familyPhotoDetailsHandlerScript = familyPhotoDetailsPanel[0].transform.GetComponent<FamilyPhotoDetailsHandler>();
@@ -60,6 +62,14 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
         else
         {
             Debug.LogWarning("FamilyPhotoDetailsPanel not found! Make sure there's a GameObject with tag 'FamilyPhotoDetailsPanel'");
+        }
+        if (fixOrFlagPhotoPanel.Length > 0)
+        {
+            fixOrFlagPhotoHandlerScript = fixOrFlagPhotoPanel[0].transform.GetComponent<FixOrFlagPhotoHandler>();
+        }
+        else
+        {
+            Debug.LogWarning("FixOrFlagPhotoPanel not found! Make sure there's a GameObject with tag 'FixOrFlagPhotoPanel'");
         }
     }
 
@@ -321,29 +331,21 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
     {
         if (numberOfEvents != 0)
         {
-            var currentPhoto = photoInfoList[currentEventIndex];
-            if (!string.IsNullOrEmpty(currentPhoto.FullPathToFileName))
-            {
-                try
-                {
-                    // Open the photo in the default system image viewer
-                    System.Diagnostics.Process.Start(currentPhoto.FullPathToFileName);
-                }
-                catch (System.Exception ex)
-                {
-                    Debug.LogWarning($"Could not open photo: {ex.Message}");
-                    // Fallback: try opening the directory containing the photo
-                    try
-                    {
-                        string directory = System.IO.Path.GetDirectoryName(currentPhoto.FullPathToFileName);
-                        System.Diagnostics.Process.Start(directory);
-                    }
-                    catch (System.Exception ex2)
-                    {
-                        Debug.LogError($"Could not open photo or directory: {ex2.Message}");
-                    }
-                }
-            }
+            // we will launch the fix or flag photo popup with a callback
+            fixOrFlagPhotoHandlerScript.ShowFixOrFlagPhotoPopup(photoInfoList[currentEventIndex], OnPhotoActionComplete);
+            return; 
+        }
+    }
+
+    private void OnPhotoActionComplete(PhotoInfo modifiedPhotoInfo)
+    {
+        // Update the photo info in our list with the modified version
+        if (modifiedPhotoInfo != null)
+        {
+            photoInfoList[currentEventIndex] = modifiedPhotoInfo;
+            // Refresh the display to show any changes
+            DisplayHallPanelImageTexture();
+            titleTextFieldName.text = currentlySelectedEventTitle();
         }
     }
 

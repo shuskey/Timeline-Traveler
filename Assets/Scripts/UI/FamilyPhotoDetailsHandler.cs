@@ -17,14 +17,15 @@ public class FamilyPhotoDetailsHandler : MonoBehaviour
     public GameObject gpsInfoGameObject;
     public GameObject panelCountGameObject;
     public GameObject additionalInstructionsGameObject;
-
     private PhotoInfo photoInfoObject;
     private CanvasGroup canvasGroup;
+
 
     // Start is called before the first frame update
     void Start()
     {
         HideDetailsDialog();
+    
         // This will become visible when an interaction occurs
     }
 
@@ -70,7 +71,7 @@ public class FamilyPhotoDetailsHandler : MonoBehaviour
         panelCountGameObject.GetComponent<Text>().text = $"Photo: {photoTally}";
 
         // Instructions
-        additionalInstructionsGameObject.GetComponent<Text>().text = " ^ or E to open photo. Previous < or > Next";
+        additionalInstructionsGameObject.GetComponent<Text>().text = "Previous < or > Next.  Enter key to fix or flag photo.";
 
         // Set the image
         if (photoTexture != null)

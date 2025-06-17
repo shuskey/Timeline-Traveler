@@ -12,6 +12,7 @@ TagManager:
   - FamilyPhotoDetailsPanel
   - PersonName
   - ChildName
+  - FixOrFlagPhotoPanel
   layers:
   - Default
   - TransparentFX
