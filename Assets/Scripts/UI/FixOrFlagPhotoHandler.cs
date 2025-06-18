@@ -21,6 +21,7 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
    
     private CanvasGroup canvasGroup;
     private PhotoInfo currentPhotoInfo;
+    private PhotoInfo originalPhotoInfo;
     private ThirdPersonController playerController;
     private bool wasCursorLocked;
     private StarterAssetsInputs starterAssetsInputs;
@@ -62,7 +63,7 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
     {
         currentPhotoInfo = photoInfo;
         onPhotoActionComplete = callback;
-        
+        originalPhotoInfo = photoInfo;
         InitializeUIComponentValues();
         
         ShowPopup();
@@ -112,14 +113,47 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
     // This method should be called by the OK button in the UI
     public void OnOKButtonClicked()
     {
-        // Here you would get the modified values from your UI elements
-        // For now, we'll just pass back the original PhotoInfo
-        // TODO: Modify this to get actual values from UI elements
+        // Collect the modified values from UI elements
+        CollectUIValuesAndUpdatePhotoInfo();
+        
         if (onPhotoActionComplete != null)
         {
             onPhotoActionComplete(currentPhotoInfo);
         }
         HidePopup();
+    }
+
+    private void CollectUIValuesAndUpdatePhotoInfo()
+    {
+        if (currentPhotoInfo == null) return;
+        
+        // Update creation date from input field
+        if (!string.IsNullOrEmpty(originalContentDateInputField.text))
+        {
+            if (DateTime.TryParse(originalContentDateInputField.text, out DateTime parsedDate))
+            {
+                currentPhotoInfo.CreationDate = parsedDate;
+            } // if this parse fails then fallback to original creation date
+            else
+            {
+                // log the error
+                Debug.LogError("Failed to parse updated Original Content creation date, we will fall back to the incoming value: " + originalContentDateInputField.text);
+                currentPhotoInfo.CreationDate = originalPhotoInfo.CreationDate;
+            }
+        }
+        else
+        {
+            currentPhotoInfo.CreationDate = null;
+        }
+        
+        // Update undated status based on toggle states
+        currentPhotoInfo.IsUndated = unknownDateToggle.isOn;
+        
+        // Update private status
+        currentPhotoInfo.IsPrivate = privateToggle.isOn;
+        
+        // Update DigiKam todo text
+        currentPhotoInfo.DigiKamTodoText = digiKamTodoInputField.text;
     }
 
     private void OnQuitButtonClicked()
