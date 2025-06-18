@@ -35,41 +35,27 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
         // Initialize canvas group if not already set
         if (!canvasGroup) canvasGroup = GetComponent<CanvasGroup>();
         
-        // We'll find the player controller when needed
-        
-        // Set up button listeners
-        if (okButton != null)
-        {
-            okButton.onClick.AddListener(OnOKButtonClicked);
-        }
-        
-        if (quitButton != null)
-        {
-            quitButton.onClick.AddListener(OnQuitButtonClicked);
-        }
-        
-        if (cancelButton != null)
-        {
-            cancelButton.onClick.AddListener(OnCancelButtonClicked);
-        }
-        
-        // Set up toggle listeners
-        if (originalContentDateToggle != null)
-        {
-            originalContentDateToggle.onValueChanged.AddListener(OnOriginalContentDateToggleChanged);
-        }
-        
-        if (unknownDateToggle != null)
-        {
-            unknownDateToggle.onValueChanged.AddListener(OnUnknownDateToggleChanged);
-        }
-        
-        if (privateToggle != null)
-        {
-            privateToggle.onValueChanged.AddListener(OnPrivateToggleChanged);
-        }
+        // Set up UI component listeners
+        SetupUIComponentListeners();
         
         HidePopup();
+    }
+
+    private void SetupUIComponentListeners()
+    {
+        // Set up button listeners
+        if (okButton != null) okButton.onClick.AddListener(OnOKButtonClicked);
+        
+        if (quitButton != null) quitButton.onClick.AddListener(OnQuitButtonClicked);
+        
+        if (cancelButton != null) cancelButton.onClick.AddListener(OnCancelButtonClicked);
+        
+        // Set up toggle listeners
+        if (originalContentDateToggle != null) originalContentDateToggle.onValueChanged.AddListener(OnOriginalContentDateToggleChanged);
+        
+        if (unknownDateToggle != null) unknownDateToggle.onValueChanged.AddListener(OnUnknownDateToggleChanged);
+        
+        if (privateToggle != null) privateToggle.onValueChanged.AddListener(OnPrivateToggleChanged);
     }
 
     public void ShowFixOrFlagPhotoPopup(PhotoInfo photoInfo, PhotoActionCallback callback)
@@ -77,9 +63,16 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
         currentPhotoInfo = photoInfo;
         onPhotoActionComplete = callback;
         
-        if (photoInfo.CreationDate.HasValue)
+        InitializeUIComponentValues();
+        
+        ShowPopup();
+    }
+
+    private void InitializeUIComponentValues()
+    {
+        if (currentPhotoInfo.CreationDate.HasValue)
         {
-            var dateTime = photoInfo.CreationDate.Value;
+            var dateTime = currentPhotoInfo.CreationDate.Value;
 
             string format1 = dateTime.ToString("G");
             
@@ -91,7 +84,7 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
         }
 
         // Set toggle states
-        if (photoInfo.IsUndated)
+        if (currentPhotoInfo.IsUndated)
         {
             unknownDateToggle.isOn = true;
             originalContentDateToggle.isOn = false;
@@ -103,19 +96,17 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
         }
 
         // Set private toggle
-        privateToggle.isOn = photoInfo.IsPrivate;
+        privateToggle.isOn = currentPhotoInfo.IsPrivate;
 
         // Set DigiKam todo text if it exists
-        if (!string.IsNullOrEmpty(photoInfo.DigiKamTodoText))
+        if (!string.IsNullOrEmpty(currentPhotoInfo.DigiKamTodoText))
         {
-            digiKamTodoInputField.text = photoInfo.DigiKamTodoText;
+            digiKamTodoInputField.text = currentPhotoInfo.DigiKamTodoText;
         }
         else
         {
             digiKamTodoInputField.text = string.Empty;
         }
-
-        ShowPopup();
     }
 
     // This method should be called by the OK button in the UI
