@@ -137,7 +137,8 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
             else
             {
                 // log the error
-                Debug.LogError("Failed to parse updated Original Content creation date, we will fall back to the incoming value: " + originalContentDateInputField.text);
+                var originalOriginalCreationDate =  currentPhotoInfo.CreationDate.Value.ToString("G");
+                Debug.LogError($"Failed to parse updated Original Content creation date {originalContentDateInputField.text}, we will fall back to the incoming value: {originalOriginalCreationDate}");
                 currentPhotoInfo.CreationDate = originalPhotoInfo.CreationDate;
             }
         }
