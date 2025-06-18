@@ -2,9 +2,14 @@ using UnityEngine;
 using UnityEngine.UI;
 using Assets.Scripts.Utilities;
 using System;
+using StarterAssets;
 
 public class FixOrFlagPhotoHandler : MonoBehaviour
 {
+    // Static event and property for global modal state
+    public static event Action<bool> OnModalStateChanged;
+    public static bool IsModalOpen { get; private set; } = false;
+    
     public Button quitButton;
     public Button cancelButton;
     public Button okButton;
@@ -16,6 +21,9 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
    
     private CanvasGroup canvasGroup;
     private PhotoInfo currentPhotoInfo;
+    private ThirdPersonController playerController;
+    private bool wasCursorLocked;
+    private StarterAssetsInputs starterAssetsInputs;
     
     // Define the delegate type for the callback
     public delegate void PhotoActionCallback(PhotoInfo modifiedPhotoInfo);
@@ -26,6 +34,8 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
     {
         // Initialize canvas group if not already set
         if (!canvasGroup) canvasGroup = GetComponent<CanvasGroup>();
+        
+        // We'll find the player controller when needed
         
         // Set up button listeners
         if (okButton != null)
@@ -191,16 +201,85 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
     private void ShowPopup()
     {
         if (!canvasGroup) canvasGroup = GetComponent<CanvasGroup>();
+        
+        // Store current cursor state
+        wasCursorLocked = Cursor.lockState == CursorLockMode.Locked;
+        
+        // Unlock cursor and make it visible
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
+        // Find the player controller and input
+        playerController = FindAnyObjectByType<ThirdPersonController>();
+        if (playerController != null)
+        {
+            starterAssetsInputs = playerController.GetComponent<StarterAssetsInputs>();
+        }
+        
+        // Disable player controller if found
+        if (playerController != null)
+        {
+            playerController.enabled = false;
+        }
+        
+        // Show the popup
         canvasGroup.alpha = 1;
         canvasGroup.interactable = true;
         canvasGroup.blocksRaycasts = true;
+        
+        // Ensure this canvas is rendered on top
+        Canvas canvas = GetComponent<Canvas>();
+        if (canvas != null)
+        {
+            canvas.sortingOrder = 32767; // Maximum sorting order
+        }
+        
+        // Notify other objects that modal is open
+        IsModalOpen = true;
+        OnModalStateChanged?.Invoke(true);
     }
 
     private void HidePopup()
     {
         if (!canvasGroup) canvasGroup = GetComponent<CanvasGroup>();
+        
+        // Restore cursor state
+        if (wasCursorLocked)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
+        
+        // Re-enable player controller and flush input
+        if (playerController != null)
+        {
+            // Flush input system to clear cached signals
+            if (starterAssetsInputs != null)
+            {
+                // Reset all input values to clear any cached state
+                starterAssetsInputs.move = Vector2.zero;
+                starterAssetsInputs.look = Vector2.zero;
+                starterAssetsInputs.jump = false;
+                starterAssetsInputs.sprint = false;
+                starterAssetsInputs.menu = false;
+                starterAssetsInputs.start = false;
+                starterAssetsInputs.previous = false;
+                starterAssetsInputs.next = false;
+                starterAssetsInputs.interact = false;
+                starterAssetsInputs.debugNextPersonOfInterest = false;
+                starterAssetsInputs.debugPreviousPersonOfInterest = false;
+            }
+            //playerController enable at the very end to make sure its inputs are flushed first
+            playerController.enabled = true;
+        }
+        
+        // Hide the popup
         canvasGroup.alpha = 0;
         canvasGroup.interactable = false;
         canvasGroup.blocksRaycasts = false;
+        
+        // Notify other objects that modal is closed
+        IsModalOpen = false;
+        OnModalStateChanged?.Invoke(false);
     }
 }

@@ -35,6 +35,9 @@ public class ClickToInteract : MonoBehaviour
 
     private void DoPrevious()
     {
+        // Don't process input if modal is open
+        if (FixOrFlagPhotoHandler.IsModalOpen) return;
+        
         if (_input.previous && itemToInteractWith != null)
             itemToInteractWith.PreviousEventInPanel();
         _input.previous = false;
@@ -42,6 +45,9 @@ public class ClickToInteract : MonoBehaviour
 
     private void DoNext()
     {
+        // Don't process input if modal is open
+        if (FixOrFlagPhotoHandler.IsModalOpen) return;
+        
         if (_input.next && itemToInteractWith != null)
             itemToInteractWith.NextEventInPanel();
         _input.next = false;
@@ -49,6 +55,9 @@ public class ClickToInteract : MonoBehaviour
     
     private void DoInteract()
     {
+        // Don't process input if modal is open
+        if (FixOrFlagPhotoHandler.IsModalOpen) return;
+        
         if (_input.interact && itemToInteractWith != null)
             itemToInteractWith.InteractWithPanel();
         _input.interact = false;
