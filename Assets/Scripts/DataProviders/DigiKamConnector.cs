@@ -51,8 +51,10 @@ namespace Assets.Scripts.DataProviders
             
             // Initialize excluded folder names with defaults if not provided
             _excludedFolderNames = excludedFolderNames ?? new List<string>(DefaultExcludedFolderNames);
-            
+            // This is a mapping between the RootsMagic owner ID and the DigiKam tag ID
             BuildOwnerIdToTagIdMap();
+            // This is a special tag that is used to store the timeline traveler tags IsNotDated IsPrivate and HasTodoCaption   
+            EnsureBaseTimelineTravelerTagsAreAvailable();
             LocationsTagId = GetBaseTagIdByName(locationsTagName);
         }
 
@@ -633,6 +635,135 @@ namespace Assets.Scripts.DataProviders
             }
 
             return photoList;
+        }
+
+        /// <summary>
+        /// Ensures that the base Timeline-Traveler tag and its child tags exist in the database.
+        /// Creates them if they don't exist, along with their corresponding TagsTree entries.
+        /// </summary>
+        public void EnsureBaseTimelineTravelerTagsAreAvailable()
+        {
+            using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
+            {
+                conn.Open();
+                using (var transaction = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        // Check if Timeline-Traveler base tag exists
+                        int timelineTravelerTagId = GetOrCreateTag("Timeline-Traveler", 0, transaction);
+                        
+                        // Check and create child tags
+                        int isNotDatedTagId = GetOrCreateTag("IsNotDated", timelineTravelerTagId, transaction);
+                        int isPrivateTagId = GetOrCreateTag("IsPrivate", timelineTravelerTagId, transaction);
+                        int hasTodoCaptionTagId = GetOrCreateTag("HasTodoCaption", timelineTravelerTagId, transaction);
+                        
+                        transaction.Commit();
+                        Debug.Log("Timeline-Traveler base tags ensured successfully");
+                    }
+                    catch (Exception ex)
+                    {
+                        transaction.Rollback();
+                        Debug.LogError($"Error ensuring Timeline-Traveler tags: {ex.Message}");
+                        throw;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets an existing tag or creates a new one if it doesn't exist.
+        /// Also creates the corresponding TagsTree entries.
+        /// </summary>
+        /// <param name="tagName">The name of the tag</param>
+        /// <param name="parentId">The parent tag ID (0 for root tags)</param>
+        /// <param name="transaction">The database transaction to use</param>
+        /// <returns>The tag ID (existing or newly created)</returns>
+        private int GetOrCreateTag(string tagName, int parentId, IDbTransaction transaction)
+        {
+            using (var cmd = transaction.Connection.CreateCommand())
+            {
+                cmd.Transaction = transaction;
+                
+                // Check if tag already exists
+                cmd.CommandText = @"
+                    SELECT id 
+                    FROM Tags 
+                    WHERE name = @tagName AND pid = @parentId";
+                
+                var nameParam = new SqliteParameter("@tagName", tagName);
+                var parentParam = new SqliteParameter("@parentId", parentId);
+                cmd.Parameters.Add(nameParam);
+                cmd.Parameters.Add(parentParam);
+                
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        int existingTagId = reader.GetInt32(0);
+                        Debug.Log($"Tag '{tagName}' already exists with ID {existingTagId}");
+                        return existingTagId;
+                    }
+                }
+                
+                // Tag doesn't exist, create it
+                cmd.CommandText = @"
+                    INSERT INTO Tags (name, pid) 
+                    VALUES (@tagName, @parentId);
+                    SELECT last_insert_rowid();";
+                
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        int newTagId = (int)reader.GetInt64(0);
+                        Debug.Log($"Created new tag '{tagName}' with ID {newTagId}");
+                        
+                        // Create TagsTree entries for the new tag
+                        CreateTagsTreeEntries(newTagId, parentId, transaction);
+                        
+                        return newTagId;
+                    }
+                }
+                
+                throw new InvalidOperationException($"Failed to create tag '{tagName}'");
+            }
+        }
+
+        /// <summary>
+        /// Creates TagsTree entries for a tag, including all its ancestors.
+        /// </summary>
+        /// <param name="tagId">The tag ID</param>
+        /// <param name="parentId">The immediate parent ID</param>
+        /// <param name="transaction">The database transaction to use</param>
+        private void CreateTagsTreeEntries(int tagId, int parentId, IDbTransaction transaction)
+        {
+            using (var cmd = transaction.Connection.CreateCommand())
+            {
+                cmd.Transaction = transaction;
+                
+                // Insert the immediate parent relationship
+                cmd.CommandText = @"
+                    INSERT OR IGNORE INTO TagsTree (id, pid) 
+                    VALUES (@tagId, @parentId)";
+                
+                var tagParam = new SqliteParameter("@tagId", tagId);
+                var parentParam = new SqliteParameter("@parentId", parentId);
+                cmd.Parameters.Add(tagParam);
+                cmd.Parameters.Add(parentParam);
+                cmd.ExecuteNonQuery();
+                
+                // If this isn't a root tag (parentId != 0), get all ancestors of the parent
+                if (parentId != 0)
+                {
+                    cmd.CommandText = @"
+                        INSERT OR IGNORE INTO TagsTree (id, pid)
+                        SELECT @tagId, tt.pid
+                        FROM TagsTree tt
+                        WHERE tt.id = @parentId";
+                    cmd.ExecuteNonQuery();
+                }
+            }
         }
     }
 }
