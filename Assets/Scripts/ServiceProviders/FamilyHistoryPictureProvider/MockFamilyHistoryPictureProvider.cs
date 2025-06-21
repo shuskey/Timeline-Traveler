@@ -45,5 +45,11 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
         {
             return new PhotoInfo("MockPhoto.jpg", new Rect(0, 0, 100, 100), ExifOrientation.TopLeft, "MockPhoto.jpg", "Mock Photo");
         }
+
+        public void UpdatePhotoInfo(PhotoInfo modifiedPhotoInfo)
+        {
+            // Mock implementation - just log the update
+            Debug.Log($"Mock: Updated photo info for image {modifiedPhotoInfo.ImageId}");
+        }
     }
 } 

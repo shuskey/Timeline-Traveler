@@ -1,4 +1,4 @@
-//using Assets.Scripts.DataObjects;
+using Assets.Scripts.DataObjects;
 //using Assets.Scripts.DataProviders;
 using System.Collections;
 using System.Collections.Generic;
@@ -7,6 +7,7 @@ using UnityEngine;
 using Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider;
 using Assets.Scripts.ServiceProviders;
 using Assets.Scripts.Enums;
+using Assets.Scripts.Utilities;
 using System;
 
 public class HallOfFamilyPhotos : MonoBehaviour
@@ -33,6 +34,40 @@ public class HallOfFamilyPhotos : MonoBehaviour
                 { PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH, PlayerPrefs.GetString(PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH) }
             });
         }
+    }
+
+    public void UpdatePhotoInfoBackToDigiKam(int panelYearWithRequest, PhotoInfo modifiedPhotoInfo)
+    {
+        // Update the photo info in the DigiKamConnector
+        _pictureProvider.UpdatePhotoInfo(modifiedPhotoInfo);
+        // Depending on what changed, some Photo panels should be refreshed
+        // To keep it simple, we will update the panelYearWithRequest and the UnDated Panel
+        // Then if the createdDate in the modifiedPhotoInfo has a different year than panelYearWithRequest
+        // Then we will refresh that one as well
+        if (panelYearWithRequest != -1)
+        {
+            var panel = familyPhotoPanelDictionary[panelYearWithRequest - focusPerson.birthDate];
+            var panelScript = panel.GetComponent<FamilyPhotoHallPanel>();
+            panelScript.ClearFamilyPhotos();
+            var photosForYear = _pictureProvider.GetPhotoInfoListForPerson(focusPerson.dataBaseOwnerID, panelYearWithRequest);
+            panelScript.LoadFamilyPhotosForYearAndPerson(focusPerson.dataBaseOwnerID, panelYearWithRequest, photosForYear);
+        
+            var modifiedPhotoYear = modifiedPhotoInfo.CreationDate.Value.Year;
+            if (modifiedPhotoYear != panelYearWithRequest)
+            {
+                panel = familyPhotoPanelDictionary[modifiedPhotoYear - focusPerson.birthDate];
+                panelScript = panel.GetComponent<FamilyPhotoHallPanel>();
+                panelScript.ClearFamilyPhotos();
+                photosForYear = _pictureProvider.GetPhotoInfoListForPerson(focusPerson.dataBaseOwnerID, modifiedPhotoYear);
+                panelScript.LoadFamilyPhotosForYearAndPerson(focusPerson.dataBaseOwnerID, modifiedPhotoYear, photosForYear);
+            }
+        }
+
+        // Refresh the undated photos panel
+        var undatedPanelScript = undatedPhotosPanel.GetComponent<FamilyPhotoHallPanel>();
+        undatedPanelScript.ClearFamilyPhotos();
+        var undatedPhotos = _pictureProvider.GetPhotoInfoListForPerson(focusPerson.dataBaseOwnerID, -1); // -1 for undated photos
+        undatedPanelScript.LoadFamilyPhotosForYearAndPerson(focusPerson.dataBaseOwnerID, -1, undatedPhotos);
     }
 
     private void UpdateUndatedPhotosPanel(PersonNode newfocusPerson, float x, float y, float z)

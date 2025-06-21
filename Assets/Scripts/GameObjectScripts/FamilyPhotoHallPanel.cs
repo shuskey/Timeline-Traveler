@@ -346,6 +346,11 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
             // Refresh the display to show any changes
             DisplayHallPanelImageTexture();
             titleTextFieldName.text = currentlySelectedEventTitle();
+
+            // We need a call back to our parent, the HallOfFamilyPhotos, to update the photo info in the DigiKamConnector
+            // And do what every panel refreshes may be needed to do
+            HallOfFamilyPhotos hallOfFamilyPhotos = FindFirstObjectByType<HallOfFamilyPhotos>();
+            hallOfFamilyPhotos.UpdatePhotoInfoBackToDigiKam(year, modifiedPhotoInfo);
         }
     }
 

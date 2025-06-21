@@ -69,5 +69,15 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
             }
             return _connector.GetPhotoInfoForPrimaryThumbnailForPersonFromDataBase(personId);
         }
+
+        public void UpdatePhotoInfo(PhotoInfo modifiedPhotoInfo)
+        {
+            if (!_isInitialized)
+            {
+                Debug.LogError("DigiKamFamilyHistoryPictureProvider not initialized");
+                return;
+            }
+            _connector.UpdatePhotoInfo(modifiedPhotoInfo);
+        }
     }
 } 

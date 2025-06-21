@@ -26,5 +26,11 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
         List<PhotoInfo> GetPhotoInfoListForPerson(int personId, int? year);
 
         PhotoInfo GetThumbnailPhotoInfoForPerson(int personId, int year);
+
+        /// <summary>
+        /// Updates photo information back to the database
+        /// </summary>
+        /// <param name="modifiedPhotoInfo">The modified photo information to update</param>
+        void UpdatePhotoInfo(PhotoInfo modifiedPhotoInfo);
     }
 } 

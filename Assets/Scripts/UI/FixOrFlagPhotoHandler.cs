@@ -85,7 +85,7 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
         }
 
         // Set toggle states
-        if (currentPhotoInfo.IsUndated)
+        if (currentPhotoInfo.IsNotDated)
         {
             unknownDateToggle.isOn = true;
             originalContentDateToggle.isOn = false;
@@ -100,9 +100,9 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
         privateToggle.isOn = currentPhotoInfo.IsPrivate;
 
         // Set DigiKam todo text if it exists
-        if (!string.IsNullOrEmpty(currentPhotoInfo.DigiKamTodoText))
+        if (!string.IsNullOrEmpty(currentPhotoInfo.TodoCaptionText))
         {
-            digiKamTodoInputField.text = currentPhotoInfo.DigiKamTodoText;
+            digiKamTodoInputField.text = currentPhotoInfo.TodoCaptionText;
         }
         else
         {
@@ -148,13 +148,13 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
         }
         
         // Update undated status based on toggle states
-        currentPhotoInfo.IsUndated = unknownDateToggle.isOn;
+        currentPhotoInfo.IsNotDated = unknownDateToggle.isOn;
         
         // Update private status
         currentPhotoInfo.IsPrivate = privateToggle.isOn;
         
         // Update DigiKam todo text
-        currentPhotoInfo.DigiKamTodoText = digiKamTodoInputField.text;
+        currentPhotoInfo.TodoCaptionText = digiKamTodoInputField.text;
     }
 
     private void OnQuitButtonClicked()
@@ -179,7 +179,7 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
             // Update the photo info
             if (currentPhotoInfo != null)
             {
-                currentPhotoInfo.IsUndated = false;
+                currentPhotoInfo.IsNotDated = false;
             }
         }
         else if (!unknownDateToggle.isOn)
@@ -199,7 +199,7 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
             // Update the photo info
             if (currentPhotoInfo != null)
             {
-                currentPhotoInfo.IsUndated = true;
+                currentPhotoInfo.IsNotDated = true;
             }
         }
         else if (!originalContentDateToggle.isOn)

@@ -27,9 +27,10 @@ namespace Assets.Scripts.Utilities
         public DateTime? CreationDate { get; set; }
         public DateTime? DigitizationDate { get; set; }
         // from ouy timeline travler Tags in DigiKam:
-        public bool IsUndated { get; set; }
+        public bool IsNotDated { get; set; }
         public bool IsPrivate { get; set; }
-        public string DigiKamTodoText { get; set; }
+        public bool HasTodoCaption { get; set; }
+        public string TodoCaptionText { get; set; }
         public string CameraMake { get; set; }
         public string CameraModel { get; set; }
         public string CameraLens { get; set; }
@@ -48,7 +49,8 @@ namespace Assets.Scripts.Utilities
                         string cameraModel = null, string cameraLens = null,
                         float positionLatitude = 0f, float positionLongitude = 0f, float positionAltitude = 0f,
                         Dictionary<int, PhotoTag> tags = null, string description = null,
-                        bool isUndated = false, bool isPrivate = false, string digiKamTodoText = null)
+                        bool isNotDated = false, bool isPrivate = false, bool hasTodoCaption = false,
+                        string todoCaptionText = null)
         {
             FullPathToFileName = fullPathToFileName;
             Region = region;
@@ -63,6 +65,7 @@ namespace Assets.Scripts.Utilities
             ImageRating = imageRating;
             CreationDate = creationDate;
             DigitizationDate = digitizationDate;
+
             CameraMake = cameraMake ?? "";
             CameraModel = cameraModel ?? "";
             CameraLens = cameraLens ?? "";
@@ -73,6 +76,10 @@ namespace Assets.Scripts.Utilities
             
             // Initialize tag dictionary
             Tags = tags ?? new Dictionary<int, PhotoTag>();
+            IsNotDated = isNotDated;
+            IsPrivate = isPrivate;
+            HasTodoCaption = hasTodoCaption;
+            TodoCaptionText = todoCaptionText;
         }
     }
 

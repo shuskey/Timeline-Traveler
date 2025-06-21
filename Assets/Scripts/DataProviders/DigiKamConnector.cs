@@ -17,6 +17,17 @@ namespace Assets.Scripts.DataProviders
     /// </summary>
     public class DigiKamConnector : DataProviderBase
     {
+        // Timeline-Traveler tag constants
+        public static readonly string TIMELINE_TRAVELER_PARENT_TAG = "Timeline-Traveler";
+        public static readonly string IS_NOT_DATED_TAG = "IsNotDated";
+        public static readonly string IS_PRIVATE_TAG = "IsPrivate";
+        public static readonly string HAS_TODO_CAPTION_TAG = "HasTodoCaption";
+        public static readonly string DIGIKAM_TODO_AUTHOR = "DigiKam Todo";
+
+        // Database and property constants
+        public static readonly string ROOTSMAGIC_OWNER_ID_PROPERTY = "rootsmagic_owner_id";
+        public static readonly string THUMBNAILS_DIGIKAM_DB_NAME = "thumbnails-digikam";
+
         // Default folder names to exclude from photo results (converted duplicates)
         public static readonly List<string> DefaultExcludedFolderNames = new List<string> 
         { 
@@ -73,7 +84,10 @@ namespace Assets.Scripts.DataProviders
                                CAST(p.value as INTEGER) as ownerId
                         FROM Tags t
                         JOIN TagProperties p ON t.id = p.tagid
-                        WHERE p.property = 'rootsmagic_owner_id'";
+                        WHERE p.property = @propertyName";
+                    
+                    var propertyParam = new SqliteParameter("@propertyName", ROOTSMAGIC_OWNER_ID_PROPERTY);
+                    cmd.Parameters.Add(propertyParam);
                     
                     using (var reader = cmd.ExecuteReader())
                     {
@@ -185,7 +199,7 @@ namespace Assets.Scripts.DataProviders
         private void AttachThumbnailsDatabase(IDbCommand dbcmd)
         {
             // First check if already attached
-            dbcmd.CommandText = "SELECT name FROM pragma_database_list WHERE name = 'thumbnails-digikam';";
+            dbcmd.CommandText = $"SELECT name FROM pragma_database_list WHERE name = '{THUMBNAILS_DIGIKAM_DB_NAME}';";
             bool isAlreadyAttached = false;
             using (var reader = dbcmd.ExecuteReader())
             {
@@ -195,7 +209,7 @@ namespace Assets.Scripts.DataProviders
             // Attach the thumbnails database if not already attached
             if (!isAlreadyAttached)
             {
-                dbcmd.CommandText = $"ATTACH DATABASE '{_digiKamThumbnailsDataBaseFileNameWithFullPath}' as 'thumbnails-digikam';";
+                dbcmd.CommandText = $"ATTACH DATABASE '{_digiKamThumbnailsDataBaseFileNameWithFullPath}' as '{THUMBNAILS_DIGIKAM_DB_NAME}';";
                 dbcmd.ExecuteNonQuery();
             }
         }
@@ -255,7 +269,7 @@ namespace Assets.Scripts.DataProviders
         /// </summary>
         /// <param name="imageId">The image ID to get description for</param>
         /// <returns>Assembled description string, or null if no comments found</returns>
-        private string GetDescriptionForImage(int imageId)
+        private string GetDescriptionForImage(int imageId, bool skipTodoCaption = true)
         {
             if (imageId <= 0)
             {
@@ -272,7 +286,7 @@ namespace Assets.Scripts.DataProviders
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = @"
-                        SELECT type, comment
+                        SELECT type, comment, author
                         FROM ImageComments
                         WHERE imageid = @imageId
                         ORDER BY type, id";
@@ -286,6 +300,12 @@ namespace Assets.Scripts.DataProviders
                         {
                             int type = reader.GetInt32("type");
                             string comment = reader.GetString("comment");
+                            string author = reader.IsDBNull("author") ? null : reader.GetString("author");
+                            
+                            if (skipTodoCaption && author == DIGIKAM_TODO_AUTHOR)
+                            {
+                                continue; // Skip todo captions when requested
+                            }
                             
                             if (!string.IsNullOrWhiteSpace(comment))
                             {
@@ -340,137 +360,142 @@ namespace Assets.Scripts.DataProviders
 
             int limitListSizeTo = 1;
             string conn = "URI=file:" + _digiKamDataBaseFileNameWithFullPath;
-            IDbConnection dbconn;
-            dbconn = (IDbConnection)new SqliteConnection(conn);
-            dbconn.Open();
-            IDbCommand dbcmd = dbconn.CreateCommand();
+            
+            using (IDbConnection dbconn = new SqliteConnection(conn))
+            {
+                dbconn.Open();
+                using (IDbCommand dbcmd = dbconn.CreateCommand())
+                {
+                    AttachThumbnailsDatabase(dbcmd);
+                    // A note about AlbumRoots:
+                    // My usage of DigiKam I have seen the label be "Photos" as well as "Pictures"
+                    // So, I will just use the id of 1 for the AlbumRoot
+                    string QUERYTHUMBNAILS = $@"
+                        SELECT 
+                            tags.id as tagId,
+                            tags.name,
+                            paths.thumbId,
+                            images.id as ""imageId"",
+                            tnails.type,
+                            tnails.modificationDate,
+                            tnails.orientationHint as orientation,
+                            'C:' || 
+                            (SELECT specificPath FROM AlbumRoots WHERE AlbumRoots.id = 1) ||
+                                CASE
+                                    WHEN albums.relativePath = '/' THEN '/'
+                                    ELSE albums.relativePath || '/'
+                                END || 
+                            TRIM(images.name, '/') as ""fullPathToFileName"",
+                            info.width as imageWidth,
+                            info.height as imageHeight,
+                            info.rating as imageRating,
+                            info.creationDate as creationDate,
+                            info.digitizationDate as digitizationDate,
+                            region.value as ""region"",
+                            tnails.data as 'PGFImageData',
+                            metadata.make as cameraMake,
+                            metadata.model as cameraModel,
+                            metadata.lens as cameraLens,
+                            positions.latitudeNumber as positionLatitude,
+                            positions.longitudeNumber as positionLongitude,
+                            positions.altitude as positionAltitude
+                        FROM Tags tags
+                        LEFT JOIN Images images ON tags.icon = images.id
+                        LEFT JOIN ImageInformation info ON images.id = info.imageid
+                        LEFT JOIN ImageMetadata metadata ON images.id = metadata.imageid
+                        LEFT JOIN ImagePositions positions ON images.id = positions.imageid
+                        LEFT JOIN Albums albums ON images.album = albums.id
+                        LEFT JOIN ImageTagProperties region ON tags.icon = region.imageid AND tags.id = region.tagid
+                        INNER JOIN [{THUMBNAILS_DIGIKAM_DB_NAME}].FilePaths paths ON fullPathToFileName = paths.path
+                        INNER JOIN [{THUMBNAILS_DIGIKAM_DB_NAME}].Thumbnails tnails ON paths.thumbId = tnails.id
+                        WHERE tags.id = {tagId} 
+                            AND images.album IS NOT NULL;";
 
-            AttachThumbnailsDatabase(dbcmd);
-            // A note about AlbumRoots:
-            // My usage of DigiKam I have seen the label be "Photos" as well as "Pictures"
-            // So, I will just use the id of 1 for the AlbumRoot
-            string QUERYTHUMBNAILS = $@"
-                SELECT 
-                    tags.id as tagId,
-                    tags.name,
-                    paths.thumbId,
-                    images.id as ""imageId"",
-                    tnails.type,
-                    tnails.modificationDate,
-                    tnails.orientationHint as orientation,
-                    'C:' || 
-                    (SELECT specificPath FROM AlbumRoots WHERE AlbumRoots.id = 1) ||
-                        CASE
-                            WHEN albums.relativePath = '/' THEN '/'
-                            ELSE albums.relativePath || '/'
-                        END || 
-                    TRIM(images.name, '/') as ""fullPathToFileName"",
-                    info.width as imageWidth,
-                    info.height as imageHeight,
-                    info.rating as imageRating,
-                    info.creationDate as creationDate,
-                    info.digitizationDate as digitizationDate,
-                    region.value as ""region"",
-                    tnails.data as 'PGFImageData',
-                    metadata.make as cameraMake,
-                    metadata.model as cameraModel,
-                    metadata.lens as cameraLens,
-                    positions.latitudeNumber as positionLatitude,
-                    positions.longitudeNumber as positionLongitude,
-                    positions.altitude as positionAltitude
-                FROM Tags tags
-                LEFT JOIN Images images ON tags.icon = images.id
-                LEFT JOIN ImageInformation info ON images.id = info.imageid
-                LEFT JOIN ImageMetadata metadata ON images.id = metadata.imageid
-                LEFT JOIN ImagePositions positions ON images.id = positions.imageid
-                LEFT JOIN Albums albums ON images.album = albums.id
-                LEFT JOIN ImageTagProperties region ON tags.icon = region.imageid AND tags.id = region.tagid
-                INNER JOIN [thumbnails-digikam].FilePaths paths ON fullPathToFileName = paths.path
-                INNER JOIN [thumbnails-digikam].Thumbnails tnails ON paths.thumbId = tnails.id
-                WHERE tags.id = {tagId} 
-                    AND images.album IS NOT NULL;";
-
-            string sqlQuery = QUERYTHUMBNAILS;
-            dbcmd.CommandText = sqlQuery;
-            IDataReader reader = dbcmd.ExecuteReader();
-            int currentArrayIndex = 0;
-            while (reader.Read() && currentArrayIndex < limitListSizeTo) { 
-                string fullPathToFileName = reader["fullPathToFileName"] as string;
-                string region = reader["region"] as string;
-                var imageWidth = (float)((reader["imageWidth"] as Int64?) ?? 0);
-                var imageHeight = (float)((reader["imageHeight"] as Int64?) ?? 0);
-                var imageRating = (int)((reader["imageRating"] as Int64?) ?? 0);
-                
-                // Handle datetime fields
-                DateTime? creationDate = null;
-                DateTime? digitizationDate = null;
-                if (reader["creationDate"] != DBNull.Value && reader["creationDate"] != null)
-                {
-                    if (DateTime.TryParse(reader["creationDate"].ToString(), out DateTime creation))
-                        creationDate = creation;
-                }
-                if (reader["digitizationDate"] != DBNull.Value && reader["digitizationDate"] != null)
-                {
-                    if (DateTime.TryParse(reader["digitizationDate"].ToString(), out DateTime digitization))
-                        digitizationDate = digitization;
-                }
-                
-                // Handle camera metadata
-                string cameraMake = reader["cameraMake"] as string ?? "";
-                string cameraModel = reader["cameraModel"] as string ?? "";
-                string cameraLens = reader["cameraLens"] as string ?? "";
-                
-                // Handle GPS coordinates
-                float positionLatitude = (float)((reader["positionLatitude"] as float?) ?? 0.0f);
-                float positionLongitude = (float)((reader["positionLongitude"] as float?) ?? 0.0f);
-                float positionAltitude = (float)((reader["positionAltitude"] as float?) ?? 0.0f);
-                
-                // Parse XML string
-                Rect faceRegion = ImageUtils.ParseRegionXml(region, imageWidth, imageHeight);
-                // orientation is an INT64 in the DB
-                var orient64 = reader["orientation"] as Int64?;
-                int orientation = (int)orient64;
-                // I want to bound the orientation to a valid ExifOrientation enum value
-                orientation = (int)Mathf.Clamp(orientation, 1, 8);  
-                var exitOrientation = (ExifOrientation)orientation;
-                if (!string.IsNullOrEmpty(fullPathToFileName))
-                {
-                    // Filter out images from excluded folders (e.g., converted duplicates)
-                    if (ShouldExcludePath(fullPathToFileName))
+                    string sqlQuery = QUERYTHUMBNAILS;
+                    dbcmd.CommandText = sqlQuery;
+                    
+                    using (IDataReader reader = dbcmd.ExecuteReader())
                     {
-                        Debug.Log($"Skipping image from excluded folder: {fullPathToFileName}");
-                        continue;
+                        int currentArrayIndex = 0;
+                        while (reader.Read() && currentArrayIndex < limitListSizeTo) { 
+                            string fullPathToFileName = reader["fullPathToFileName"] as string;
+                            string region = reader["region"] as string;
+                            var imageWidth = (float)((reader["imageWidth"] as Int64?) ?? 0);
+                            var imageHeight = (float)((reader["imageHeight"] as Int64?) ?? 0);
+                            var imageRating = (int)((reader["imageRating"] as Int64?) ?? 0);
+                            
+                            // Handle datetime fields
+                            DateTime? creationDate = null;
+                            DateTime? digitizationDate = null;
+                            if (reader["creationDate"] != DBNull.Value && reader["creationDate"] != null)
+                            {
+                                if (DateTime.TryParse(reader["creationDate"].ToString(), out DateTime creation))
+                                    creationDate = creation;
+                            }
+                            if (reader["digitizationDate"] != DBNull.Value && reader["digitizationDate"] != null)
+                            {
+                                if (DateTime.TryParse(reader["digitizationDate"].ToString(), out DateTime digitization))
+                                    digitizationDate = digitization;
+                            }
+                            
+                            // Handle camera metadata
+                            string cameraMake = reader["cameraMake"] as string ?? "";
+                            string cameraModel = reader["cameraModel"] as string ?? "";
+                            string cameraLens = reader["cameraLens"] as string ?? "";
+                            
+                            // Handle GPS coordinates
+                            float positionLatitude = (float)((reader["positionLatitude"] as float?) ?? 0.0f);
+                            float positionLongitude = (float)((reader["positionLongitude"] as float?) ?? 0.0f);
+                            float positionAltitude = (float)((reader["positionAltitude"] as float?) ?? 0.0f);
+                            
+                            // Parse XML string
+                            Rect faceRegion = ImageUtils.ParseRegionXml(region, imageWidth, imageHeight);
+                            // orientation is an INT64 in the DB
+                            var orient64 = reader["orientation"] as Int64?;
+                            int orientation = (int)orient64;
+                            // I want to bound the orientation to a valid ExifOrientation enum value
+                            orientation = (int)Mathf.Clamp(orientation, 1, 8);  
+                            var exitOrientation = (ExifOrientation)orientation;
+                            if (!string.IsNullOrEmpty(fullPathToFileName))
+                            {
+                                // Filter out images from excluded folders (e.g., converted duplicates)
+                                if (ShouldExcludePath(fullPathToFileName))
+                                {
+                                    Debug.Log($"Skipping image from excluded folder: {fullPathToFileName}");
+                                    continue;
+                                }
+                                
+                                var tagIdFromQuery = reader["tagId"] as Int64?;
+                                int tagIdInt = (int)(tagIdFromQuery ?? -1);
+                                var imageId = (int)((reader["imageId"] as Int64?) ?? -1);
+                                
+                                // Get all tags for this image
+                                var imageTags = GetTagsForImage(imageId);
+                                
+                                // Get description for this image
+                                var imageDescription = GetDescriptionForImage(imageId);
+                                
+                                // Get Timeline-Traveler tag values
+                                GetTimelineTravelerTagValues(imageId, out bool isNotDated, out bool isPrivate, out bool hasTodoCaption, out string todoCaptionText);
+                                
+                                photoInfo = new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation, 
+                                                        tagId: tagIdInt, imageId: imageId, imageRating: imageRating,
+                                                        creationDate: creationDate, digitizationDate: digitizationDate,
+                                                        cameraMake: cameraMake, cameraModel: cameraModel, cameraLens: cameraLens,
+                                                        positionLatitude: positionLatitude, positionLongitude: positionLongitude, 
+                                                        positionAltitude: positionAltitude, tags: imageTags, description: imageDescription,
+                                                        isNotDated: isNotDated, isPrivate: isPrivate, hasTodoCaption: hasTodoCaption);
+                            }
+                            else
+                            {
+                                Debug.LogWarning($"Primary Thumbnail: No full path to file name found for owner ID {ownerId}");
+                            }
+                            currentArrayIndex++;
+                        }
                     }
-                    
-                    var tagIdFromQuery = reader["tagId"] as Int64?;
-                    int tagIdInt = (int)(tagIdFromQuery ?? -1);
-                    var imageId = (int)((reader["imageId"] as Int64?) ?? -1);
-                    
-                    // Get all tags for this image
-                    var imageTags = GetTagsForImage(imageId);
-                    
-                    // Get description for this image
-                    var imageDescription = GetDescriptionForImage(imageId);
-                    
-                    photoInfo = new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation, 
-                                            tagId: tagIdInt, imageId: imageId, imageRating: imageRating,
-                                            creationDate: creationDate, digitizationDate: digitizationDate,
-                                            cameraMake: cameraMake, cameraModel: cameraModel, cameraLens: cameraLens,
-                                            positionLatitude: positionLatitude, positionLongitude: positionLongitude, 
-                                            positionAltitude: positionAltitude, tags: imageTags, description: imageDescription);
                 }
-                else
-                {
-                    Debug.LogWarning($"Primary Thumbnail: No full path to file name found for owner ID {ownerId}");
-                }
-                currentArrayIndex++;
             }
-            reader.Close();
-            reader = null;
-            dbcmd.Dispose();
-            dbcmd = null;
-            dbconn.Close();
-            dbconn = null;
+            
             return photoInfo;
         }
 
@@ -541,21 +566,7 @@ namespace Assets.Scripts.DataProviders
                         while (reader.Read())
                         {
                             var imageId = (int)((reader["imageId"] as Int64?) ?? -1);
-                            
-                            // Skip if we've already processed this image
-                            if (processedImageIds.Contains(imageId))
-                            {
-                                continue;
-                            }
-                            processedImageIds.Add(imageId);
-                            
-                            string fullPathToFileName = reader["fullPathToFileName"] as string;
-                            string region = reader["region"] as string;
-                            var imageWidth = (float)((reader["imageWidth"] as Int64?) ?? 0);
-                            var imageHeight = (float)((reader["imageHeight"] as Int64?) ?? 0);
-                            var imageRating = (int)((reader["imageRating"] as Int64?) ?? 0);
-                            
-                            // Handle datetime fields
+                                                        // Handle datetime fields
                             DateTime? creationDate = null;
                             DateTime? digitizationDate = null;
                             if (reader["creationDate"] != DBNull.Value && reader["creationDate"] != null)
@@ -568,15 +579,20 @@ namespace Assets.Scripts.DataProviders
                                 if (DateTime.TryParse(reader["digitizationDate"].ToString(), out DateTime digitization))
                                     digitizationDate = digitization;
                             }
-                            
+                                                        // Get Timeline-Traveler tag values
+                            GetTimelineTravelerTagValues(imageId, out bool isNotDated, out bool isPrivate, out bool hasTodoCaption, out string todoCaptionText);
+
                             // Apply year filtering logic
                             bool includePhoto = true;
                             if (yearFilter.HasValue)
                             {
+                                // If we pass in -1, we want to return all photos that are not dated
                                 if (yearFilter.Value == -1)
                                 {
+                                    // We will also flip the isNotDated flag to true if the creation date is null
+                                    if (!creationDate.HasValue) isNotDated = true;
                                     // Option 3: Return only photos with null/empty creation date
-                                    includePhoto = !creationDate.HasValue;
+                                    includePhoto = isNotDated;
                                 }
                                 else
                                 {
@@ -588,6 +604,28 @@ namespace Assets.Scripts.DataProviders
                             
                             if (!includePhoto)
                                 continue;
+                            
+                            // Skip if we've already processed this image
+                            if (processedImageIds.Contains(imageId))
+                            {
+                                continue;
+                            }
+                            processedImageIds.Add(imageId);
+                            
+                            string fullPathToFileName = reader["fullPathToFileName"] as string;
+                            if (string.IsNullOrEmpty(fullPathToFileName))
+                            {
+                                continue;
+                            }
+                                                     // Filter out images from excluded folders (e.g., converted duplicates)
+                            if (ShouldExcludePath(fullPathToFileName))
+                            {
+                                continue;
+                            }
+                            string region = reader["region"] as string;
+                            var imageWidth = (float)((reader["imageWidth"] as Int64?) ?? 0);
+                            var imageHeight = (float)((reader["imageHeight"] as Int64?) ?? 0);
+                            var imageRating = (int)((reader["imageRating"] as Int64?) ?? 0);
                             
                             // Handle camera metadata
                             string cameraMake = reader["cameraMake"] as string ?? "";
@@ -607,28 +645,20 @@ namespace Assets.Scripts.DataProviders
                             // I want to bound the orientation to a valid ExifOrientation enum value
                             orientation = (int)Mathf.Clamp(orientation, 1, 8);  
                             var exitOrientation = (ExifOrientation)orientation;
-                           
-                            if (!string.IsNullOrEmpty(fullPathToFileName))
-                            {
-                                // Filter out images from excluded folders (e.g., converted duplicates)
-                                if (ShouldExcludePath(fullPathToFileName))
-                                {
-                                    continue;
-                                }
-                                
-                                // Get all tags for this image
-                                var imageTags = GetTagsForImage(imageId);
-                                
-                                // Get description for this image
-                                var imageDescription = GetDescriptionForImage(imageId);
-                                
-                                photoList.Add(new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation, 
-                                                          tagId: tagId, imageId: imageId, imageRating: imageRating,
-                                                          creationDate: creationDate, digitizationDate: digitizationDate,
-                                                          cameraMake: cameraMake, cameraModel: cameraModel, cameraLens: cameraLens,
-                                                          positionLatitude: positionLatitude, positionLongitude: positionLongitude, 
-                                                          positionAltitude: positionAltitude, tags: imageTags, description: imageDescription));
-                            }
+                            // Get all tags for this image
+                            var imageTags = GetTagsForImage(imageId);
+                            
+                            // Get description for this image
+                            var imageDescription = GetDescriptionForImage(imageId);
+                                                        
+                            photoList.Add(new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation, 
+                                                        tagId: tagId, imageId: imageId, imageRating: imageRating,
+                                                        creationDate: creationDate, digitizationDate: digitizationDate,
+                                                        cameraMake: cameraMake, cameraModel: cameraModel, cameraLens: cameraLens,
+                                                        positionLatitude: positionLatitude, positionLongitude: positionLongitude, 
+                                                        positionAltitude: positionAltitude, tags: imageTags, description: imageDescription,
+                                                        isNotDated: isNotDated, isPrivate: isPrivate, hasTodoCaption: hasTodoCaption, todoCaptionText: todoCaptionText));
+
                         }
                     }
                 }
@@ -651,12 +681,12 @@ namespace Assets.Scripts.DataProviders
                     try
                     {
                         // Check if Timeline-Traveler base tag exists
-                        int timelineTravelerTagId = GetOrCreateTag("Timeline-Traveler", 0, transaction);
+                        int timelineTravelerTagId = GetOrCreateTag(TIMELINE_TRAVELER_PARENT_TAG, 0, transaction);
                         
                         // Check and create child tags
-                        int isNotDatedTagId = GetOrCreateTag("IsNotDated", timelineTravelerTagId, transaction);
-                        int isPrivateTagId = GetOrCreateTag("IsPrivate", timelineTravelerTagId, transaction);
-                        int hasTodoCaptionTagId = GetOrCreateTag("HasTodoCaption", timelineTravelerTagId, transaction);
+                        int isNotDatedTagId = GetOrCreateTag(IS_NOT_DATED_TAG, timelineTravelerTagId, transaction);
+                        int isPrivateTagId = GetOrCreateTag(IS_PRIVATE_TAG, timelineTravelerTagId, transaction);
+                        int hasTodoCaptionTagId = GetOrCreateTag(HAS_TODO_CAPTION_TAG, timelineTravelerTagId, transaction);
                         
                         transaction.Commit();
                         Debug.Log("Timeline-Traveler base tags ensured successfully");
@@ -764,6 +794,365 @@ namespace Assets.Scripts.DataProviders
                     cmd.ExecuteNonQuery();
                 }
             }
+        }
+
+        /// <summary>
+        /// Checks if an image has specific Timeline-Traveler tags and returns the corresponding values.
+        /// </summary>
+        /// <param name="imageId">The image ID to check</param>
+        /// <param name="isNotDated">Output parameter for IsNotDated tag</param>
+        /// <param name="isPrivate">Output parameter for IsPrivate tag</param>
+        /// <param name="hasTodoCaption">Output parameter for HasTodoCaption tag</param>
+        /// <param name="todoCaptionText">Output parameter for todo caption text</param>
+        private void GetTimelineTravelerTagValues(int imageId, out bool isNotDated, out bool isPrivate, out bool hasTodoCaption, out string todoCaptionText)
+        {
+            isNotDated = false;
+            isPrivate = false;
+            hasTodoCaption = false;
+            todoCaptionText = null;
+
+            if (imageId <= 0)
+            {
+                return;
+            }
+
+            using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        SELECT t.name as TagName
+                        FROM ImageTags it
+                        JOIN Tags t ON it.tagid = t.id
+                        JOIN TagsTree tt ON t.id = tt.id
+                        WHERE it.imageid = @imageId 
+                        AND tt.pid IN (
+                            SELECT id FROM Tags WHERE name = @timelineTravelerTag AND pid = 0
+                        )";
+                    
+                    var parameter = new SqliteParameter("@imageId", imageId);
+                    var timelineTravelerParam = new SqliteParameter("@timelineTravelerTag", TIMELINE_TRAVELER_PARENT_TAG);
+                    cmd.Parameters.Add(parameter);
+                    cmd.Parameters.Add(timelineTravelerParam);
+                    
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            string tagName = reader.GetString("TagName");
+                            if (tagName == IS_NOT_DATED_TAG)
+                            {
+                                isNotDated = true;
+                            }
+                            else if (tagName == IS_PRIVATE_TAG)
+                            {
+                                isPrivate = true;
+                            }
+                            else if (tagName == HAS_TODO_CAPTION_TAG)
+                            {
+                                hasTodoCaption = true;
+                            }
+                        }
+                        // Get the actual todo caption text
+                        todoCaptionText = GetTodoCaptionText(imageId);
+                        //if todoCaptionTest is not null or empty then check if hatTodoCaption is true, if it is false then Log a warning and set it to true, in the warning log that we are setting it to true because it was not set to true in the database
+                        if (!string.IsNullOrEmpty(todoCaptionText) && !hasTodoCaption)
+                        {
+                            Debug.LogWarning($"For imageId {imageId} Todo caption text is not null or empty but HasTodoCaption is false. Setting HasTodoCaption to true.");
+                            hasTodoCaption = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Updates the photo info back to the DigiKam database.
+        /// </summary>
+        /// <param name="modifiedPhotoInfo">The photo info to update</param>
+        public void UpdatePhotoInfo(PhotoInfo modifiedPhotoInfo)
+        {
+            // We are only interested in the Timeline-Traveler tags and the todo caption comment
+            // So we need to get the image ID from the modifiedPhotoInfo
+            int imageId = modifiedPhotoInfo.ImageId;
+            // We need to get the Timeline-Traveler tags and the todo caption comment
+            bool isNotDated = modifiedPhotoInfo.IsNotDated;
+            bool isPrivate = modifiedPhotoInfo.IsPrivate;
+            bool hasTodoCaption = modifiedPhotoInfo.HasTodoCaption;
+            string todoCaptionText = modifiedPhotoInfo.TodoCaptionText;
+            SetTimelineTravelerTagValues(imageId, isNotDated, isPrivate, hasTodoCaption, todoCaptionText);
+        }
+
+        /// <summary>
+        /// Sets Timeline-Traveler tag values for an image. Adds tags if values are true, removes them if false.
+        /// Also manages the todo caption comment with author "DigiKam Todo".
+        /// </summary>
+        /// <param name="imageId">The image ID to set tags for</param>
+        /// <param name="isNotDated">Whether the image should be marked as not dated</param>
+        /// <param name="isPrivate">Whether the image should be marked as private</param>
+        /// <param name="hasTodoCaption">Whether the image should have a todo caption</param>
+        /// <param name="todoCaptionText">The todo caption text (required if hasTodoCaption is true)</param>
+
+        private void SetTimelineTravelerTagValues(int imageId, bool isNotDated, bool isPrivate, bool hasTodoCaption, string todoCaptionText = null)
+        {
+            if (imageId <= 0)
+            {
+                Debug.LogError("Invalid image ID provided to SetTimelineTravelerTagValues");
+                return;
+            }
+
+            // Validate todo caption parameters
+            if (hasTodoCaption && string.IsNullOrEmpty(todoCaptionText))
+            {
+                //Strange case, but recoverable
+                Debug.LogWarning($"for imageId {imageId} We found a case where hasTodoCaption is true, but todoCaptionText is null. Setting hasTodoCaption to false.");
+                hasTodoCaption = false;
+                return;
+            }
+
+            using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
+            {
+                conn.Open();
+                using (var transaction = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        // Ensure base tags exist
+                        EnsureBaseTimelineTravelerTagsAreAvailable();
+                        
+                        // Get the Timeline-Traveler base tag ID
+                        int timelineTravelerTagId = GetBaseTagIdByName(TIMELINE_TRAVELER_PARENT_TAG);
+                        if (timelineTravelerTagId == -1)
+                        {
+                            throw new InvalidOperationException($"{TIMELINE_TRAVELER_PARENT_TAG} base tag not found");
+                        }
+
+                        // Handle IsNotDated tag
+                        HandleTagForImage(imageId, IS_NOT_DATED_TAG, timelineTravelerTagId, isNotDated, transaction);
+                        
+                        // Handle IsPrivate tag
+                        HandleTagForImage(imageId, IS_PRIVATE_TAG, timelineTravelerTagId, isPrivate, transaction);
+                        
+                        // Handle HasTodoCaption tag
+                        HandleTagForImage(imageId, HAS_TODO_CAPTION_TAG, timelineTravelerTagId, hasTodoCaption, transaction);
+                        
+                        // Handle todo caption comment
+                        HandleTodoCaptionComment(imageId, hasTodoCaption, todoCaptionText, transaction);
+                        
+                        transaction.Commit();
+                        Debug.Log($"Successfully updated Timeline-Traveler tags for image {imageId}");
+                    }
+                    catch (Exception ex)
+                    {
+                        transaction.Rollback();
+                        Debug.LogError($"Error setting Timeline-Traveler tags for image {imageId}: {ex.Message}");
+                        throw;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handles adding or removing a specific tag for an image.
+        /// </summary>
+        /// <param name="imageId">The image ID</param>
+        /// <param name="tagName">The name of the tag to handle</param>
+        /// <param name="parentTagId">The parent tag ID</param>
+        /// <param name="shouldHaveTag">Whether the image should have this tag</param>
+        /// <param name="transaction">The database transaction to use</param>
+        private void HandleTagForImage(int imageId, string tagName, int parentTagId, bool shouldHaveTag, IDbTransaction transaction)
+        {
+            using (var cmd = transaction.Connection.CreateCommand())
+            {
+                cmd.Transaction = transaction;
+                
+                // Get the tag ID for this specific tag
+                cmd.CommandText = @"
+                    SELECT id 
+                    FROM Tags 
+                    WHERE name = @tagName AND pid = @parentTagId";
+                
+                var nameParam = new SqliteParameter("@tagName", tagName);
+                var parentParam = new SqliteParameter("@parentTagId", parentTagId);
+                cmd.Parameters.Add(nameParam);
+                cmd.Parameters.Add(parentParam);
+                
+                int tagId = -1;
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        tagId = reader.GetInt32(0);
+                    }
+                }
+                
+                if (tagId == -1)
+                {
+                    Debug.LogError($"Tag '{tagName}' not found under {TIMELINE_TRAVELER_PARENT_TAG}");
+                    return;
+                }
+                
+                // Check if the image currently has this tag
+                cmd.CommandText = @"
+                    SELECT COUNT(*) 
+                    FROM ImageTags 
+                    WHERE imageid = @imageId AND tagid = @tagId";
+                
+                var imageParam = new SqliteParameter("@imageId", imageId);
+                var tagParam = new SqliteParameter("@tagId", tagId);
+                cmd.Parameters.Clear();
+                cmd.Parameters.Add(imageParam);
+                cmd.Parameters.Add(tagParam);
+                
+                bool currentlyHasTag = false;
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        currentlyHasTag = reader.GetInt32(0) > 0;
+                    }
+                }
+                
+                // Add or remove the tag as needed
+                if (shouldHaveTag && !currentlyHasTag)
+                {
+                    // Add the tag
+                    cmd.CommandText = @"
+                        INSERT INTO ImageTags (imageid, tagid) 
+                        VALUES (@imageId, @tagId)";
+                    cmd.ExecuteNonQuery();
+                    Debug.Log($"Added '{tagName}' tag to image {imageId}");
+                }
+                else if (!shouldHaveTag && currentlyHasTag)
+                {
+                    // Remove the tag
+                    cmd.CommandText = @"
+                        DELETE FROM ImageTags 
+                        WHERE imageid = @imageId AND tagid = @tagId";
+                    cmd.ExecuteNonQuery();
+                    Debug.Log($"Removed '{tagName}' tag from image {imageId}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handles adding, updating, or removing the todo caption comment.
+        /// </summary>
+        /// <param name="imageId">The image ID</param>
+        /// <param name="hasTodoCaption">Whether the image should have a todo caption</param>
+        /// <param name="todoCaptionText">The todo caption text</param>
+        /// <param name="transaction">The database transaction to use</param>
+        private void HandleTodoCaptionComment(int imageId, bool hasTodoCaption, string todoCaptionText, IDbTransaction transaction)
+        {
+            using (var cmd = transaction.Connection.CreateCommand())
+            {
+                cmd.Transaction = transaction;
+                
+                // Check if a todo caption comment already exists
+                cmd.CommandText = @"
+                    SELECT id 
+                    FROM ImageComments 
+                    WHERE imageid = @imageId AND author = @todoAuthor";
+                
+                var imageParam = new SqliteParameter("@imageId", imageId);
+                var todoAuthorParam = new SqliteParameter("@todoAuthor", DIGIKAM_TODO_AUTHOR);
+                cmd.Parameters.Add(imageParam);
+                cmd.Parameters.Add(todoAuthorParam);
+                
+                int existingCommentId = -1;
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        existingCommentId = reader.GetInt32(0);
+                    }
+                }
+                
+                if (hasTodoCaption)
+                {
+                    if (existingCommentId != -1)
+                    {
+                        // Update existing comment
+                        cmd.CommandText = @"
+                            UPDATE ImageComments 
+                            SET comment = @comment 
+                            WHERE id = @commentId";
+                        
+                        var commentParam = new SqliteParameter("@comment", todoCaptionText);
+                        var commentIdParam = new SqliteParameter("@commentId", existingCommentId);
+                        cmd.Parameters.Clear();
+                        cmd.Parameters.Add(commentParam);
+                        cmd.Parameters.Add(commentIdParam);
+                        cmd.ExecuteNonQuery();
+                        Debug.Log($"Updated todo caption for image {imageId}");
+                    }
+                    else
+                    {
+                        // Insert new comment
+                        cmd.CommandText = @"
+                            INSERT INTO ImageComments (imageid, type, comment, author) 
+                            VALUES (@imageId, 1, @comment, @todoAuthor)";
+                        
+                        var commentParam = new SqliteParameter("@comment", todoCaptionText);
+                        cmd.Parameters.Clear();
+                        cmd.Parameters.Add(imageParam);
+                        cmd.Parameters.Add(commentParam);
+                        cmd.Parameters.Add(todoAuthorParam);
+                        cmd.ExecuteNonQuery();
+                        Debug.Log($"Added todo caption for image {imageId}");
+                    }
+                }
+                else if (existingCommentId != -1)
+                {
+                    // Remove existing comment
+                    cmd.CommandText = @"
+                        DELETE FROM ImageComments 
+                        WHERE id = @commentId";
+                    
+                    var commentIdParam = new SqliteParameter("@commentId", existingCommentId);
+                    cmd.Parameters.Clear();
+                    cmd.Parameters.Add(commentIdParam);
+                    cmd.ExecuteNonQuery();
+                    Debug.Log($"Removed todo caption from image {imageId}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets the todo caption text for an image from ImageComments with author "DigiKam Todo".
+        /// </summary>
+        /// <param name="imageId">The image ID</param>
+        /// <returns>The todo caption text, or null if not found</returns>
+        private string GetTodoCaptionText(int imageId)
+        {
+            using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        SELECT comment
+                        FROM ImageComments
+                        WHERE imageid = @imageId 
+                        AND author = @todoAuthor";
+                    
+                    var parameter = new SqliteParameter("@imageId", imageId);
+                    var todoAuthorParam = new SqliteParameter("@todoAuthor", DIGIKAM_TODO_AUTHOR);
+                    cmd.Parameters.Add(parameter);
+                    cmd.Parameters.Add(todoAuthorParam);
+                    
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            return reader.GetString("comment");
+                        }
+                    }
+                }
+            }
+
+            return null;
         }
     }
 }
