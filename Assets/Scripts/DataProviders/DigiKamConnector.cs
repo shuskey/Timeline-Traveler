@@ -93,8 +93,8 @@ namespace Assets.Scripts.DataProviders
                     {
                         while (reader.Read())
                         {
-                            int tagId = reader.GetInt32(0);
-                            int ownerId = reader.GetInt32(1);
+                            int tagId = reader.GetInt32(reader.GetOrdinal("tagId"));
+                            int ownerId = reader.GetInt32(reader.GetOrdinal("ownerId"));
                             _ownerIdToTagIdMap[ownerId] = tagId;
                         }
                     }
@@ -248,9 +248,9 @@ namespace Assets.Scripts.DataProviders
                     {
                         while (reader.Read())
                         {
-                            int tagId = reader.GetInt32("TagId");
-                            string tagName = reader.GetString("TagName");
-                            int parentTagId = reader.GetInt32("ParentTagId");
+                            int tagId = reader.GetInt32(0);
+                            string tagName = reader.GetString(1);
+                            int parentTagId = reader.GetInt32(2);
                             
                             tags[tagId] = new PhotoTag(tagName, tagId, parentTagId);
                         }
@@ -298,9 +298,9 @@ namespace Assets.Scripts.DataProviders
                     {
                         while (reader.Read())
                         {
-                            int type = reader.GetInt32("type");
-                            string comment = reader.GetString("comment");
-                            string author = reader.IsDBNull("author") ? null : reader.GetString("author");
+                            int type = reader.GetInt32(0);
+                            string comment = reader.GetString(1);
+                            string author = reader.IsDBNull(2) ? null : reader.GetString(2);
                             
                             if (skipTodoCaption && author == DIGIKAM_TODO_AUTHOR)
                             {
@@ -503,7 +503,7 @@ namespace Assets.Scripts.DataProviders
         /// Retrieves a list of all photo information for a person from the database.
         /// </summary>
         /// <param name="ownerId">The RootsMagic owner ID of the person</param>
-        /// <param name="yearFilter">Optional year filter for filtering photos (null for all, -1 for no creation date, int for specific year)</param>
+        /// <param name="yearFilter">Optional year filter for filtering photos (null for all, -1 for no creation date or isNotDated, int for specific year and no IsNotDated nor has a creationDate)</param>
         /// <returns>A list of PhotoInfo objects containing the photo details</returns>
         public List<PhotoInfo> GetPhotoInfoListForPersonFromDataBase(int ownerId, int? yearFilter = null)
         {
@@ -596,8 +596,8 @@ namespace Assets.Scripts.DataProviders
                                 }
                                 else
                                 {
-                                    // Option 2: Return only photos matching the year filter
-                                    includePhoto = creationDate.HasValue && creationDate.Value.Year == yearFilter.Value;
+                                    // Option 2: Return only photos matching the year filter AND IsNotDated is false    
+                                    includePhoto = creationDate.HasValue && creationDate.Value.Year == yearFilter.Value && !isNotDated;
                                 }
                             }
                             // Option 1: If yearFilter is null, includePhoto remains true (return all)
@@ -882,6 +882,80 @@ namespace Assets.Scripts.DataProviders
             bool hasTodoCaption = modifiedPhotoInfo.HasTodoCaption;
             string todoCaptionText = modifiedPhotoInfo.TodoCaptionText;
             SetTimelineTravelerTagValues(imageId, isNotDated, isPrivate, hasTodoCaption, todoCaptionText);
+            // I need a function to update the photo's CreationDate in the database
+            UpdatePhotoCreationDate(imageId, modifiedPhotoInfo.CreationDate);
+        }
+
+        /// <summary>
+        /// Updates the creation date of a photo in the database.
+        /// </summary>
+        /// <param name="imageId">The image ID to update</param>
+        /// <param name="creationDate">The new creation date (can be null to clear the date)</param>
+        private void UpdatePhotoCreationDate(int imageId, DateTime? creationDate)
+        {
+            if (imageId <= 0)
+            {
+                Debug.LogError("Invalid image ID provided to UpdatePhotoCreationDate");
+                return;
+            }
+
+            using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
+            {
+                conn.Open();
+                using (var transaction = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        using (var cmd = conn.CreateCommand())
+                        {
+                            cmd.Transaction = transaction;
+                            
+                            if (creationDate.HasValue)
+                            {
+                                // Update with the new creation date
+                                cmd.CommandText = @"
+                                    UPDATE ImageInformation 
+                                    SET creationDate = @creationDate 
+                                    WHERE imageid = @imageId";
+                                
+                                var imageParam = new SqliteParameter("@imageId", imageId);
+                                var dateParam = new SqliteParameter("@creationDate", creationDate.Value.ToString("yyyy-MM-dd HH:mm:ss"));
+                                cmd.Parameters.Add(imageParam);
+                                cmd.Parameters.Add(dateParam);
+                            }
+                            else
+                            {
+                                // Clear the creation date
+                                cmd.CommandText = @"
+                                    UPDATE ImageInformation 
+                                    SET creationDate = NULL 
+                                    WHERE imageid = @imageId";
+                                
+                                var imageParam = new SqliteParameter("@imageId", imageId);
+                                cmd.Parameters.Add(imageParam);
+                            }
+                            
+                            int rowsAffected = cmd.ExecuteNonQuery();
+                            if (rowsAffected > 0)
+                            {
+                                Debug.Log($"Updated creation date for image {imageId} to {(creationDate.HasValue ? creationDate.Value.ToString() : "NULL")}");
+                            }
+                            else
+                            {
+                                Debug.LogWarning($"No rows were updated for image {imageId} - image may not exist in ImageInformation table");
+                            }
+                        }
+                        
+                        transaction.Commit();
+                    }
+                    catch (Exception ex)
+                    {
+                        transaction.Rollback();
+                        Debug.LogError($"Error updating creation date for image {imageId}: {ex.Message}");
+                        throw;
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -893,7 +967,6 @@ namespace Assets.Scripts.DataProviders
         /// <param name="isPrivate">Whether the image should be marked as private</param>
         /// <param name="hasTodoCaption">Whether the image should have a todo caption</param>
         /// <param name="todoCaptionText">The todo caption text (required if hasTodoCaption is true)</param>
-
         private void SetTimelineTravelerTagValues(int imageId, bool isNotDated, bool isPrivate, bool hasTodoCaption, string todoCaptionText = null)
         {
             if (imageId <= 0)
@@ -911,6 +984,40 @@ namespace Assets.Scripts.DataProviders
                 return;
             }
 
+            // Ensure base tags exist
+            EnsureBaseTimelineTravelerTagsAreAvailable();
+            
+            // Get the Timeline-Traveler base tag ID
+            int timelineTravelerTagId = GetBaseTagIdByName(TIMELINE_TRAVELER_PARENT_TAG);
+            if (timelineTravelerTagId == -1)
+            {
+                throw new InvalidOperationException($"{TIMELINE_TRAVELER_PARENT_TAG} base tag not found");
+            }
+
+            // Handle IsNotDated tag
+            HandleTagForImage(imageId, IS_NOT_DATED_TAG, timelineTravelerTagId, isNotDated);
+            
+            // Handle IsPrivate tag
+            HandleTagForImage(imageId, IS_PRIVATE_TAG, timelineTravelerTagId, isPrivate);
+            
+            // Handle HasTodoCaption tag
+            HandleTagForImage(imageId, HAS_TODO_CAPTION_TAG, timelineTravelerTagId, hasTodoCaption);
+            
+            // Handle todo caption comment
+            HandleTodoCaptionComment(imageId, hasTodoCaption, todoCaptionText);
+            
+            Debug.Log($"Successfully updated Timeline-Traveler tags for image {imageId}");
+        }
+
+        /// <summary>
+        /// Handles adding or removing a specific tag for an image.
+        /// </summary>
+        /// <param name="imageId">The image ID</param>
+        /// <param name="tagName">The name of the tag to handle</param>
+        /// <param name="parentTagId">The parent tag ID</param>
+        /// <param name="shouldHaveTag">Whether the image should have this tag</param>
+        private void HandleTagForImage(int imageId, string tagName, int parentTagId, bool shouldHaveTag)
+        {
             using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
             {
                 conn.Open();
@@ -918,30 +1025,72 @@ namespace Assets.Scripts.DataProviders
                 {
                     try
                     {
-                        // Ensure base tags exist
-                        EnsureBaseTimelineTravelerTagsAreAvailable();
+                        // Get the tag ID for this specific tag
+                        int tagId = GetOrCreateTag(tagName, parentTagId, transaction);
                         
-                        // Get the Timeline-Traveler base tag ID
-                        int timelineTravelerTagId = GetBaseTagIdByName(TIMELINE_TRAVELER_PARENT_TAG);
-                        if (timelineTravelerTagId == -1)
+                        // Check if the image currently has this tag
+                        bool currentlyHasTag = false;
+                        using (var cmd = conn.CreateCommand())
                         {
-                            throw new InvalidOperationException($"{TIMELINE_TRAVELER_PARENT_TAG} base tag not found");
+                            cmd.CommandText = @"
+                                SELECT COUNT(*) 
+                                FROM ImageTags 
+                                WHERE imageid = @imageId AND tagid = @tagId";
+                            
+                            var imageParam = new SqliteParameter("@imageId", imageId);
+                            var tagParam = new SqliteParameter("@tagId", tagId);
+                            cmd.Parameters.Clear();
+                            cmd.Parameters.Add(imageParam);
+                            cmd.Parameters.Add(tagParam);
+                            
+                            using (var reader = cmd.ExecuteReader())
+                            {
+                                if (reader.Read())
+                                {
+                                    currentlyHasTag = reader.GetInt32(0) > 0;
+                                }
+                            }
                         }
-
-                        // Handle IsNotDated tag
-                        HandleTagForImage(imageId, IS_NOT_DATED_TAG, timelineTravelerTagId, isNotDated, transaction);
                         
-                        // Handle IsPrivate tag
-                        HandleTagForImage(imageId, IS_PRIVATE_TAG, timelineTravelerTagId, isPrivate, transaction);
-                        
-                        // Handle HasTodoCaption tag
-                        HandleTagForImage(imageId, HAS_TODO_CAPTION_TAG, timelineTravelerTagId, hasTodoCaption, transaction);
-                        
-                        // Handle todo caption comment
-                        HandleTodoCaptionComment(imageId, hasTodoCaption, todoCaptionText, transaction);
+                        // Add or remove the tag as needed
+                        if (shouldHaveTag && !currentlyHasTag)
+                        {
+                            // Add the tag
+                            using (var cmd = conn.CreateCommand())
+                            {
+                                cmd.CommandText = @"
+                                    INSERT INTO ImageTags (imageid, tagid) 
+                                    VALUES (@imageId, @tagId)";
+                                
+                                var imageParam = new SqliteParameter("@imageId", imageId);
+                                var tagParam = new SqliteParameter("@tagId", tagId);
+                                cmd.Parameters.Clear();
+                                cmd.Parameters.Add(imageParam);
+                                cmd.Parameters.Add(tagParam);
+                                cmd.ExecuteNonQuery();
+                                Debug.Log($"Added '{tagName}' tag to image {imageId}");
+                            }
+                        }
+                        else if (!shouldHaveTag && currentlyHasTag)
+                        {
+                            // Remove the tag
+                            using (var cmd = conn.CreateCommand())
+                            {
+                                cmd.CommandText = @"
+                                    DELETE FROM ImageTags 
+                                    WHERE imageid = @imageId AND tagid = @tagId";
+                                
+                                var imageParam = new SqliteParameter("@imageId", imageId);
+                                var tagParam = new SqliteParameter("@tagId", tagId);
+                                cmd.Parameters.Clear();
+                                cmd.Parameters.Add(imageParam);
+                                cmd.Parameters.Add(tagParam);
+                                cmd.ExecuteNonQuery();
+                                Debug.Log($"Removed '{tagName}' tag from image {imageId}");
+                            }
+                        }
                         
                         transaction.Commit();
-                        Debug.Log($"Successfully updated Timeline-Traveler tags for image {imageId}");
                     }
                     catch (Exception ex)
                     {
@@ -954,167 +1103,107 @@ namespace Assets.Scripts.DataProviders
         }
 
         /// <summary>
-        /// Handles adding or removing a specific tag for an image.
-        /// </summary>
-        /// <param name="imageId">The image ID</param>
-        /// <param name="tagName">The name of the tag to handle</param>
-        /// <param name="parentTagId">The parent tag ID</param>
-        /// <param name="shouldHaveTag">Whether the image should have this tag</param>
-        /// <param name="transaction">The database transaction to use</param>
-        private void HandleTagForImage(int imageId, string tagName, int parentTagId, bool shouldHaveTag, IDbTransaction transaction)
-        {
-            using (var cmd = transaction.Connection.CreateCommand())
-            {
-                cmd.Transaction = transaction;
-                
-                // Get the tag ID for this specific tag
-                cmd.CommandText = @"
-                    SELECT id 
-                    FROM Tags 
-                    WHERE name = @tagName AND pid = @parentTagId";
-                
-                var nameParam = new SqliteParameter("@tagName", tagName);
-                var parentParam = new SqliteParameter("@parentTagId", parentTagId);
-                cmd.Parameters.Add(nameParam);
-                cmd.Parameters.Add(parentParam);
-                
-                int tagId = -1;
-                using (var reader = cmd.ExecuteReader())
-                {
-                    if (reader.Read())
-                    {
-                        tagId = reader.GetInt32(0);
-                    }
-                }
-                
-                if (tagId == -1)
-                {
-                    Debug.LogError($"Tag '{tagName}' not found under {TIMELINE_TRAVELER_PARENT_TAG}");
-                    return;
-                }
-                
-                // Check if the image currently has this tag
-                cmd.CommandText = @"
-                    SELECT COUNT(*) 
-                    FROM ImageTags 
-                    WHERE imageid = @imageId AND tagid = @tagId";
-                
-                var imageParam = new SqliteParameter("@imageId", imageId);
-                var tagParam = new SqliteParameter("@tagId", tagId);
-                cmd.Parameters.Clear();
-                cmd.Parameters.Add(imageParam);
-                cmd.Parameters.Add(tagParam);
-                
-                bool currentlyHasTag = false;
-                using (var reader = cmd.ExecuteReader())
-                {
-                    if (reader.Read())
-                    {
-                        currentlyHasTag = reader.GetInt32(0) > 0;
-                    }
-                }
-                
-                // Add or remove the tag as needed
-                if (shouldHaveTag && !currentlyHasTag)
-                {
-                    // Add the tag
-                    cmd.CommandText = @"
-                        INSERT INTO ImageTags (imageid, tagid) 
-                        VALUES (@imageId, @tagId)";
-                    cmd.ExecuteNonQuery();
-                    Debug.Log($"Added '{tagName}' tag to image {imageId}");
-                }
-                else if (!shouldHaveTag && currentlyHasTag)
-                {
-                    // Remove the tag
-                    cmd.CommandText = @"
-                        DELETE FROM ImageTags 
-                        WHERE imageid = @imageId AND tagid = @tagId";
-                    cmd.ExecuteNonQuery();
-                    Debug.Log($"Removed '{tagName}' tag from image {imageId}");
-                }
-            }
-        }
-
-        /// <summary>
         /// Handles adding, updating, or removing the todo caption comment.
         /// </summary>
         /// <param name="imageId">The image ID</param>
         /// <param name="hasTodoCaption">Whether the image should have a todo caption</param>
         /// <param name="todoCaptionText">The todo caption text</param>
-        /// <param name="transaction">The database transaction to use</param>
-        private void HandleTodoCaptionComment(int imageId, bool hasTodoCaption, string todoCaptionText, IDbTransaction transaction)
+        private void HandleTodoCaptionComment(int imageId, bool hasTodoCaption, string todoCaptionText)
         {
-            using (var cmd = transaction.Connection.CreateCommand())
+            using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
             {
-                cmd.Transaction = transaction;
-                
-                // Check if a todo caption comment already exists
-                cmd.CommandText = @"
-                    SELECT id 
-                    FROM ImageComments 
-                    WHERE imageid = @imageId AND author = @todoAuthor";
-                
-                var imageParam = new SqliteParameter("@imageId", imageId);
-                var todoAuthorParam = new SqliteParameter("@todoAuthor", DIGIKAM_TODO_AUTHOR);
-                cmd.Parameters.Add(imageParam);
-                cmd.Parameters.Add(todoAuthorParam);
-                
-                int existingCommentId = -1;
-                using (var reader = cmd.ExecuteReader())
+                conn.Open();
+                using (var transaction = conn.BeginTransaction())
                 {
-                    if (reader.Read())
+                    try
                     {
-                        existingCommentId = reader.GetInt32(0);
-                    }
-                }
-                
-                if (hasTodoCaption)
-                {
-                    if (existingCommentId != -1)
-                    {
-                        // Update existing comment
-                        cmd.CommandText = @"
-                            UPDATE ImageComments 
-                            SET comment = @comment 
-                            WHERE id = @commentId";
+                        // Check if a todo caption comment already exists
+                        int existingCommentId = -1;
+                        using (var cmd = conn.CreateCommand())
+                        {
+                            cmd.CommandText = @"
+                                SELECT id 
+                                FROM ImageComments 
+                                WHERE imageid = @imageId AND author = @todoAuthor";
+                            
+                            var imageParam = new SqliteParameter("@imageId", imageId);
+                            var todoAuthorParam = new SqliteParameter("@todoAuthor", DIGIKAM_TODO_AUTHOR);
+                            cmd.Parameters.Add(imageParam);
+                            cmd.Parameters.Add(todoAuthorParam);
+                            
+                            using (var reader = cmd.ExecuteReader())
+                            {
+                                if (reader.Read())
+                                {
+                                    existingCommentId = reader.GetInt32(0);
+                                }
+                            }
+                        }
                         
-                        var commentParam = new SqliteParameter("@comment", todoCaptionText);
-                        var commentIdParam = new SqliteParameter("@commentId", existingCommentId);
-                        cmd.Parameters.Clear();
-                        cmd.Parameters.Add(commentParam);
-                        cmd.Parameters.Add(commentIdParam);
-                        cmd.ExecuteNonQuery();
-                        Debug.Log($"Updated todo caption for image {imageId}");
-                    }
-                    else
-                    {
-                        // Insert new comment
-                        cmd.CommandText = @"
-                            INSERT INTO ImageComments (imageid, type, comment, author) 
-                            VALUES (@imageId, 1, @comment, @todoAuthor)";
+                        if (hasTodoCaption)
+                        {
+                            if (existingCommentId != -1)
+                            {
+                                // Update existing comment
+                                using (var cmd = conn.CreateCommand())
+                                {
+                                    cmd.CommandText = @"
+                                        UPDATE ImageComments 
+                                        SET comment = @comment 
+                                        WHERE id = @commentId";
+                                    
+                                    var commentParam = new SqliteParameter("@comment", todoCaptionText);
+                                    var commentIdParam = new SqliteParameter("@commentId", existingCommentId);
+                                    cmd.Parameters.Add(commentParam);
+                                    cmd.Parameters.Add(commentIdParam);
+                                    cmd.ExecuteNonQuery();
+                                    Debug.Log($"Updated todo caption for image {imageId}");
+                                }
+                            }
+                            else
+                            {
+                                // Insert new comment
+                                using (var cmd = conn.CreateCommand())
+                                {
+                                    cmd.CommandText = @"
+                                        INSERT INTO ImageComments (imageid, type, comment, author) 
+                                        VALUES (@imageId, 1, @comment, @todoAuthor)";
+                                    
+                                    var imageParam = new SqliteParameter("@imageId", imageId);
+                                    var commentParam = new SqliteParameter("@comment", todoCaptionText);
+                                    var todoAuthorParam = new SqliteParameter("@todoAuthor", DIGIKAM_TODO_AUTHOR);
+                                    cmd.Parameters.Add(imageParam);
+                                    cmd.Parameters.Add(commentParam);
+                                    cmd.Parameters.Add(todoAuthorParam);
+                                    cmd.ExecuteNonQuery();
+                                    Debug.Log($"Added todo caption for image {imageId}");
+                                }
+                            }
+                        }
+                        else if (existingCommentId != -1)
+                        {
+                            // Remove existing comment
+                            using (var cmd = conn.CreateCommand())
+                            {
+                                cmd.CommandText = @"
+                                    DELETE FROM ImageComments 
+                                    WHERE id = @commentId";
+                                
+                                var commentIdParam = new SqliteParameter("@commentId", existingCommentId);
+                                cmd.Parameters.Add(commentIdParam);
+                                cmd.ExecuteNonQuery();
+                                Debug.Log($"Removed todo caption from image {imageId}");
+                            }
+                        }
                         
-                        var commentParam = new SqliteParameter("@comment", todoCaptionText);
-                        cmd.Parameters.Clear();
-                        cmd.Parameters.Add(imageParam);
-                        cmd.Parameters.Add(commentParam);
-                        cmd.Parameters.Add(todoAuthorParam);
-                        cmd.ExecuteNonQuery();
-                        Debug.Log($"Added todo caption for image {imageId}");
+                        transaction.Commit();
                     }
-                }
-                else if (existingCommentId != -1)
-                {
-                    // Remove existing comment
-                    cmd.CommandText = @"
-                        DELETE FROM ImageComments 
-                        WHERE id = @commentId";
-                    
-                    var commentIdParam = new SqliteParameter("@commentId", existingCommentId);
-                    cmd.Parameters.Clear();
-                    cmd.Parameters.Add(commentIdParam);
-                    cmd.ExecuteNonQuery();
-                    Debug.Log($"Removed todo caption from image {imageId}");
+                    catch (Exception ex)
+                    {
+                        transaction.Rollback();
+                        Debug.LogError($"Error setting todo caption for image {imageId}: {ex.Message}");
+                        throw;
+                    }
                 }
             }
         }

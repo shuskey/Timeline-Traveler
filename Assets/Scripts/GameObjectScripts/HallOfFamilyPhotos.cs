@@ -38,8 +38,10 @@ public class HallOfFamilyPhotos : MonoBehaviour
 
     public void UpdatePhotoInfoBackToDigiKam(int panelYearWithRequest, PhotoInfo modifiedPhotoInfo)
     {
-        // Update the photo info in the DigiKamConnector
+        // WRITE IT BACK: Update the photo info in the DigiKamConnector
         _pictureProvider.UpdatePhotoInfo(modifiedPhotoInfo);
+
+        // READ WHAT CHANGED:
         // Depending on what changed, some Photo panels should be refreshed
         // To keep it simple, we will update the panelYearWithRequest and the UnDated Panel
         // Then if the createdDate in the modifiedPhotoInfo has a different year than panelYearWithRequest
@@ -51,18 +53,19 @@ public class HallOfFamilyPhotos : MonoBehaviour
             panelScript.ClearFamilyPhotos();
             var photosForYear = _pictureProvider.GetPhotoInfoListForPerson(focusPerson.dataBaseOwnerID, panelYearWithRequest);
             panelScript.LoadFamilyPhotosForYearAndPerson(focusPerson.dataBaseOwnerID, panelYearWithRequest, photosForYear);
-        
+        }
+        if (modifiedPhotoInfo.CreationDate.HasValue && !modifiedPhotoInfo.IsNotDated)
+        {
             var modifiedPhotoYear = modifiedPhotoInfo.CreationDate.Value.Year;
             if (modifiedPhotoYear != panelYearWithRequest)
             {
-                panel = familyPhotoPanelDictionary[modifiedPhotoYear - focusPerson.birthDate];
-                panelScript = panel.GetComponent<FamilyPhotoHallPanel>();
+                var panel = familyPhotoPanelDictionary[modifiedPhotoYear - focusPerson.birthDate];
+                var panelScript = panel.GetComponent<FamilyPhotoHallPanel>();
                 panelScript.ClearFamilyPhotos();
-                photosForYear = _pictureProvider.GetPhotoInfoListForPerson(focusPerson.dataBaseOwnerID, modifiedPhotoYear);
+                var photosForYear = _pictureProvider.GetPhotoInfoListForPerson(focusPerson.dataBaseOwnerID, modifiedPhotoYear);
                 panelScript.LoadFamilyPhotosForYearAndPerson(focusPerson.dataBaseOwnerID, modifiedPhotoYear, photosForYear);
             }
         }
-
         // Refresh the undated photos panel
         var undatedPanelScript = undatedPhotosPanel.GetComponent<FamilyPhotoHallPanel>();
         undatedPanelScript.ClearFamilyPhotos();

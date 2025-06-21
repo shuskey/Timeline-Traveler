@@ -113,6 +113,8 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
         {
             digiKamTodoInputField.text = string.Empty;
         }
+
+        currentPhotoInfo.HasTodoCaption = !string.IsNullOrEmpty(currentPhotoInfo.TodoCaptionText);
     }
 
     // This method should be called by the OK button in the UI
@@ -160,6 +162,7 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
         
         // Update DigiKam todo text
         currentPhotoInfo.TodoCaptionText = digiKamTodoInputField.text;
+        currentPhotoInfo.HasTodoCaption = !string.IsNullOrEmpty(currentPhotoInfo.TodoCaptionText);
     }
 
     private void OnQuitButtonClicked()
