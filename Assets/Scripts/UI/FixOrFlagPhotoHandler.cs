@@ -68,6 +68,11 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
         
         ShowPopup();
     }
+    
+    public void HideFixOrFlagPhotoPopup()
+    {
+        HidePopup();
+    }
 
     private void InitializeUIComponentValues()
     {
@@ -120,7 +125,7 @@ public class FixOrFlagPhotoHandler : MonoBehaviour
         {
             onPhotoActionComplete(currentPhotoInfo);
         }
-        HidePopup();
+       
     }
 
     private void CollectUIValuesAndUpdatePhotoInfo()
