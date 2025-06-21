@@ -352,6 +352,8 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
             HallOfFamilyPhotos hallOfFamilyPhotos = FindFirstObjectByType<HallOfFamilyPhotos>();
             hallOfFamilyPhotos.UpdatePhotoInfoBackToDigiKam(year, modifiedPhotoInfo);
         }
+        
+        fixOrFlagPhotoHandlerScript.HideFixOrFlagPhotoPopup();
     }
 
     void OnDestroy()
