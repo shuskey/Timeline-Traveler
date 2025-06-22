@@ -43,6 +43,7 @@ namespace Assets.Scripts.DataProviders
         private string _digiKamDataBaseFileNameWithFullPath;     // usually digikam4.db
         private string _digiKamThumbnailsDataBaseFileNameWithFullPath;  // usually thumbnails-digikam.db
         private List<string> _excludedFolderNames; // Folder names to exclude from photo results
+        private int _isNotDatedTagId; // Timeline-Traveler IsNotDated tag ID
         static string DigiKam_Thumbnails_DataBaseFileNameOnly = "thumbnails-digikam.db";
 
         /// <summary>
@@ -66,7 +67,7 @@ namespace Assets.Scripts.DataProviders
             // This is a mapping between the RootsMagic owner ID and the DigiKam tag ID
             BuildOwnerIdToTagIdMap();
             // This is a special tag that is used to store the timeline traveler tags IsNotDated IsPrivate and HasTodoCaption   
-            EnsureBaseTimelineTravelerTagsAreAvailable();
+            _isNotDatedTagId = EnsureBaseTimelineTravelerTagsAreAvailable();
             LocationsTagId = GetBaseTagIdByName(locationsTagName);
         }
 
@@ -134,6 +135,43 @@ namespace Assets.Scripts.DataProviders
             }
             
             Debug.LogWarning($"Base tag with name '{tagName}' not found");
+            return -1;
+        }
+
+        /// <summary>
+        /// Retrieves the tag ID for a Timeline-Traveler child tag with the specified name.
+        /// </summary>
+        /// <param name="tagName">The name of the Timeline-Traveler child tag to find</param>
+        /// <returns>The tag ID if found, or -1 if not found</returns>
+        private int GetTimelineTravelerTagByName(string tagName)
+        {
+            using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
+                        SELECT t.id 
+                        FROM Tags t
+                        JOIN Tags parent ON t.pid = parent.id
+                        WHERE t.name = @tagName AND parent.name = @parentTagName";
+                    
+                    var tagParam = new SqliteParameter("@tagName", tagName);
+                    var parentParam = new SqliteParameter("@parentTagName", TIMELINE_TRAVELER_PARENT_TAG);
+                    cmd.Parameters.Add(tagParam);
+                    cmd.Parameters.Add(parentParam);
+                    
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            return reader.GetInt32(0);
+                        }
+                    }
+                }
+            }
+            
+            Debug.LogWarning($"Timeline-Traveler child tag with name '{tagName}' not found");
             return -1;
         }
 
@@ -550,47 +588,146 @@ namespace Assets.Scripts.DataProviders
                 return photoList;
             }
 
+            // Get the IsNotDated tag ID for optimization when yearFilter = -1
+            int isNotDatedTagId = _isNotDatedTagId;
+            if (isNotDatedTagId == -1) Debug.LogError($"IsNotDated tag not found, falling back to C# filtering");
+            
             string conn = "URI=file:" + _digiKamDataBaseFileNameWithFullPath;
             using (IDbConnection dbconn = new SqliteConnection(conn))
             {
                 dbconn.Open();
                 using (IDbCommand dbcmd = dbconn.CreateCommand())
                 {
-                    string sqlQuery = $@"
-                        SELECT DISTINCT
-                            ""C:"" || (
-                            SELECT specificPath 
-                            FROM AlbumRoots 
-                            WHERE id = 1)
-                              || 
-                              CASE
-                                  WHEN albums.relativePath = '/' THEN '/'
-                                  ELSE albums.relativePath || '/'
-                              END
-                              || images.name 
-                            as ""fullPathToFileName"",
-                            images.id as ""imageId"",
-                            region.value as ""region"",
-                            info.width as imageWidth,
-                            info.height as imageHeight,
-                            info.orientation as orientation,
-                            info.rating as imageRating,
-                            info.creationDate as creationDate,
-                            info.digitizationDate as digitizationDate,
-                            metadata.make as cameraMake,
-                            metadata.model as cameraModel,
-                            metadata.lens as cameraLens,
-                            positions.latitudeNumber as positionLatitude,
-                            positions.longitudeNumber as positionLongitude,
-                            positions.altitude as positionAltitude
-                      FROM ImageTags imagetags
-                      LEFT JOIN Images images ON imagetags.imageid = images.id
-                      LEFT JOIN ImageInformation info ON images.id = info.imageid 
-                      LEFT JOIN ImageMetadata metadata ON images.id = metadata.imageid
-                      LEFT JOIN ImagePositions positions ON images.id = positions.imageid
-                      LEFT JOIN Albums albums ON images.album = albums.id
-                      LEFT JOIN ImageTagProperties region ON imagetags.imageid = region.imageid AND imagetags.tagid = region.tagid 
-                      WHERE imagetags.tagid={tagId}";
+                    // Build the SQL query based on the yearFilter
+                    string sqlQuery;
+                    
+                    if (yearFilter.HasValue && yearFilter.Value == -1 && isNotDatedTagId != -1)
+                    {
+                        // Optimized query for yearFilter = -1: only fetch images with IsNotDated tag
+                        sqlQuery = $@"
+                            SELECT DISTINCT
+                                ""C:"" || (
+                                SELECT specificPath 
+                                FROM AlbumRoots 
+                                WHERE id = 1)
+                                  || 
+                                  CASE
+                                      WHEN albums.relativePath = '/' THEN '/'
+                                      ELSE albums.relativePath || '/'
+                                  END
+                                  || images.name 
+                                as ""fullPathToFileName"",
+                                images.id as ""imageId"",
+                                region.value as ""region"",
+                                info.width as imageWidth,
+                                info.height as imageHeight,
+                                info.orientation as orientation,
+                                info.rating as imageRating,
+                                info.creationDate as creationDate,
+                                info.digitizationDate as digitizationDate,
+                                metadata.make as cameraMake,
+                                metadata.model as cameraModel,
+                                metadata.lens as cameraLens,
+                                positions.latitudeNumber as positionLatitude,
+                                positions.longitudeNumber as positionLongitude,
+                                positions.altitude as positionAltitude
+                          FROM ImageTags imagetags
+                          INNER JOIN ImageTags isNotDatedTags ON imagetags.imageid = isNotDatedTags.imageid AND isNotDatedTags.tagid = {isNotDatedTagId}
+                          LEFT JOIN Images images ON imagetags.imageid = images.id
+                          LEFT JOIN ImageInformation info ON images.id = info.imageid 
+                          LEFT JOIN ImageMetadata metadata ON images.id = metadata.imageid
+                          LEFT JOIN ImagePositions positions ON images.id = positions.imageid
+                          LEFT JOIN Albums albums ON images.album = albums.id
+                          LEFT JOIN ImageTagProperties region ON imagetags.imageid = region.imageid AND imagetags.tagid = region.tagid 
+                          WHERE imagetags.tagid={tagId}";
+                    }
+                    else if (yearFilter.HasValue && yearFilter.Value > 0 && isNotDatedTagId != -1)
+                    {
+                        // Optimized query for specific year: fetch images with matching CreationDate year and exclude IsNotDated tag
+                        sqlQuery = $@"
+                            SELECT DISTINCT
+                                ""C:"" || (
+                                SELECT specificPath 
+                                FROM AlbumRoots 
+                                WHERE id = 1)
+                                  || 
+                                  CASE
+                                      WHEN albums.relativePath = '/' THEN '/'
+                                      ELSE albums.relativePath || '/'
+                                  END
+                                  || images.name 
+                                as ""fullPathToFileName"",
+                                images.id as ""imageId"",
+                                region.value as ""region"",
+                                info.width as imageWidth,
+                                info.height as imageHeight,
+                                info.orientation as orientation,
+                                info.rating as imageRating,
+                                info.creationDate as creationDate,
+                                info.digitizationDate as digitizationDate,
+                                metadata.make as cameraMake,
+                                metadata.model as cameraModel,
+                                metadata.lens as cameraLens,
+                                positions.latitudeNumber as positionLatitude,
+                                positions.longitudeNumber as positionLongitude,
+                                positions.altitude as positionAltitude
+                          FROM ImageTags imagetags
+                          LEFT JOIN Images images ON imagetags.imageid = images.id
+                          LEFT JOIN ImageInformation info ON images.id = info.imageid 
+                          LEFT JOIN ImageMetadata metadata ON images.id = metadata.imageid
+                          LEFT JOIN ImagePositions positions ON images.id = positions.imageid
+                          LEFT JOIN Albums albums ON images.album = albums.id
+                          LEFT JOIN ImageTagProperties region ON imagetags.imageid = region.imageid AND imagetags.tagid = region.tagid 
+                          WHERE imagetags.tagid={tagId}
+                          AND info.creationDate IS NOT NULL
+                          AND CAST(strftime('%Y', info.creationDate) AS INTEGER) = {yearFilter.Value}
+                          AND images.id NOT IN (
+                              SELECT DISTINCT it.imageid 
+                              FROM ImageTags it 
+                              WHERE it.tagid = {isNotDatedTagId}
+                          )";
+                        
+                        Debug.Log($"Using optimized year filter query for year {yearFilter.Value}. IsNotDated tag ID: {isNotDatedTagId}");
+                    }
+                    else
+                    {
+                        // Standard query for all other cases
+                        sqlQuery = $@"
+                            SELECT DISTINCT
+                                ""C:"" || (
+                                SELECT specificPath 
+                                FROM AlbumRoots 
+                                WHERE id = 1)
+                                  || 
+                                  CASE
+                                      WHEN albums.relativePath = '/' THEN '/'
+                                      ELSE albums.relativePath || '/'
+                                  END
+                                  || images.name 
+                                as ""fullPathToFileName"",
+                                images.id as ""imageId"",
+                                region.value as ""region"",
+                                info.width as imageWidth,
+                                info.height as imageHeight,
+                                info.orientation as orientation,
+                                info.rating as imageRating,
+                                info.creationDate as creationDate,
+                                info.digitizationDate as digitizationDate,
+                                metadata.make as cameraMake,
+                                metadata.model as cameraModel,
+                                metadata.lens as cameraLens,
+                                positions.latitudeNumber as positionLatitude,
+                                positions.longitudeNumber as positionLongitude,
+                                positions.altitude as positionAltitude
+                          FROM ImageTags imagetags
+                          LEFT JOIN Images images ON imagetags.imageid = images.id
+                          LEFT JOIN ImageInformation info ON images.id = info.imageid 
+                          LEFT JOIN ImageMetadata metadata ON images.id = metadata.imageid
+                          LEFT JOIN ImagePositions positions ON images.id = positions.imageid
+                          LEFT JOIN Albums albums ON images.album = albums.id
+                          LEFT JOIN ImageTagProperties region ON imagetags.imageid = region.imageid AND imagetags.tagid = region.tagid 
+                          WHERE imagetags.tagid={tagId}";
+                    }
 
                     dbcmd.CommandText = sqlQuery;
                     using (IDataReader reader = dbcmd.ExecuteReader())
@@ -614,21 +751,25 @@ namespace Assets.Scripts.DataProviders
                                                         // Get Timeline-Traveler tag values
                             GetTimelineTravelerTagValues(imageId, out bool isNotDated, out bool isPrivate, out bool hasTodoCaption, out string todoCaptionText, dbconn);
 
-                            // Apply year filtering logic
+                            // Apply year filtering logic (simplified for optimized case)
                             bool includePhoto = true;
                             if (yearFilter.HasValue)
                             {
-                                // If we pass in -1, we want to return all photos that are not dated
                                 if (yearFilter.Value == -1)
                                 {
-                                    // We will also flip the isNotDated flag to true if the creation date is null
+                                    // For optimized query, we already filtered at SQL level, but still need to handle null creation dates
                                     if (!creationDate.HasValue) isNotDated = true;
-                                    // Option 3: Return only photos with null/empty creation date
                                     includePhoto = isNotDated;
+                                }
+                                else if (yearFilter.Value > 0)
+                                {
+                                    // For optimized query with specific year, database already filtered by year and excluded IsNotDated
+                                    // Just need to ensure we don't include photos with IsNotDated tag (fallback check)
+                                    includePhoto = !isNotDated;
                                 }
                                 else
                                 {
-                                    // Option 2: Return only photos matching the year filter AND IsNotDated is false    
+                                    // Fallback for any other cases
                                     includePhoto = creationDate.HasValue && creationDate.Value.Year == yearFilter.Value && !isNotDated;
                                 }
                             }
@@ -703,7 +844,8 @@ namespace Assets.Scripts.DataProviders
         /// Ensures that the base Timeline-Traveler tag and its child tags exist in the database.
         /// Creates them if they don't exist, along with their corresponding TagsTree entries.
         /// </summary>
-        public void EnsureBaseTimelineTravelerTagsAreAvailable()
+        /// <returns>The IsNotDated tag ID</returns>
+        public int EnsureBaseTimelineTravelerTagsAreAvailable()
         {
             using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
             {
@@ -722,6 +864,7 @@ namespace Assets.Scripts.DataProviders
                         
                         transaction.Commit();
                         Debug.Log("Timeline-Traveler base tags ensured successfully");
+                        return isNotDatedTagId;
                     }
                     catch (Exception ex)
                     {
@@ -1304,6 +1447,55 @@ namespace Assets.Scripts.DataProviders
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Debug method to check date formats in the database for troubleshooting year filtering
+        /// </summary>
+        /// <param name="ownerId">The owner ID to check dates for</param>
+        public void DebugDateFormats(int ownerId)
+        {
+            int tagId = GetTagIdForOwnerId(ownerId);
+            if (tagId == -1)
+            {
+                Debug.LogWarning($"No tag found for owner ID {ownerId}");
+                return;
+            }
+
+            using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = $@"
+                        SELECT DISTINCT
+                            images.id as imageId,
+                            info.creationDate as rawCreationDate,
+                            strftime('%Y', info.creationDate) as extractedYear,
+                            CAST(strftime('%Y', info.creationDate) AS INTEGER) as castedYear
+                        FROM ImageTags imagetags
+                        LEFT JOIN Images images ON imagetags.imageid = images.id
+                        LEFT JOIN ImageInformation info ON images.id = info.imageid 
+                        WHERE imagetags.tagid={tagId}
+                        AND info.creationDate IS NOT NULL
+                        LIMIT 10";
+                    
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        Debug.Log("=== Date Format Debug Info ===");
+                        while (reader.Read())
+                        {
+                            var imageId = reader.GetInt32(0);
+                            var rawDate = reader.IsDBNull(1) ? "NULL" : reader.GetString(1);
+                            var extractedYear = reader.IsDBNull(2) ? "NULL" : reader.GetString(2);
+                            var castedYear = reader.IsDBNull(3) ? "NULL" : reader.GetString(3);
+                            
+                            Debug.Log($"Image {imageId}: Raw='{rawDate}', ExtractedYear='{extractedYear}', CastedYear='{castedYear}'");
+                        }
+                        Debug.Log("=== End Date Format Debug Info ===");
+                    }
+                }
+            }
         }
     }
 }
