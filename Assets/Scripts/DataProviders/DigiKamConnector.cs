@@ -27,6 +27,7 @@ namespace Assets.Scripts.DataProviders
         // Database and property constants
         public static readonly string ROOTSMAGIC_OWNER_ID_PROPERTY = "rootsmagic_owner_id";
         public static readonly string THUMBNAILS_DIGIKAM_DB_NAME = "thumbnails-digikam";
+        public static readonly string LOCATIONS_PARENT_TAG = "Locations";
 
         // Default folder names to exclude from photo results (converted duplicates)
         public static readonly List<string> DefaultExcludedFolderNames = new List<string> 
@@ -218,8 +219,9 @@ namespace Assets.Scripts.DataProviders
         /// Retrieves all tags associated with an image from the DigiKam database.
         /// </summary>
         /// <param name="imageId">The image ID to get tags for</param>
+        /// <param name="dbconn">The database connection to use (optional, creates new if not provided)</param>
         /// <returns>A dictionary of tags keyed by TagId</returns>
-        private Dictionary<int, PhotoTag> GetTagsForImage(int imageId)
+        private Dictionary<int, PhotoTag> GetLocationTagsForImage(int imageId, IDbConnection dbconn = null)
         {
             var tags = new Dictionary<int, PhotoTag>();
 
@@ -228,10 +230,16 @@ namespace Assets.Scripts.DataProviders
                 return tags; // Return empty dictionary for invalid image IDs
             }
 
-            using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
+            bool shouldCloseConnection = dbconn == null;
+            if (dbconn == null)
             {
-                conn.Open();
-                using (var cmd = conn.CreateCommand())
+                dbconn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}");
+                dbconn.Open();
+            }
+
+            try
+            {
+                using (var cmd = dbconn.CreateCommand())
                 {
                     cmd.CommandText = @"
                         SELECT t.id as TagId, 
@@ -249,14 +257,22 @@ namespace Assets.Scripts.DataProviders
                         while (reader.Read())
                         {
                             int tagId = reader.GetInt32(0);
-                            string tagName = reader.GetString(1);
+                            string tagName = reader.GetString(reader.GetOrdinal("TagName"));
                             int parentTagId = reader.GetInt32(2);
                             
                             tags[tagId] = new PhotoTag(tagName, tagId, parentTagId);
                         }
                         // Add the base Locations tag, this is were the Reverse Geocoding is stored
-                        tags[LocationsTagId] = new PhotoTag("Locations", LocationsTagId, 0);
+                        tags[LocationsTagId] = new PhotoTag(LOCATIONS_PARENT_TAG, LocationsTagId, 0);
                     }
+                }
+            }
+            finally
+            {
+                if (shouldCloseConnection)
+                {
+                    dbconn.Close();
+                    dbconn.Dispose();
                 }
             }
 
@@ -268,8 +284,10 @@ namespace Assets.Scripts.DataProviders
         /// Combines Description (type 3), Headline (type 2), and Comments (type 1) with ". " separator.
         /// </summary>
         /// <param name="imageId">The image ID to get description for</param>
+        /// <param name="dbconn">The database connection to use (optional, creates new if not provided)</param>
+        /// <param name="skipTodoCaption">Whether to skip todo captions (default: true)</param>
         /// <returns>Assembled description string, or null if no comments found</returns>
-        private string GetDescriptionForImage(int imageId, bool skipTodoCaption = true)
+        private string GetDescriptionForImage(int imageId, IDbConnection dbconn = null, bool skipTodoCaption = true)
         {
             if (imageId <= 0)
             {
@@ -280,10 +298,16 @@ namespace Assets.Scripts.DataProviders
             string headline = null;
             var comments = new List<string>();
 
-            using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
+            bool shouldCloseConnection = dbconn == null;
+            if (dbconn == null)
             {
-                conn.Open();
-                using (var cmd = conn.CreateCommand())
+                dbconn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}");
+                dbconn.Open();
+            }
+
+            try
+            {
+                using (var cmd = dbconn.CreateCommand())
                 {
                     cmd.CommandText = @"
                         SELECT type, comment, author
@@ -299,8 +323,8 @@ namespace Assets.Scripts.DataProviders
                         while (reader.Read())
                         {
                             int type = reader.GetInt32(0);
-                            string comment = reader.GetString(1);
-                            string author = reader.IsDBNull(2) ? null : reader.GetString(2);
+                            string comment = reader.GetString(reader.GetOrdinal("comment"));
+                            string author = reader.IsDBNull(2) ? null : reader.GetString(reader.GetOrdinal("author"));
                             
                             if (skipTodoCaption && author == DIGIKAM_TODO_AUTHOR)
                             {
@@ -324,6 +348,14 @@ namespace Assets.Scripts.DataProviders
                             }
                         }
                     }
+                }
+            }
+            finally
+            {
+                if (shouldCloseConnection)
+                {
+                    dbconn.Close();
+                    dbconn.Dispose();
                 }
             }
 
@@ -470,13 +502,13 @@ namespace Assets.Scripts.DataProviders
                                 var imageId = (int)((reader["imageId"] as Int64?) ?? -1);
                                 
                                 // Get all tags for this image
-                                var imageTags = GetTagsForImage(imageId);
+                                var imageTags = GetLocationTagsForImage(imageId, dbconn);
                                 
                                 // Get description for this image
-                                var imageDescription = GetDescriptionForImage(imageId);
+                                var imageDescription = GetDescriptionForImage(imageId, dbconn);
                                 
                                 // Get Timeline-Traveler tag values
-                                GetTimelineTravelerTagValues(imageId, out bool isNotDated, out bool isPrivate, out bool hasTodoCaption, out string todoCaptionText);
+                                GetTimelineTravelerTagValues(imageId, out bool isNotDated, out bool isPrivate, out bool hasTodoCaption, out string todoCaptionText, dbconn);
                                 
                                 photoInfo = new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation, 
                                                         tagId: tagIdInt, imageId: imageId, imageRating: imageRating,
@@ -580,7 +612,7 @@ namespace Assets.Scripts.DataProviders
                                     digitizationDate = digitization;
                             }
                                                         // Get Timeline-Traveler tag values
-                            GetTimelineTravelerTagValues(imageId, out bool isNotDated, out bool isPrivate, out bool hasTodoCaption, out string todoCaptionText);
+                            GetTimelineTravelerTagValues(imageId, out bool isNotDated, out bool isPrivate, out bool hasTodoCaption, out string todoCaptionText, dbconn);
 
                             // Apply year filtering logic
                             bool includePhoto = true;
@@ -646,10 +678,10 @@ namespace Assets.Scripts.DataProviders
                             orientation = (int)Mathf.Clamp(orientation, 1, 8);  
                             var exitOrientation = (ExifOrientation)orientation;
                             // Get all tags for this image
-                            var imageTags = GetTagsForImage(imageId);
+                            var imageTags = GetLocationTagsForImage(imageId, dbconn);
                             
                             // Get description for this image
-                            var imageDescription = GetDescriptionForImage(imageId);
+                            var imageDescription = GetDescriptionForImage(imageId, dbconn);
                                                         
                             photoList.Add(new PhotoInfo(fullPathToFileName, faceRegion, exitOrientation, 
                                                         tagId: tagId, imageId: imageId, imageRating: imageRating,
@@ -804,7 +836,8 @@ namespace Assets.Scripts.DataProviders
         /// <param name="isPrivate">Output parameter for IsPrivate tag</param>
         /// <param name="hasTodoCaption">Output parameter for HasTodoCaption tag</param>
         /// <param name="todoCaptionText">Output parameter for todo caption text</param>
-        private void GetTimelineTravelerTagValues(int imageId, out bool isNotDated, out bool isPrivate, out bool hasTodoCaption, out string todoCaptionText)
+        /// <param name="dbconn">The database connection to use (optional, creates new if not provided)</param>
+        private void GetTimelineTravelerTagValues(int imageId, out bool isNotDated, out bool isPrivate, out bool hasTodoCaption, out string todoCaptionText, IDbConnection dbconn = null)
         {
             isNotDated = false;
             isPrivate = false;
@@ -816,10 +849,16 @@ namespace Assets.Scripts.DataProviders
                 return;
             }
 
-            using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
+            bool shouldCloseConnection = dbconn == null;
+            if (dbconn == null)
             {
-                conn.Open();
-                using (var cmd = conn.CreateCommand())
+                dbconn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}");
+                dbconn.Open();
+            }
+
+            try
+            {
+                using (var cmd = dbconn.CreateCommand())
                 {
                     cmd.CommandText = @"
                         SELECT t.name as TagName
@@ -840,7 +879,7 @@ namespace Assets.Scripts.DataProviders
                     {
                         while (reader.Read())
                         {
-                            string tagName = reader.GetString("TagName");
+                            string tagName = reader.GetString(reader.GetOrdinal("TagName"));
                             if (tagName == IS_NOT_DATED_TAG)
                             {
                                 isNotDated = true;
@@ -855,7 +894,7 @@ namespace Assets.Scripts.DataProviders
                             }
                         }
                         // Get the actual todo caption text
-                        todoCaptionText = GetTodoCaptionText(imageId);
+                        todoCaptionText = GetTodoCaptionText(imageId, dbconn);
                         //if todoCaptionTest is not null or empty then check if hatTodoCaption is true, if it is false then Log a warning and set it to true, in the warning log that we are setting it to true because it was not set to true in the database
                         if (!string.IsNullOrEmpty(todoCaptionText) && !hasTodoCaption)
                         {
@@ -863,6 +902,14 @@ namespace Assets.Scripts.DataProviders
                             hasTodoCaption = true;
                         }
                     }
+                }
+            }
+            finally
+            {
+                if (shouldCloseConnection)
+                {
+                    dbconn.Close();
+                    dbconn.Dispose();
                 }
             }
         }
@@ -1212,13 +1259,20 @@ namespace Assets.Scripts.DataProviders
         /// Gets the todo caption text for an image from ImageComments with author "DigiKam Todo".
         /// </summary>
         /// <param name="imageId">The image ID</param>
+        /// <param name="dbconn">The database connection to use (optional, creates new if not provided)</param>
         /// <returns>The todo caption text, or null if not found</returns>
-        private string GetTodoCaptionText(int imageId)
+        private string GetTodoCaptionText(int imageId, IDbConnection dbconn = null)
         {
-            using (var conn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}"))
+            bool shouldCloseConnection = dbconn == null;
+            if (dbconn == null)
             {
-                conn.Open();
-                using (var cmd = conn.CreateCommand())
+                dbconn = new SqliteConnection($"URI=file:{_digiKamDataBaseFileNameWithFullPath}");
+                dbconn.Open();
+            }
+
+            try
+            {
+                using (var cmd = dbconn.CreateCommand())
                 {
                     cmd.CommandText = @"
                         SELECT comment
@@ -1235,9 +1289,17 @@ namespace Assets.Scripts.DataProviders
                     {
                         if (reader.Read())
                         {
-                            return reader.GetString("comment");
+                            return reader.GetString(reader.GetOrdinal("comment"));
                         }
                     }
+                }
+            }
+            finally
+            {
+                if (shouldCloseConnection)
+                {
+                    dbconn.Close();
+                    dbconn.Dispose();
                 }
             }
 
