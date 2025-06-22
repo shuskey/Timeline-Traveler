@@ -11,6 +11,8 @@ using UnityEngine.Networking;
 using UnityEngine.UI;
 using Random = UnityEngine.Random;
 using Assets.Scripts.Utilities;
+using Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider;
+using Assets.Scripts.ServiceProviders;
 
 public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
 {    
@@ -117,6 +119,12 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
         // Update the details panel NOW that the image has finished loading and familyPhotoImage_Texture is updated
         if (familyPhotoDetailsHandlerScript != null && hasFocus)
         {
+            // I have been getting an index out of bounds error here, so I am adding a check and a log
+            if (currentEventIndex >= photoInfoList.Count)
+            {
+                Debug.LogError($"[FamilyPhotoHallPanel] For year {year}, Index out of bounds error: currentEventIndex={currentEventIndex}, photoInfoList.Count={photoInfoList.Count}");
+                Debug.LogError($"ImageId: {photoInfo.ImageId}, FileName: {photoInfo.FileName}, Description: {photoInfo.Description}");
+            }
             var currentPhoto = photoInfoList[currentEventIndex];
             Debug.Log($"[FamilyPhotoHallPanel] Updating details handler after image load: Photo ID={currentPhoto.ImageId}");
             familyPhotoDetailsHandlerScript.DisplayThisPhoto(currentPhoto,
