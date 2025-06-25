@@ -6,6 +6,12 @@ public class FiveStarToggler : MonoBehaviour
     private int starCount = 0;
     public GameObject[] starArray;
 
+    AudioManager audioManager;
+    private void Awake()
+    {
+        audioManager = GameObject.FindGameObjectWithTag("AudioManager").GetComponent<AudioManager>();
+    }
+
     public void FiveStarComponentInit(int startCount)
     {
         starCount = startCount;
@@ -35,7 +41,7 @@ public class FiveStarToggler : MonoBehaviour
     // Helper method to set temporary hover state
     private void SetHoverState(int hoverStarIndex)
     {
-        
+        audioManager.PlayStarHover();
         for (int i = 0; i < starArray.Length - 1; i++) // Skip the zero button
         {
             if (starArray[i + 1] != null)
@@ -74,6 +80,7 @@ public class FiveStarToggler : MonoBehaviour
 
     public void OnPointerClick_Star0()
     {
+        audioManager.PlayStarClick();
         // Set rating to 0
         starCount = 0;
         UpdateStarDisplay();
@@ -94,6 +101,7 @@ public class FiveStarToggler : MonoBehaviour
 
     public void OnPointerClick_Star1()
     {
+        audioManager.PlayStarClick();
         // Set rating to 1
         starCount = 1;
         UpdateStarDisplay();
@@ -114,6 +122,7 @@ public class FiveStarToggler : MonoBehaviour
 
     public void OnPointerClick_Star2()
     {
+        audioManager.PlayStarClick();
         // Set rating to 2
         starCount = 2;
         UpdateStarDisplay();
@@ -134,6 +143,7 @@ public class FiveStarToggler : MonoBehaviour
 
     public void OnPointerClick_Star3()
     {
+        audioManager.PlayStarClick();
         // Set rating to 3
         starCount = 3;
         UpdateStarDisplay();
@@ -154,6 +164,7 @@ public class FiveStarToggler : MonoBehaviour
 
     public void OnPointerClick_Star4()
     {
+        audioManager.PlayStarClick();
         // Set rating to 4
         starCount = 4;
         UpdateStarDisplay();
@@ -174,6 +185,7 @@ public class FiveStarToggler : MonoBehaviour
 
     public void OnPointerClick_Star5()
     {
+        audioManager.PlayStarClick();
         // Set rating to 5
         starCount = 5;
         UpdateStarDisplay();
