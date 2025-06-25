@@ -75,3 +75,7 @@ crashlytics-build.properties
 # ALP Assets folder
 /[Aa]ssets/ALP_Assets/
 /[Aa]ssets/ALP_Assets.meta
+
+# Casual Game Sounds folder
+/[Aa]ssets/Casual Game Sounds U6/
+/[Aa]ssets/Casual Game Sounds U6.meta
