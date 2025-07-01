@@ -94,7 +94,7 @@ public class HallOfFamilyPhotos : MonoBehaviour
         undatedPanelScript.ClearFamilyPhotos();
         var undatedPhotos = _pictureProvider.GetPhotoInfoListForPerson(newfocusPerson.dataBaseOwnerID, -1); // -1 for undated photos
         undatedPanelScript.LoadFamilyPhotosForYearAndPerson(newfocusPerson.dataBaseOwnerID, -1, undatedPhotos);
-        undatedPanelScript.SetPanelTitle("No Dates");
+        undatedPanelScript.SetPanelTitleAndAutoRotate("No Dates", true);
     }
 
     public IEnumerator SetFocusPersonNode(PersonNode newfocusPerson)
@@ -125,8 +125,8 @@ public class HallOfFamilyPhotos : MonoBehaviour
             var x = focusPerson.transform.position.x;
             var y = focusPerson.transform.position.y;
 
-            // Update undated photos panel
-            UpdateUndatedPhotosPanel(focusPerson, x, y + 2f, (birthDate) * 5 + 5f);
+            // Update undated photos panel, put it in the sky above the person
+            UpdateUndatedPhotosPanel(focusPerson, x, y + 3.75f, (birthDate) * 5 + 5f);
 
             // If the person has no life span, set the loop to at least add 1 photo panel
             // Use <= to include the current year (lifeSpan represents completed years, but we want to include the current year)

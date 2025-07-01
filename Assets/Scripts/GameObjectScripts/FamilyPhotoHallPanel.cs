@@ -33,6 +33,7 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
     
     // Focus tracking
     private bool hasFocus = false;
+    private bool autoRotateToFacePlayer = false;
     
     // Details handler reference
     private FamilyPhotoDetailsHandler familyPhotoDetailsHandlerScript;
@@ -170,7 +171,17 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
         numberOfEvents = photoInfoList.Count;
         currentEventIndex = 0;
         DisplayHallPanelImageTexture();
-        dateTextFieldName.text = year.ToString();
+        
+        // Handle special year values with descriptive text
+        if (year == -1)
+        {
+            dateTextFieldName.text = "Needs Review";
+        }
+        else
+        {
+            dateTextFieldName.text = year.ToString();
+        }
+        
         titleTextFieldName.text = currentlySelectedEventTitle();
     }
 
@@ -186,9 +197,17 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
         titleTextFieldName.text = currentlySelectedEventTitle();
     }
 
-    public void SetPanelTitle(string title)
+    public void SetPanelTitleAndAutoRotate(string title, bool autoRotate = false)
     {
         titleTextFieldName.text = title;
+        autoRotateToFacePlayer = autoRotate;
+        Debug.Log($"[FamilyPhotoHallPanel] Auto-rotation set to: {autoRotate}");
+    }
+
+    public void EnableAutoRotation(bool enable)
+    {
+        autoRotateToFacePlayer = enable;
+        Debug.Log($"[FamilyPhotoHallPanel] Auto-rotation enabled: {enable}");
     }
 
     public void DisplayHallPanelImageTexture()
@@ -378,5 +397,84 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
             Destroy(currentDownloadedTexture);
             currentDownloadedTexture = null;
         }
+    }
+
+    private void Update()
+    {
+        if (autoRotateToFacePlayer)
+        {
+            RotateToFacePlayer();
+        }
+    }
+
+    private void RotateToFacePlayer()
+    {
+        // Find the third person player (assuming it has a specific tag or component)
+        GameObject player = FindThirdPersonPlayer();
+        if (player == null)
+        {
+            Debug.LogWarning("[FamilyPhotoHallPanel] No player found for auto-rotation");
+            return;
+        }
+
+        // Get the direction from this panel to the player
+        Vector3 directionToPlayer = player.transform.position - transform.position;
+        
+        // Project the direction onto the XZ plane (ignore Y component)
+        directionToPlayer.y = 0f;
+        
+        // Only rotate if there's a meaningful direction
+        if (directionToPlayer.magnitude > 0.1f)
+        {
+            // Calculate the target rotation to face the player
+            Quaternion targetRotation = Quaternion.LookRotation(directionToPlayer);
+            
+            // Get current rotation
+            Vector3 currentEulerAngles = transform.rotation.eulerAngles;
+            
+            // Create new rotation - only change Y rotation to face player
+            Vector3 newEulerAngles = new Vector3(
+                currentEulerAngles.x,  // Update current X rotation
+                targetRotation.eulerAngles.y,   // Update Y rotation to face player
+                targetRotation.eulerAngles.z   // Keep current Z rotation
+            );
+            
+            // Apply the rotation smoothly
+            Quaternion newRotation = Quaternion.Euler(newEulerAngles);
+            transform.rotation = Quaternion.Slerp(transform.rotation, newRotation, Time.deltaTime * 3f);
+            
+            // Debug logging
+            Debug.Log($"[FamilyPhotoHallPanel] Rotating to face player. Current Y: {currentEulerAngles.y:F1}, Target Y: {targetRotation.eulerAngles.y:F1}, New Y: {newEulerAngles.y:F1}");
+        }
+    }
+
+    private GameObject FindThirdPersonPlayer()
+    {
+    
+        // Try to find the player by tag first
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+        if (player != null)
+        {
+            return player;
+        }
+        
+        // Try to find any object with "Player" in the name
+        GameObject[] allObjects = FindObjectsByType<GameObject>(FindObjectsSortMode.None);
+        foreach (GameObject obj in allObjects)
+        {
+            if (obj.name.ToLower().Contains("player") || obj.name.ToLower().Contains("character"))
+            {
+                return obj;
+            }
+        }
+    
+        // If still not found, try to find the main camera's parent (common in third person setups)
+        Camera mainCamera = Camera.main;
+        if (mainCamera != null && mainCamera.transform.parent != null)
+        {
+            return mainCamera.transform.parent.gameObject;
+        }
+        
+        return null;
     }
 }

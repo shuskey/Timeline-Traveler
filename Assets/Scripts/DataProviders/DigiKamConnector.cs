@@ -751,6 +751,9 @@ namespace Assets.Scripts.DataProviders
                                                         // Get Timeline-Traveler tag values
                             GetTimelineTravelerTagValues(imageId, out bool isNotDated, out bool isPrivate, out bool hasTodoCaption, out string todoCaptionText, dbconn);
 
+                            //Filter out private photos
+                            if (isPrivate) continue;
+
                             // Apply year filtering logic (simplified for optimized case)
                             bool includePhoto = true;
                             if (yearFilter.HasValue)
