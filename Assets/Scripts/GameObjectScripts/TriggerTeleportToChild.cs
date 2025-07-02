@@ -17,11 +17,30 @@ public class TriggerTeleportToChild : MonoBehaviour
             var playerObject = other.gameObject;
 
             var thirdPersonTeleporterScript = other.GetComponent<ThirdPersonTeleporter>();
+            
+            // Subscribe to teleportation completion event
+            thirdPersonTeleporterScript.onTeleportationComplete.AddListener(OnTeleportationComplete);
+            
             thirdPersonTeleporterScript.TeleportTo(teleportTargetChild, teleportOffset, 25);
-            var personObjectScript = teleportTargetChild.GetComponent<PersonNode>();
+        }
+    }
 
-          // Todo: Add Later  StartCoroutine(hallOfHistoryGameObject.GetComponent<HallOfHistory>().SetFocusPersonNode(personObjectScript));
+    private void OnTeleportationComplete(Transform teleportTarget)
+    {
+        // Only handle if this is our target
+        if (teleportTarget == teleportTargetChild)
+        {
+            var personObjectScript = teleportTargetChild.GetComponent<PersonNode>();
+            
+            // Position the Hall of Family Photos after teleportation is complete
             StartCoroutine(hallOfFamilyPhotosGameObject.GetComponent<HallOfFamilyPhotos>().SetFocusPersonNode(personObjectScript));
+            
+            // Unsubscribe from the event
+            var thirdPersonTeleporterScript = FindFirstObjectByType<ThirdPersonTeleporter>();
+            if (thirdPersonTeleporterScript != null)
+            {
+                thirdPersonTeleporterScript.onTeleportationComplete.RemoveListener(OnTeleportationComplete);
+            }
         }
     }
 } 

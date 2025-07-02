@@ -102,10 +102,22 @@ public class HallOfFamilyPhotos : MonoBehaviour
         if (!leaveMeAloneIAmBusy && (previousFocusPerson == null || newfocusPerson.dataBaseOwnerID != previousFocusPerson.dataBaseOwnerID))
         {
             leaveMeAloneIAmBusy = true;
+            
+            // Wait a frame to ensure the new focus person's transform is stable
+            yield return null;
+            
             // Establish physical parent-child relationship so hall of family photos moves with PersonNode
             this.transform.SetParent(newfocusPerson.transform, false);
+            
+            // Wait another frame to ensure the parent-child relationship is established
+            yield return null;
+            
+            // Set the local position relative to the new parent
             this.transform.localPosition = new Vector3(0, 5f, 0); // Above the person
             this.transform.localRotation = Quaternion.identity;
+
+            // Ensure proper positioning by forcing a position update
+            yield return StartCoroutine(EnsureProperPositioning(newfocusPerson));
 
             // Hide all existing panels
             foreach (var panel in familyPhotoPanelDictionary.Values)
@@ -164,6 +176,22 @@ public class HallOfFamilyPhotos : MonoBehaviour
             }
         }
         leaveMeAloneIAmBusy = false;
+    }
+
+    private IEnumerator EnsureProperPositioning(PersonNode focusPerson)
+    {
+        // Wait a few frames to ensure the parent transform is completely stable
+        for (int i = 0; i < 3; i++)
+        {
+            yield return null;
+        }
+        
+        // Force the position to be exactly where we want it
+        this.transform.localPosition = new Vector3(0, 5f, 0);
+        this.transform.localRotation = Quaternion.identity;
+        
+        // Log the positioning for debugging
+        Debug.Log($"[HallOfFamilyPhotos] Positioned at local position: {this.transform.localPosition}, world position: {this.transform.position}");
     }
 
     // Update is called once per frame

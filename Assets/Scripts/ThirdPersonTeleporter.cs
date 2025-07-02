@@ -1,5 +1,7 @@
 using UnityEngine;
 using StarterAssets;
+using System.Collections;
+using UnityEngine.Events;
 
 public class ThirdPersonTeleporter : MonoBehaviour
 {
@@ -10,6 +12,9 @@ public class ThirdPersonTeleporter : MonoBehaviour
     private Transform lastTeleportTransform;
     private Vector3 lastTeleportOffset;
     private ThirdPersonController _controller;
+    
+    [Header("Events")]
+    public UnityEvent<Transform> onTeleportationComplete;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -34,7 +39,18 @@ public class ThirdPersonTeleporter : MonoBehaviour
     {
         lastTeleportTransform = teleportTarget.transform;
         lastTeleportOffset = teleportOffset;
+        StartCoroutine(TeleportWithCallback(teleportTarget, ticksToHoldHere));
+    }
+
+    private IEnumerator TeleportWithCallback(Transform teleportTarget, int ticksToHoldHere)
+    {
         RegenAtLastTeleportLocation(ticksToHoldHere);
+        
+        // Wait for teleportation to complete
+        yield return new WaitForSeconds(ticksToHoldHere * 0.02f); // Assuming 50fps
+        
+        // Notify that teleportation is complete
+        onTeleportationComplete?.Invoke(teleportTarget);
     }
 
     public void RegenAtLastTeleportLocation(int ticksToHoldHere)
@@ -54,7 +70,5 @@ public class ThirdPersonTeleporter : MonoBehaviour
             //animator.SetTrigger("Idle");
             animator.SetBool("Jump", true);
         }
-
-        
     }
 }
