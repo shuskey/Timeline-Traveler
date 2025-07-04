@@ -1557,7 +1557,7 @@ MonoBehaviour:
   marriageConnectionPrefab: {fileID: 2006701754031461468, guid: eac9d8e935b98264ba7de1b6921f363b, type: 3}
   hallOfHistoryGameObject: {fileID: 53005343}
   hallOfFamilyPhotosGameObject: {fileID: 1917470387}
-  EnableHallOfHistory: 0
+  EnableHallOfHistory: 1
   marriageEdgepfXScale: 0.4
   bubblepf: {fileID: 557405875712316749, guid: a27690feb6cc0e74c95759bc7baff389, type: 3}
   parentPlatformBirthBubble: {fileID: 557405875712316749, guid: 4cb9e513d2f90084c942a0eb65d8eaaf, type: 3}

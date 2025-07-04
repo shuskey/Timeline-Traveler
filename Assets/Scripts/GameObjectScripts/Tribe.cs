@@ -42,7 +42,7 @@ public class Tribe : MonoBehaviour
 	public GameObject hallOfFamilyPhotosGameObject;
 	[SerializeField]
 	[Tooltip("Enable Hall of History feature on person platforms")]
-	private bool EnableHallOfHistory = false;
+	private bool EnableHallOfHistory = true;
 	public float marriageEdgepfXScale = 0.4f;
 	public GameObject bubblepf;
 	public GameObject parentPlatformBirthBubble;

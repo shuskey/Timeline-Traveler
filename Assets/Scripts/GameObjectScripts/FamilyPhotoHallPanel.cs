@@ -204,12 +204,6 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
         Debug.Log($"[FamilyPhotoHallPanel] Auto-rotation set to: {autoRotate}");
     }
 
-    public void EnableAutoRotation(bool enable)
-    {
-        autoRotateToFacePlayer = enable;
-        Debug.Log($"[FamilyPhotoHallPanel] Auto-rotation enabled: {enable}");
-    }
-
     public void DisplayHallPanelImageTexture()
     {
         var destinationImagePanel = GetUICanvasImagePanel();
@@ -427,14 +421,15 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
         if (directionToPlayer.magnitude > 0.1f)
         {
             // Calculate the target rotation to face the player
-            Quaternion targetRotation = Quaternion.LookRotation(directionToPlayer);
+            Quaternion targetRotation = Quaternion.LookRotation(directionToPlayer, Vector3.up);
             
             // Get current rotation
             Vector3 currentEulerAngles = transform.rotation.eulerAngles;
             
             // Create new rotation - only change Y rotation to face player
             Vector3 newEulerAngles = new Vector3(
-                currentEulerAngles.x,  // Update current X rotation
+                // X axis is the tilt of the panel and needs a 90 degree offset
+                targetRotation.eulerAngles.x + 90f,  // Update current X rotation
                 targetRotation.eulerAngles.y,   // Update Y rotation to face player
                 targetRotation.eulerAngles.z   // Keep current Z rotation
             );
