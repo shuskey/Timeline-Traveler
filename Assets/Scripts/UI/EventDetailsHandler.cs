@@ -49,10 +49,27 @@ public class EventDetailsHandler : MonoBehaviour
         yearAndTitleGameObject.GetComponent<Text>().text =  topEventObject.year + " " + topEventObject.itemLabel;
         descriptionGameObject.GetComponent<Text>().text =  topEventObject.description;
         string dateRangeString = "";
-        if (!String.IsNullOrEmpty(topEventObject.eventStartDate)) 
-            dateRangeString = JsonUtility.FromJson<DateTime>(("\"" + topEventObject.eventStartDate + "\"")).ToString("dd MMM yyyy");
-        if (!String.IsNullOrEmpty(topEventObject.eventEndDate))
-            dateRangeString = dateRangeString + " - " + JsonUtility.FromJson<DateTime>(("\"" + topEventObject.eventEndDate + "\"")).ToString("dd MMM yyyy");
+
+        // Handle start date
+        if (!string.IsNullOrEmpty(topEventObject.eventStartDate)) 
+        {
+            if (DateTime.TryParse(topEventObject.eventStartDate, out DateTime startDate))
+            {
+                dateRangeString = startDate.ToString("dd MMM yyyy");
+            }
+        }
+
+        // Handle end date
+        if (!string.IsNullOrEmpty(topEventObject.eventEndDate))
+        {
+            if (DateTime.TryParse(topEventObject.eventEndDate, out DateTime endDate))
+            {
+                if (!string.IsNullOrEmpty(dateRangeString))
+                    dateRangeString += " - ";
+                dateRangeString += endDate.ToString("dd MMM yyyy");
+            }
+        }
+
         dateRangeGameObject.GetComponent<Text>().text =  dateRangeString;
         var eventTally = numberOfEvents == 0 ? "0 / 0" : $"{currentEventIndex + 1} / {numberOfEvents}";
         panelCountGameObject.GetComponent<Text>().text =  $"Event: {eventTally}";

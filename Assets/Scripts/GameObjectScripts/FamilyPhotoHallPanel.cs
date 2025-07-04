@@ -438,8 +438,9 @@ public class FamilyPhotoHallPanel : MonoBehaviour, IInteractablePanel
             Quaternion newRotation = Quaternion.Euler(newEulerAngles);
             transform.rotation = Quaternion.Slerp(transform.rotation, newRotation, Time.deltaTime * 3f);
             
-            // Debug logging
+            /* Debug logging
             Debug.Log($"[FamilyPhotoHallPanel] Rotating to face player. Current Y: {currentEulerAngles.y:F1}, Target Y: {targetRotation.eulerAngles.y:F1}, New Y: {newEulerAngles.y:F1}");
+            */
         }
     }
 

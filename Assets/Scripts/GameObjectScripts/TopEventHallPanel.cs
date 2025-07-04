@@ -23,6 +23,10 @@ public class TopEventHallPanel : MonoBehaviour, IInteractablePanel
     private TextMeshPro titleTextFieldName;
     private EventDetailsHandler eventDetailsHandlerScript;
     private Texture2D eventImage_Texture;
+    private Dictionary<string, Texture2D> imageCache = new Dictionary<string, Texture2D>();
+    
+    // Focus tracking
+    private bool hasFocus = false;
 
     // Awake is called when instantiated
     void Awake()
@@ -56,6 +60,9 @@ public class TopEventHallPanel : MonoBehaviour, IInteractablePanel
 
     public void DisplayDetailsInEventDetailsPanel()
     {
+        // Set focus when this panel is selected
+        hasFocus = true;
+        
         if (numberOfEvents != 0)
         {
             eventDetailsHandlerScript.DisplayThisEvent(topEventsForYear[currentEventIndex],
@@ -67,6 +74,9 @@ public class TopEventHallPanel : MonoBehaviour, IInteractablePanel
 
     public void ClearEventDetailsPanel()
     {
+        // Clear focus when this panel is deselected
+        hasFocus = false;
+        
         eventDetailsHandlerScript.ClearEventDisplay();
     }
 
@@ -75,20 +85,33 @@ public class TopEventHallPanel : MonoBehaviour, IInteractablePanel
         if (numberOfEvents == 0)
         {
             setPanelTexture(noEventsThisYear_Texture);
+            UpdateDetailsPanel();
             return;
         }
         var eventToShow = topEventsForYear[currentEventIndex];
         if (string.IsNullOrEmpty(eventToShow.picture))
         {
              setPanelTexture(noImageThisEvent_Texture);
+            UpdateDetailsPanel();
             return;
         }
-        // for now just log the URL
-        Debug.Log("Downloading image from: " + eventToShow.picture + "?width=400px");
-        /* FIX LATER TODO:
-        StartCoroutine(DownloadImage(eventToShow.picture + "?width=400px"));
-        //DownloadImage(eventToShow.picture + "?width=400px");
-        */
+        
+        string imageUrl = eventToShow.picture + "?width=400px";
+        
+        // Check if we already have this image cached
+        if (imageCache.ContainsKey(imageUrl))
+        {
+            setPanelTexture(imageCache[imageUrl]);
+            Debug.Log("Using cached image for: " + imageUrl);
+            
+            // Update details panel if this panel has focus
+            UpdateDetailsPanel();
+            return;
+        }
+        
+        // Download the image for this event
+        Debug.Log("Downloading image from: " + imageUrl);
+        StartCoroutine(DownloadImage(imageUrl));
     }
 
     public string currentlySelectedEventTitle()
@@ -99,6 +122,17 @@ public class TopEventHallPanel : MonoBehaviour, IInteractablePanel
         if (string.IsNullOrEmpty(stringToReturn))
             return "No title found for this event";
         return stringToReturn[0].ToString().ToUpper() + stringToReturn.Substring(1);
+    }
+
+    private void UpdateDetailsPanel()
+    {
+        if (hasFocus && numberOfEvents != 0 && eventDetailsHandlerScript != null)
+        {
+            eventDetailsHandlerScript.DisplayThisEvent(topEventsForYear[currentEventIndex],
+                                                       currentEventIndex,
+                                                       numberOfEvents,
+                                                       eventImage_Texture);
+        }
     }
 
     public void NextEventInPanel()
@@ -133,16 +167,54 @@ public class TopEventHallPanel : MonoBehaviour, IInteractablePanel
 
     IEnumerator DownloadImage(string MediaUrl)
     {
-        // ensure this is a secure URL
-        string secureUrl = MediaUrl.Replace("http://", "https://");
-        if (!MediaUrl.StartsWith("https://"))
-            MediaUrl = "https://" + MediaUrl;
-        UnityWebRequest request = UnityWebRequestTexture.GetTexture(MediaUrl);
+        // Ensure this is a secure URL
+        string secureUrl = MediaUrl;
+        
+        // Convert HTTP to HTTPS
+        if (secureUrl.StartsWith("http://"))
+        {
+            secureUrl = secureUrl.Replace("http://", "https://");
+        }
+        // Add HTTPS if no protocol is specified
+        else if (!secureUrl.StartsWith("https://"))
+        {
+            secureUrl = "https://" + secureUrl;
+        }
+        
+        Debug.Log($"Downloading image from: {secureUrl}");
+        
+        UnityWebRequest request = UnityWebRequestTexture.GetTexture(secureUrl);
         yield return request.SendWebRequest();
-        if (request.result == UnityWebRequest.Result.ProtocolError)
-            Debug.LogError(request.error);
+        
+        if (request.result == UnityWebRequest.Result.ConnectionError || 
+            request.result == UnityWebRequest.Result.ProtocolError)
+        {
+            Debug.LogError($"Error downloading image: {request.error}");
+            // Use fallback texture on error
+            setPanelTexture(noImageThisEvent_Texture);
+            
+            // Update details panel even with fallback image
+            UpdateDetailsPanel();
+        }
         else
-            setPanelTexture(((DownloadHandlerTexture)request.downloadHandler).texture);
+        {
+            // Successfully downloaded image
+            Texture2D downloadedTexture = ((DownloadHandlerTexture)request.downloadHandler).texture;
+            
+            // Cache the downloaded image
+            if (!imageCache.ContainsKey(MediaUrl))
+            {
+                imageCache[MediaUrl] = downloadedTexture;
+            }
+            
+            setPanelTexture(downloadedTexture);
+            Debug.Log("Image downloaded and cached successfully");
+            
+            // Update details panel if this panel has focus
+            UpdateDetailsPanel();
+        }
+        
+        request.Dispose();
     }
 
     void setPanelTexture(Texture textureToSet, bool crop = true)
