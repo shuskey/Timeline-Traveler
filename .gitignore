@@ -79,3 +79,7 @@ crashlytics-build.properties
 # Casual Game Sounds folder
 /[Aa]ssets/Casual Game Sounds U6/
 /[Aa]ssets/Casual Game Sounds U6.meta
+
+# Database files in StreamingAssets
+/[Aa]ssets/[Ss]treamingAssets/*.db
+/[Aa]ssets/[Ss]treamingAssets/*.db.meta
