@@ -74,8 +74,7 @@ public class EventDetailsHandler : MonoBehaviour
         var eventTally = numberOfEvents == 0 ? "0 / 0" : $"{currentEventIndex + 1} / {numberOfEvents}";
         panelCountGameObject.GetComponent<Text>().text =  $"Event: {eventTally}";
 
-        additionalInstructionsGameObject.GetComponent<Text>().text = "            ^   or E to interact\n" + 
-                                                                     " Previous < or > Next";
+        additionalInstructionsGameObject.GetComponent<Text>().text = "Previous < or > Next.  Enter key to fix or flag photo.";
 
         var cropSize = Math.Min(eventImage_Texture.width, eventImage_Texture.height);
         var xStart = (eventImage_Texture.width - cropSize) / 2;

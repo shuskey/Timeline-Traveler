@@ -27,6 +27,7 @@ public class TopEventHallPanel : MonoBehaviour, IInteractablePanel
     
     // Focus tracking
     private bool hasFocus = false;
+    private HistorySnapShotHandler historySnapShotHandlerScript;
 
     // Awake is called when instantiated
     void Awake()
@@ -42,6 +43,7 @@ public class TopEventHallPanel : MonoBehaviour, IInteractablePanel
     {
         GameObject[] eventDetailsPanel = GameObject.FindGameObjectsWithTag("EventDetailsPanel");
         eventDetailsHandlerScript = eventDetailsPanel[0].transform.GetComponent<EventDetailsHandler>();     
+        historySnapShotHandlerScript = GameObject.FindGameObjectWithTag("HistorySnapShotDetailsPanel").transform.GetComponent<HistorySnapShotHandler>();
     }
 
     public void LoadTopEventsForYear_fromDataBase(int year)
@@ -147,7 +149,10 @@ public class TopEventHallPanel : MonoBehaviour, IInteractablePanel
     public void InteractWithPanel()
     {
         if (numberOfEvents != 0)
-            Application.OpenURL(topEventsForYear[currentEventIndex].wikiLink);
+        {
+          //  Application.OpenURL(topEventsForYear[currentEventIndex].wikiLink);
+            historySnapShotHandlerScript.ShowHistorySnapShotDetails();
+        }
     }
 
     public void PreviousEventInPanel()
