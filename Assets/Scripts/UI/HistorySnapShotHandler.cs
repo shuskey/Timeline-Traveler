@@ -2,6 +2,9 @@ using UnityEngine;
 using UnityEngine.UI;
 using StarterAssets;
 using System;
+using System.Text;
+using UnityEngine.EventSystems;
+using UnityEngine.UIElements;
 
 public class HistorySnapShotHandler : MonoBehaviour
 {
@@ -9,9 +12,11 @@ public class HistorySnapShotHandler : MonoBehaviour
     public static event Action<bool> OnModalStateChanged;
     public static bool IsModalOpen { get; private set; } = false;
 
-    public Button quitButton;
+    public UnityEngine.UI.Button quitButton;
     public GameObject headerPanel;
 
+    public GameObject familyHappeningsContent;
+    public ScrollRect familyHappeningsScrollView;
     private CanvasGroup canvasGroup;
     private ThirdPersonController playerController;
     private bool wasCursorLocked;
@@ -37,11 +42,20 @@ public class HistorySnapShotHandler : MonoBehaviour
     public void ShowHistorySnapShotDetails(Assets.Scripts.ContentProviders.FamilyHappeningsContent familyHappeningsContent, Assets.Scripts.DataObjects.Person focusPerson, int year)
     {
         headerPanel.GetComponent<TabSwitcher>().SwitchTab(0);
+        //Lets set the scrollview to the top
+        familyHappeningsScrollView.verticalNormalizedPosition = 1;
         
         // Generate family happenings content if provider is available
         if (familyHappeningsContent != null && focusPerson != null)
         {
             string familyHappeningsReport = familyHappeningsContent.GetFamilyHappeningsContent(focusPerson, year);
+            var tmpComponent = this.familyHappeningsContent.GetComponent("TMPro.TextMeshProUGUI");
+            if (tmpComponent != null)
+            {
+                System.Reflection.PropertyInfo textProperty = tmpComponent.GetType().GetProperty("text");
+                textProperty.SetValue(tmpComponent, familyHappeningsReport);
+            }
+            //familyHappeningsText.text = familyHappeningsReport;
             Debug.Log($"Family Happenings Report for {focusPerson.givenName} {focusPerson.surName} in {year}:");
             Debug.Log(familyHappeningsReport);
             
@@ -63,11 +77,11 @@ public class HistorySnapShotHandler : MonoBehaviour
         if (!canvasGroup) canvasGroup = GetComponent<CanvasGroup>();
         
         // Store current cursor state
-        wasCursorLocked = Cursor.lockState == CursorLockMode.Locked;
+        wasCursorLocked = UnityEngine.Cursor.lockState == CursorLockMode.Locked;
         
         // Unlock cursor and make it visible
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
+        UnityEngine.Cursor.lockState = CursorLockMode.None;
+        UnityEngine.Cursor.visible = true;
 
         // Find the player controller and input
         playerController = FindAnyObjectByType<ThirdPersonController>();
@@ -106,8 +120,8 @@ public class HistorySnapShotHandler : MonoBehaviour
         // Restore cursor state
         if (wasCursorLocked)
         {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
+            UnityEngine.Cursor.lockState = CursorLockMode.Locked;
+            UnityEngine.Cursor.visible = false;
         }
         
         // Re-enable player controller and flush input
