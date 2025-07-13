@@ -4,7 +4,9 @@ using UnityEngine;
 using Assets.Scripts.DataProviders;
 using Assets.Scripts.ServiceProviders;
 using System;
-
+using Assets.Scripts.ContentProviders;
+// 
+// This class is used to display the hall of history for a person.
 public class HallOfHistory : MonoBehaviour
 {
     public PersonNode focusPerson;
@@ -14,6 +16,7 @@ public class HallOfHistory : MonoBehaviour
     private IDictionary<int, GameObject> eventPanelDictionary = new Dictionary<int, GameObject>();
     private bool leaveMeAloneIAmBusy = false;
     private ListOfTopEventsFromDataBase _eventsDataProvider;
+    private FamilyHappeningsContent _familyHappeningsContent;
 
     // Start is called before the first frame update
     void Start()
@@ -22,6 +25,9 @@ public class HallOfHistory : MonoBehaviour
         // Initialize the events data provider
         var dataPath = Application.streamingAssetsPath + "/";
         _eventsDataProvider = new ListOfTopEventsFromDataBase(dataPath + "TopEvents.db");
+        // Initialize the family happenings content provider
+        _familyHappeningsContent = new FamilyHappeningsContent();
+        _familyHappeningsContent.Initialize();
     }
 
     public IEnumerator SetFocusPersonNode(PersonNode newfocusPerson)
@@ -76,6 +82,9 @@ public class HallOfHistory : MonoBehaviour
                     var panelScript = panel.GetComponent<TopEventHallPanel>();
                     // Load the events for this year
                     panelScript.LoadTopEventsForYear_fromDataBase(year);
+                    // Set the focus person and family happenings content
+                    panelScript.SetFocusPerson(focusPerson);
+                    panelScript.SetFamilyHappeningsContent(_familyHappeningsContent);
                 }
                 else
                 {
@@ -86,6 +95,9 @@ public class HallOfHistory : MonoBehaviour
 
                     var topEventHallPanelScript = newPanel.GetComponent<TopEventHallPanel>();
                     topEventHallPanelScript.LoadTopEventsForYear_fromDataBase(year);
+                    // Set the focus person and family happenings content
+                    topEventHallPanelScript.SetFocusPerson(focusPerson);
+                    topEventHallPanelScript.SetFamilyHappeningsContent(_familyHappeningsContent);
 
                     eventPanelDictionary.Add(year, newPanel);
                 }

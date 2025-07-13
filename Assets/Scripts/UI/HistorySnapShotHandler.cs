@@ -34,6 +34,24 @@ public class HistorySnapShotHandler : MonoBehaviour
         ShowPopup();
     }
 
+    public void ShowHistorySnapShotDetails(Assets.Scripts.ContentProviders.FamilyHappeningsContent familyHappeningsContent, Assets.Scripts.DataObjects.Person focusPerson, int year)
+    {
+        headerPanel.GetComponent<TabSwitcher>().SwitchTab(0);
+        
+        // Generate family happenings content if provider is available
+        if (familyHappeningsContent != null && focusPerson != null)
+        {
+            string familyHappeningsReport = familyHappeningsContent.GetFamilyHappeningsContent(focusPerson, year);
+            Debug.Log($"Family Happenings Report for {focusPerson.givenName} {focusPerson.surName} in {year}:");
+            Debug.Log(familyHappeningsReport);
+            
+            // TODO: Display this content in the UI - you can add UI elements to show the report
+            // For now, we'll just log it to the console
+        }
+        
+        ShowPopup();
+    }
+
     private void OnQuitButtonClicked()
     {
         // Add quit button functionality here

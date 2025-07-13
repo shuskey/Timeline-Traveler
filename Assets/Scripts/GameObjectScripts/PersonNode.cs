@@ -13,7 +13,7 @@ using UnityEngine.SceneManagement;
 
 public class PersonNode : MonoBehaviour
 {
-    private Person person;
+    public Person person;
     private PersonDetailsHandler personDetailsHandlerScript;
     private GlobalSpringType globalSpringType;
     private string rootsMagicFileName;

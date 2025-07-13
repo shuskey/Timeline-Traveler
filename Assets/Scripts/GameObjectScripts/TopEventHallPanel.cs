@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 using Assets.Scripts.DataProviders;
 using UnityEngine.UI;
+using Assets.Scripts.ContentProviders;
 
 public class TopEventHallPanel : MonoBehaviour, IInteractablePanel
 {    
@@ -28,6 +29,8 @@ public class TopEventHallPanel : MonoBehaviour, IInteractablePanel
     // Focus tracking
     private bool hasFocus = false;
     private HistorySnapShotHandler historySnapShotHandlerScript;
+    private FamilyHappeningsContent _familyHappeningsContent;
+    private PersonNode _focusPerson;
 
     // Awake is called when instantiated
     void Awake()
@@ -151,7 +154,7 @@ public class TopEventHallPanel : MonoBehaviour, IInteractablePanel
         if (numberOfEvents != 0)
         {
           //  Application.OpenURL(topEventsForYear[currentEventIndex].wikiLink);
-            historySnapShotHandlerScript.ShowHistorySnapShotDetails();
+            historySnapShotHandlerScript.ShowHistorySnapShotDetails(_familyHappeningsContent, _focusPerson?.person, year);
         }
     }
 
@@ -252,5 +255,15 @@ public class TopEventHallPanel : MonoBehaviour, IInteractablePanel
     {
         this.gameObject.transform.Find("ImagePanel").GetComponent<Renderer>().material.mainTexture = textureToSet;
         eventImage_Texture = (Texture2D)textureToSet;
+    }
+
+    public void SetFamilyHappeningsContent(FamilyHappeningsContent familyHappeningsContent)
+    {
+        _familyHappeningsContent = familyHappeningsContent;
+    }
+
+    public void SetFocusPerson(PersonNode focusPerson)
+    {
+        _focusPerson = focusPerson;
     }
 }
