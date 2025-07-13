@@ -66,7 +66,7 @@ namespace Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider
         public void GetPhotoListForPerson_WhenPersonExists_ReturnsSampleData()
         {
             // Act
-            var result = _provider.GetPhotoInfoListForPerson(_ownerIDForJFK, 1963);
+            var result = _provider.GetPhotoInfoListForPerson(_ownerIDForJFK, null);  // null means all photos
 
             // Assert
             result.Should().NotBeNull("because we should always get a list");
