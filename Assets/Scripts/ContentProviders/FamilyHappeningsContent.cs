@@ -44,7 +44,8 @@ namespace Assets.Scripts.ContentProviders
             // Header
             sb.AppendLine("=== FAMILY HAPPENINGS ===");
             sb.AppendLine($"Year: {year}");
-            sb.AppendLine($"Focus Person: {FormatPersonName(focusPerson)}");
+            var focusPersonAge = CalculateAge(focusPerson.originalBirthEventDateYear, year);
+            sb.AppendLine($"Focus Person: {FormatPersonName(focusPerson)} (age {focusPersonAge.Replace(" years old", "").Replace("infant", "0")})");
             sb.AppendLine();
             
             // Get close family members
@@ -198,8 +199,11 @@ namespace Assets.Scripts.ContentProviders
                 marriagesThisYear.AddRange(marriagesAsWife.Where(m => m.marriageYear == year));
             }
             
-            // Remove duplicates
-            marriagesThisYear = marriagesThisYear.GroupBy(m => m.familyId).Select(g => g.First()).ToList();
+            // Remove duplicates - group by both husband and wife IDs to ensure no duplicate marriages
+            marriagesThisYear = marriagesThisYear
+                .GroupBy(m => new { m.husbandId, m.wifeId })
+                .Select(g => g.First())
+                .ToList();
             
             if (!marriagesThisYear.Any())
             {
@@ -268,9 +272,13 @@ namespace Assets.Scripts.ContentProviders
                 var tightFamily = GetTightFamilyMembers(deceased);
                 
                 // Those who preceded them in death
-                var preceded = tightFamily.Where(p => !p.isLiving && p.originalDeathEventDateYear < deceased.originalDeathEventDateYear && p.dataBaseOwnerId != deceased.dataBaseOwnerId).ToList();
+                var preceded = tightFamily.Where(p => !p.isLiving && p.originalDeathEventDateYear < deceased.originalDeathEventDateYear && p.dataBaseOwnerId != deceased.dataBaseOwnerId)
+                    .GroupBy(p => p.dataBaseOwnerId)
+                    .Select(g => g.First())
+                    .ToList();
                 if (preceded.Any())
                 {
+                    sb.AppendLine();
                     sb.AppendLine($"Preceded in death by: {string.Join(", ", preceded.Select(p => $"{FormatPersonName(p)} ({GetRelationshipToPerson(p, deceased)}, {p.originalDeathEventDateYear})"))}");
                 }
                 
@@ -278,9 +286,12 @@ namespace Assets.Scripts.ContentProviders
                 var survived = tightFamily.Where(p => p.isLiving && 
                     p.dataBaseOwnerId != deceased.dataBaseOwnerId &&
                     (p.originalBirthEventDateYear == 0 || p.originalBirthEventDateYear <= deceased.originalDeathEventDateYear))
+                    .GroupBy(p => p.dataBaseOwnerId)
+                    .Select(g => g.First())
                     .ToList();
                 if (survived.Any())
                 {
+                    sb.AppendLine();
                     sb.AppendLine($"Survived by: {string.Join(", ", survived.Select(p => $"{FormatPersonName(p)} ({GetRelationshipToPerson(p, deceased)})"))}");
                 }
                 
