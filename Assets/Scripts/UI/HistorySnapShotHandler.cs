@@ -14,7 +14,7 @@ public class HistorySnapShotHandler : MonoBehaviour
 
     public UnityEngine.UI.Button quitButton;
     public GameObject headerPanel;
-
+    public GameObject TitleText;
     public GameObject familyHappeningsContent;
     public ScrollRect familyHappeningsScrollView;
     private CanvasGroup canvasGroup;
@@ -44,17 +44,15 @@ public class HistorySnapShotHandler : MonoBehaviour
         headerPanel.GetComponent<TabSwitcher>().SwitchTab(0);
         //Lets set the scrollview to the top
         familyHappeningsScrollView.verticalNormalizedPosition = 1;
+        //Create the string for the title {year} Family Happenings
+        string title = $"{year} Family Happenings";
+        SetTextMeshProTextOnGameObject(this.TitleText, title);
         
         // Generate family happenings content if provider is available
         if (familyHappeningsContent != null && focusPerson != null)
         {
             string familyHappeningsReport = familyHappeningsContent.GetFamilyHappeningsContent(focusPerson, year);
-            var tmpComponent = this.familyHappeningsContent.GetComponent("TMPro.TextMeshProUGUI");
-            if (tmpComponent != null)
-            {
-                System.Reflection.PropertyInfo textProperty = tmpComponent.GetType().GetProperty("text");
-                textProperty.SetValue(tmpComponent, familyHappeningsReport);
-            }
+            SetTextMeshProTextOnGameObject(this.familyHappeningsContent, familyHappeningsReport);
             //familyHappeningsText.text = familyHappeningsReport;
             Debug.Log($"Family Happenings Report for {focusPerson.givenName} {focusPerson.surName} in {year}:");
             Debug.Log(familyHappeningsReport);
@@ -64,6 +62,22 @@ public class HistorySnapShotHandler : MonoBehaviour
         }
         
         ShowPopup();
+    }
+
+    private void SetTextMeshProTextOnGameObject(GameObject gameObject, string text)
+    {
+        if (gameObject == null)
+        {
+            Debug.LogError("Game object is null");
+            return;
+        }
+        
+        var tmpComponent = gameObject.GetComponent("TMPro.TextMeshProUGUI");
+        if (tmpComponent != null)
+        {
+            System.Reflection.PropertyInfo textProperty = tmpComponent.GetType().GetProperty("text");
+            textProperty?.SetValue(tmpComponent, text);
+        }
     }
 
     private void OnQuitButtonClicked()

@@ -43,9 +43,8 @@ namespace Assets.Scripts.ContentProviders
             
             // Header
             sb.AppendLine("=== FAMILY HAPPENINGS ===");
-            sb.AppendLine($"Year: {year}");
             var focusPersonAge = CalculateAge(focusPerson.originalBirthEventDateYear, year);
-            sb.AppendLine($"Focus Person: {FormatPersonName(focusPerson)} (age {focusPersonAge.Replace(" years old", "").Replace("infant", "0")})");
+            sb.AppendLine($"For: {FormatPersonName(focusPerson)} (age {focusPersonAge.Replace(" years old", "").Replace("infant", "0")})");
             sb.AppendLine();
             
             // Get close family members
@@ -165,16 +164,30 @@ namespace Assets.Scripts.ContentProviders
             
             foreach (var child in birthsThisYear)
             {
-                // Skip if this is the focus person themselves (they weren't born this year in the context of the report)
-                if (child.dataBaseOwnerId == focusPerson.dataBaseOwnerId)
-                    continue;
-                    
                 var parents = GetParentsOfPerson(child);
                 var relationship = GetRelationshipToPerson(child, focusPerson);
                 
-                sb.AppendLine($"Mr. and Mrs. {GetParentsNames(parents)} are pleased to announce the birth of their {GetGenderText(child.gender)}, {FormatPersonName(child)}.");
-                sb.AppendLine($"{child.givenName} is the {relationship} of {FormatPersonName(focusPerson)}.");
-                sb.AppendLine($"Born: {FormatDate(child.originalBirthEventDateMonth, child.originalBirthEventDateDay, child.originalBirthEventDateYear)}");
+                // Check if focus person is one of the parents
+                bool focusPersonIsParent = parents.Any(p => p.dataBaseOwnerId == focusPerson.dataBaseOwnerId);
+                
+                // Handle focus person's own birth differently
+                if (child.dataBaseOwnerId == focusPerson.dataBaseOwnerId)
+                {
+                    sb.AppendLine($"Mr. and Mrs. {GetParentsNames(parents)} are pleased to announce the birth of their {GetGenderText(child.gender)}, {FormatPersonName(child)}.");
+                    sb.AppendLine($"Born: {FormatDate(child.originalBirthEventDateMonth, child.originalBirthEventDateDay, child.originalBirthEventDateYear)}");
+                }
+                else
+                {
+                    sb.AppendLine($"Mr. and Mrs. {GetParentsNames(parents)} are pleased to announce the birth of their {GetGenderText(child.gender)}, {FormatPersonName(child)}.");
+                    
+                    // Only show relationship if focus person is not the parent
+                    if (!focusPersonIsParent)
+                    {
+                        sb.AppendLine($"{child.givenName} is the {relationship} of {FormatPersonName(focusPerson)}.");
+                    }
+                    
+                    sb.AppendLine($"Born: {FormatDate(child.originalBirthEventDateMonth, child.originalBirthEventDateDay, child.originalBirthEventDateYear)}");
+                }
                 sb.AppendLine();
             }
             
@@ -545,6 +558,8 @@ namespace Assets.Scripts.ContentProviders
         // Helper methods for formatting and relationship calculation
         private string GetRelationshipToPerson(Person relationshipPerson, Person sourcePerson)
         {
+            Debug.Log($"[FamilyHappeningsContent] GetRelationshipToPerson: Determining relationship of {relationshipPerson.givenName} {relationshipPerson.surName} (ID: {relationshipPerson.dataBaseOwnerId}) to {sourcePerson.givenName} {sourcePerson.surName} (ID: {sourcePerson.dataBaseOwnerId})");
+            
             if (relationshipPerson.dataBaseOwnerId == sourcePerson.dataBaseOwnerId)
                 return "self";
             
@@ -552,43 +567,70 @@ namespace Assets.Scripts.ContentProviders
             
             // Check if relationshipPerson is a descendant of sourcePerson
             if (IsDescendant(relationshipPerson, sourcePerson))
+            {
+                Debug.Log($"[FamilyHappeningsContent] Found descendant relationship");
                 return GetDescendantRelationship(relationshipPerson, sourcePerson);
+            }
             
             // Check if relationshipPerson is an ancestor of sourcePerson
             if (IsAncestor(relationshipPerson, sourcePerson))
+            {
+                Debug.Log($"[FamilyHappeningsContent] Found ancestor relationship");
                 return GetAncestorRelationship(relationshipPerson, sourcePerson);
+            }
             
             // Check if relationshipPerson is a sibling of sourcePerson
             if (IsSibling(relationshipPerson, sourcePerson))
+            {
+                Debug.Log($"[FamilyHappeningsContent] Found sibling relationship");
                 return GetSiblingRelationship(relationshipPerson, sourcePerson);
+            }
             
             // Check if relationshipPerson is a spouse of sourcePerson
             if (IsSpouse(relationshipPerson, sourcePerson))
+            {
+                Debug.Log($"[FamilyHappeningsContent] Found spouse relationship");
                 return GetSpouseRelationship(relationshipPerson, sourcePerson);
+            }
             
             // Check extended relationships
             
             // Check for in-laws
             string inLawRelationship = GetInLawRelationship(relationshipPerson, sourcePerson);
             if (inLawRelationship != null)
+            {
+                Debug.Log($"[FamilyHappeningsContent] Found in-law relationship: {inLawRelationship}");
                 return inLawRelationship;
+            }
             
             // Check for aunt/uncle relationships
             string auntUncleRelationship = GetAuntUncleRelationship(relationshipPerson, sourcePerson);
             if (auntUncleRelationship != null)
+            {
+                Debug.Log($"[FamilyHappeningsContent] Found aunt/uncle relationship: {auntUncleRelationship}");
                 return auntUncleRelationship;
+            }
             
             // Check for niece/nephew relationships
+            Debug.Log($"[FamilyHappeningsContent] Checking niece/nephew relationship...");
             string nieceNephewRelationship = GetNieceNephewRelationship(relationshipPerson, sourcePerson);
             if (nieceNephewRelationship != null)
+            {
+                Debug.Log($"[FamilyHappeningsContent] Found niece/nephew relationship: {nieceNephewRelationship}");
                 return nieceNephewRelationship;
+            }
             
             // Check for cousin relationships
+            Debug.Log($"[FamilyHappeningsContent] Checking cousin relationship...");
             string cousinRelationship = GetCousinRelationship(relationshipPerson, sourcePerson);
             if (cousinRelationship != null)
+            {
+                Debug.Log($"[FamilyHappeningsContent] Found cousin relationship: {cousinRelationship}");
                 return cousinRelationship;
+            }
             
             // Default to a generic relationship
+            Debug.Log($"[FamilyHappeningsContent] No specific relationship found, defaulting to 'relative'");
             return "relative";
         }
 
@@ -796,14 +838,20 @@ namespace Assets.Scripts.ContentProviders
         {
             // Check if relationshipPerson is child of sourcePerson's sibling (niece/nephew)
             var sourceSiblings = GetSiblings(sourcePerson);
+            Debug.Log($"[FamilyHappeningsContent] GetNieceNephewRelationship: Checking {relationshipPerson.givenName} {relationshipPerson.surName} against {sourcePerson.givenName} {sourcePerson.surName}. Source has {sourceSiblings.Count} siblings.");
+            
             foreach (var sibling in sourceSiblings)
             {
+                Debug.Log($"[FamilyHappeningsContent] Checking sibling: {sibling.givenName} {sibling.surName}");
                 if (IsDescendant(relationshipPerson, sibling))
                 {
+                    Debug.Log($"[FamilyHappeningsContent] {relationshipPerson.givenName} is descendant of {sibling.givenName}");
                     // Check if it's a direct child (niece/nephew) vs grandchild, etc.
                     var siblingChildren = GetChildrenOfPerson(sibling);
+                    Debug.Log($"[FamilyHappeningsContent] Sibling {sibling.givenName} has {siblingChildren.Count} children");
                     if (siblingChildren.Any(c => c.dataBaseOwnerId == relationshipPerson.dataBaseOwnerId))
                     {
+                        Debug.Log($"[FamilyHappeningsContent] Found niece/nephew relationship!");
                         return relationshipPerson.gender == PersonGenderType.Male ? "nephew" : "niece";
                     }
                 }
@@ -816,14 +864,23 @@ namespace Assets.Scripts.ContentProviders
         {
             // Check if relationshipPerson is child of sourcePerson's parent's sibling (cousin)
             var sourceParents = GetParentsOfPerson(sourcePerson);
+            Debug.Log($"[FamilyHappeningsContent] GetCousinRelationship: Checking {relationshipPerson.givenName} {relationshipPerson.surName} against {sourcePerson.givenName} {sourcePerson.surName}. Source has {sourceParents.Count} parents.");
+            
             foreach (var parent in sourceParents)
             {
+                Debug.Log($"[FamilyHappeningsContent] Checking parent: {parent.givenName} {parent.surName}");
                 var parentSiblings = GetSiblings(parent);
+                Debug.Log($"[FamilyHappeningsContent] Parent {parent.givenName} has {parentSiblings.Count} siblings");
+                
                 foreach (var parentSibling in parentSiblings)
                 {
+                    Debug.Log($"[FamilyHappeningsContent] Checking parent sibling (aunt/uncle): {parentSibling.givenName} {parentSibling.surName}");
                     var parentSiblingChildren = GetChildrenOfPerson(parentSibling);
+                    Debug.Log($"[FamilyHappeningsContent] Aunt/Uncle {parentSibling.givenName} has {parentSiblingChildren.Count} children");
+                    
                     if (parentSiblingChildren.Any(c => c.dataBaseOwnerId == relationshipPerson.dataBaseOwnerId))
                     {
+                        Debug.Log($"[FamilyHappeningsContent] Found cousin relationship!");
                         return "cousin";
                     }
                 }
