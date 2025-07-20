@@ -2,7 +2,6 @@
     "name": "ContentProviders",
     "rootNamespace": "",
     "references": [
-        "GUID:c9f224b5f291c9841ba156b61efe35fe",
         "GUID:c89216c21f1199e44824a82e77f0eb3f",
         "GUID:ab785b04d89470141a77fdb3cb1c0556",
         "GUID:8efbf3eb5741f0d4a9a1531d2f9dedf1",

@@ -6,7 +6,7 @@ using SimpleFileBrowser;
 using UnityEngine.UI;
 using Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider;
 using Assets.Scripts.ServiceProviders;
-using Assets.Scripts;
+using Assets.Scripts.DataObjects;
 
 public class DigiKamFileBrowserHandler : MonoBehaviour
 {
@@ -60,7 +60,7 @@ public class DigiKamFileBrowserHandler : MonoBehaviour
 		// Check if we found a path from config file or need to fall back to PlayerPrefs
 		if (!string.IsNullOrEmpty(digiKamDatabasePath))
 		{
-			Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath = digiKamDatabasePath;
+			            CrossSceneInformation.digiKamDataFileNameWithFullPath = digiKamDatabasePath;
 			initialFilename = Path.GetFileName(digiKamDatabasePath);
 			initialPath = Path.GetDirectoryName(digiKamDatabasePath);
 			fileSelectedText.text = initialFilename;
@@ -83,9 +83,9 @@ public class DigiKamFileBrowserHandler : MonoBehaviour
 		}
 		else if (PlayerPrefs.HasKey(PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH)) 
 		{
-			Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath = PlayerPrefs.GetString(PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH);
-			initialFilename = Path.GetFileName(Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath);
-			initialPath = Path.GetDirectoryName(Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath);
+			            CrossSceneInformation.digiKamDataFileNameWithFullPath = PlayerPrefs.GetString(PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH);
+            initialFilename = Path.GetFileName(CrossSceneInformation.digiKamDataFileNameWithFullPath);
+            initialPath = Path.GetDirectoryName(CrossSceneInformation.digiKamDataFileNameWithFullPath);
 			fileSelectedText.text = initialFilename;
 			imageTagDatabasePickerGameObject.GetComponent<ImageTagDatabasePickerHandler>().FileSelectedNowEnableUserInterface(true);
 
@@ -147,7 +147,7 @@ public class DigiKamFileBrowserHandler : MonoBehaviour
                     throw new FileNotFoundException("Database file is missing.");	
 
 				// Update the global path
-				Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath = result;
+				                CrossSceneInformation.digiKamDataFileNameWithFullPath = result;
 
 				// Update UI
 				fileSelectedText.text = Path.GetFileName(result);
@@ -160,14 +160,14 @@ public class DigiKamFileBrowserHandler : MonoBehaviour
                 PlayerPrefs.Save();
 
                 // Update the config file with the new DigiKam association
-                DigiKamConfigManager.CreateOrUpdateDigiKamConfigFromDatabasePath(
+                			DigiKamConfigManager.CreateOrUpdateDigiKamConfigFromDatabasePath(
                     CrossSceneInformation.rootsMagicDataFileNameWithFullPath,
                     result);
             }
             catch (System.Exception ex)
             {
 				Debug.LogError($"{ex.Message} Exception thrown, database file is not valid.");
-				Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath = null;
+				            CrossSceneInformation.digiKamDataFileNameWithFullPath = null;
 				fileSelectedText.text = "- File Failure -";
 				searchStatusText.text = "Please try again.  Identify the DigiKam database location.";
 				Debug.LogError("Bad DigiKam Data File Path Chosen: " + result);

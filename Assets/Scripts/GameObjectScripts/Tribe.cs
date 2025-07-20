@@ -77,11 +77,11 @@ public class Tribe : MonoBehaviour
 	{
 		dataLoadComplete = false;
 		updateFramesToWaist = 120;
-		tribeType = Assets.Scripts.CrossSceneInformation.myTribeType;
-		numberOfGenerations = Assets.Scripts.CrossSceneInformation.numberOfGenerations;
-		startingIdForTree = Assets.Scripts.CrossSceneInformation.startingDataBaseId;
-		rootsMagicFileName = Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath;
-		digiKamFileName = Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath;
+		tribeType = CrossSceneInformation.myTribeType;
+		numberOfGenerations = CrossSceneInformation.numberOfGenerations;
+		startingIdForTree = CrossSceneInformation.startingDataBaseId;
+		rootsMagicFileName = CrossSceneInformation.rootsMagicDataFileNameWithFullPath;
+		digiKamFileName = CrossSceneInformation.digiKamDataFileNameWithFullPath;
 
 		// Initialize the data provider
 		_dataProvider = new RootsMagicFamilyHistoryDataProvider();

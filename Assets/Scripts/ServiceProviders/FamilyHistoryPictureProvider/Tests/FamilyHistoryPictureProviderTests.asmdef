@@ -8,6 +8,7 @@
         "FamilyHistoryPictureProvider",
         "ServiceProviders",
         "DataProvidersAssembly",
+        "DataObjectsAssembly",
         "EnumsAssembly",
         "UtilitiesAssembly"
     ],

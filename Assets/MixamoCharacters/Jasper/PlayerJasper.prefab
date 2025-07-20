@@ -1109,10 +1109,21 @@ MonoBehaviour:
   m_GameObject: {fileID: 1436149188537377315}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e8439874208f78c4ea26e95c2e581590, type: 3}
+  m_Script: {fileID: 11500000, guid: 25e0e27df44209f4d929c3ce1fbcb22e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   depthOfFallWhenIDie: -30
+  showTeleportEffect: 1
+  teleportEffect: {fileID: 0}
+  OnBeforeTeleport:
+    m_PersistentCalls:
+      m_Calls: []
+  OnAfterTeleport:
+    m_PersistentCalls:
+      m_Calls: []
+  onTeleportationComplete:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!114 &1791100949536631717
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -21,10 +21,10 @@ namespace Assets.Scripts.ContentProviders
         
         public void Initialize()
         {
-            string rootsMagicFileName = Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath;
-            var config = new Dictionary<string, string>
-            {
-                { PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, rootsMagicFileName }
+                    string rootsMagicFileName = DataObjects.CrossSceneInformation.rootsMagicDataFileNameWithFullPath;
+        var config = new Dictionary<string, string>
+        {
+            { DataObjects.PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, rootsMagicFileName }
             };
             _dataProvider.Initialize(config);
         }

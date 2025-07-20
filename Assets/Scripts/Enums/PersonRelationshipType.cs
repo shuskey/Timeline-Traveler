@@ -6,6 +6,28 @@
         Mother,
         Father,
         Child,
-        Spouse
+        Spouse,
+        
+        // Extended family relationships for DAG
+        Sibling,
+        GrandParent,
+        GrandChild,
+        GreatGrandParent,
+        GreatGrandChild,
+        AuntUncle,
+        NieceNephew,
+        Cousin,
+        InLaw,
+        
+        // For step relationships
+        StepParent,
+        StepChild,
+        StepSibling,
+        HalfSibling,
+        
+        // For more distant relationships
+        SecondCousin,
+        ThirdCousin,
+        Relative // Generic catchall
     }
 }

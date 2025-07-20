@@ -327,7 +327,10 @@ public class PersonNode : MonoBehaviour
 
         GameObject edge = Instantiate(this.birthConnectionPrefabObject, Vector3.zero, Quaternion.identity);
         edge.name = $"Birth {birthDate} {childPersonNode.name}";
-        edge.GetComponent<Edge>().CreateEdge(parentBirthConnectionPoint, childBirthConnectionPoint);
+        // I am getting an occasional NULL reference on the next line.  I think it is because the edge is not fully instantiated yet.   
+        // I think I need to wait for the edge to be fully instantiated before calling CreateEdge.  I will try that next.
+        // I will use a coroutine to do this.
+        StartCoroutine(CreateEdge(edge, parentBirthConnectionPoint, childBirthConnectionPoint, 0, transform));
 
         edge.transform.GetChild(ScaleThisChildIndex).GetComponent<Renderer>().material.SetColor("_BaseColor",
             childRelationshipColors[(int)childRelationshipType]);
@@ -370,11 +373,34 @@ public class PersonNode : MonoBehaviour
 
         GameObject edge = Instantiate(this.marriageConnectionPrefabObject, Vector3.zero, Quaternion.identity);
         edge.name = $"Marriage {marriageEventDate}, to {spousePersonNode.name}, duration {marriageLength}.";
-        edge.GetComponent<Edge>().CreateEdge(parentBirthConnectionPoint, childBirthConnectionPoint);
-        edge.GetComponent<Edge>().SetEdgeEventLength(marriageLength * 5, marriageConnectionXScale);
-        var material = edge.transform.GetChild(0).GetComponent<Renderer>().material;
-        material.SetColor("_BaseColor", new Color(1.0f, 0.92f, 0.01f, 0.6f));
-        //material.SetOverrideTag("RenderMode", "Transparent");
+        // I am getting an occasional NULL reference on the next line.  I think it is because the edge is not fully instantiated yet.
+        // I think I need to wait for the edge to be fully instantiated before calling CreateEdge.  I will try that next.
+        // I will use a coroutine to do this.
+        StartCoroutine(CreateEdge(edge, parentBirthConnectionPoint, childBirthConnectionPoint, marriageLength, myPositionThisPlatformTransform));
+    }
+
+    private IEnumerator CreateEdge(GameObject edge, GameObject parentBirthConnectionPoint, GameObject childBirthConnectionPoint, int marriageLength, Transform myPositionThisPlatformTransform)
+    {
+        yield return new WaitForSeconds(0.5f);  // Wait longer for edge to be fully instantiated
+        
+        var edgeComponent = edge?.GetComponent<Edge>();
+        if (edgeComponent == null || parentBirthConnectionPoint == null || childBirthConnectionPoint == null)
+        {
+            Debug.LogError("Null reference in CreateEdge - skipping edge creation");
+            yield break;
+        }
+        
+        edgeComponent.CreateEdge(parentBirthConnectionPoint, childBirthConnectionPoint);
+        if (marriageLength > 0)
+        {
+            edgeComponent.SetEdgeEventLength(marriageLength * 5, marriageConnectionXScale);
+        }
+        
+        var childRenderer = edge.transform.childCount > 0 ? edge.transform.GetChild(0)?.GetComponent<Renderer>() : null;
+        if (childRenderer != null)
+        {
+            childRenderer.material.SetColor("_BaseColor", new Color(1.0f, 0.92f, 0.01f, 0.6f));
+        }
 
         edge.transform.parent = myPositionThisPlatformTransform;
     }

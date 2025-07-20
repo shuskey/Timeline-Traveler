@@ -1,4 +1,4 @@
-namespace Assets.Scripts.ServiceProviders
+namespace Assets.Scripts.DataObjects
 {
     /// <summary>
     /// Contains shared constants for PlayerPrefs keys used across different handlers

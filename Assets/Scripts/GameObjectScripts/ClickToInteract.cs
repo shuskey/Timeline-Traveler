@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Assets.Scripts.DataObjects;
 
 public class ClickToInteract : MonoBehaviour
 {

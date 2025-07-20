@@ -9,6 +9,7 @@ namespace Assets.Scripts.DataObjects
     {
         public int dataBaseOwnerId;
         public int tribeArrayIndex;
+		
         public string surName;
         public string givenName;
         public PersonGenderType gender;
@@ -29,7 +30,7 @@ namespace Assets.Scripts.DataObjects
 		public float xOffset;  // assists in recursive ordering of descendency trees
 		public int spouseNumber;
         public GameObject personNodeGameObject;
-        List<(PersonRelationshipType Relationship, Person RelatedPerson)> familyRelationships;
+        public List<(PersonRelationshipType Relationship, Person RelatedPerson)> familyRelationships;
 
         public Person(int arrayIndex, int ownerId, PersonGenderType gender, string given, string surname,
 				bool isLiving, int birthYear, int deathYear, int generation, float xOffset, int spouseNumber, int birthMonth = 0, int birthDay = 0, int deathMonth = 0, int deathDay = 0)
@@ -50,6 +51,7 @@ namespace Assets.Scripts.DataObjects
 			this.generation = generation;
 			this.xOffset = xOffset;
 			this.spouseNumber = spouseNumber;
+			this.familyRelationships = new List<(PersonRelationshipType, Person)>();
 		}
 
 		public int FixUpAndReturnMarriageDate(int marriageEventDate)

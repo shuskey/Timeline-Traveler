@@ -1,6 +1,6 @@
 using Assets.Scripts.Enums;
 
-namespace Assets.Scripts
+namespace Assets.Scripts.DataObjects
 {
     /// <summary>
     /// Static class to store information that needs to persist across scene changes.
@@ -32,4 +32,4 @@ namespace Assets.Scripts
         /// </summary>
         public static string digiKamDataFileNameWithFullPath { get; set; }
     }
-}
+} 

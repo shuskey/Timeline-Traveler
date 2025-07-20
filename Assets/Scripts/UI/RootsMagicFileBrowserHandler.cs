@@ -6,6 +6,7 @@ using SimpleFileBrowser;
 using UnityEngine.UI;
 using Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider;
 using Assets.Scripts.ServiceProviders;
+using Assets.Scripts.DataObjects;
 
 public class RootsMagicFileBrowserHandler : MonoBehaviour
 {
@@ -43,9 +44,9 @@ public class RootsMagicFileBrowserHandler : MonoBehaviour
 		FileBrowser.AddQuickLink("Users", "C:\\Users", null);
 		if (PlayerPrefs.HasKey(PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH))
 		{
-			Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath = PlayerPrefs.GetString(PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH);
-			initialFilename = Path.GetFileName(Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath);
-			initialPath = Path.GetDirectoryName(Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath);
+			            CrossSceneInformation.rootsMagicDataFileNameWithFullPath = PlayerPrefs.GetString(PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH);
+            initialFilename = Path.GetFileName(CrossSceneInformation.rootsMagicDataFileNameWithFullPath);
+            initialPath = Path.GetDirectoryName(CrossSceneInformation.rootsMagicDataFileNameWithFullPath);
 			fileSelectedText.text = initialFilename;
 		} else Debug.LogError("There is no RootsMagic save data!");
 
@@ -92,13 +93,13 @@ public class RootsMagicFileBrowserHandler : MonoBehaviour
 				// Verify database integrity
 				if (_dataProvider.ValidateDatabaseIntegrity())
 				{
-					string previousPath = Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath;
-					Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath = result;
+					            string previousPath = CrossSceneInformation.rootsMagicDataFileNameWithFullPath;
+            CrossSceneInformation.rootsMagicDataFileNameWithFullPath = result;
 					fileSelectedText.text = Path.GetFileName(result);
 					
 					if (previousPath != result)
 					{
-						PlayerPrefs.SetString(PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath);
+						            PlayerPrefs.SetString(PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, CrossSceneInformation.rootsMagicDataFileNameWithFullPath);
 						// Remove the old base person selection since it's from a different file
 						PlayerPrefs.DeleteKey(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_ID);
 						PlayerPrefs.DeleteKey(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_FULL_NAME);
@@ -115,7 +116,7 @@ public class RootsMagicFileBrowserHandler : MonoBehaviour
 			catch (System.Exception ex)
 			{
 				Debug.LogError($"{ex.Message} Exception thrown, database file is not valid.");
-				Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath = null;
+				        CrossSceneInformation.rootsMagicDataFileNameWithFullPath = null;
 				fileSelectedText.text = "> File Failure <  Please try again.";
 				Debug.LogError("Bad Data File Path Chosen: " + result);
 				personPickerDropdownGameObject.GetComponent<PersonPickerHandler>().CheckIfFileSelectedAndEnableUserInterface();

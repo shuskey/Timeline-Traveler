@@ -5,7 +5,6 @@ using System.Data;
 using UnityEngine;
 using Assets.Scripts.DataObjects;
 using Assets.Scripts.Enums;
-using Assets.Scripts.ServiceProviders;
 
 namespace Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider
 {

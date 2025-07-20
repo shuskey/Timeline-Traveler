@@ -187,8 +187,8 @@ public class PersonDetailsHandler : MonoBehaviour
             return;
 
         recordIdGameObject.GetComponent<Text>().text = (personObject == null) ? "" : $"RootsMagic DB ID: {personObject.dataBaseOwnerId}";
-        Assets.Scripts.CrossSceneInformation.startingDataBaseId = personObject.dataBaseOwnerId;
-        Assets.Scripts.CrossSceneInformation.myTribeType = TribeType.Centered;
+        CrossSceneInformation.startingDataBaseId = personObject.dataBaseOwnerId;
+        CrossSceneInformation.myTribeType = TribeType.Centered;
         SceneManager.LoadScene("MyTribeScene");
     }
 

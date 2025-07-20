@@ -4,7 +4,6 @@
     "references": [
         "GUID:8efbf3eb5741f0d4a9a1531d2f9dedf1",
         "GUID:c685d05731421f64287ad6d13be5af0e",
-        "GUID:c9f224b5f291c9841ba156b61efe35fe",
         "GUID:d9af87b792c8bc249ba48f04876d87c4",
         "GUID:d67968f9a723c774bb82fda31a43eb50",
         "GUID:c89216c21f1199e44824a82e77f0eb3f",
@@ -12,7 +11,8 @@
         "GUID:d3f35ad693a1f6840942e24a3ba89651",
         "GUID:21046f374a25c0845adf5880bccdb30c",
         "GUID:148f9568892a98545af19e7abf25fe2a",
-        "GUID:f9ad786a93d19d1408385f453559eea6"
+        "GUID:f9ad786a93d19d1408385f453559eea6",
+        "Unity.ugui"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

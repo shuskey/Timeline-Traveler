@@ -56,7 +56,7 @@ public class PersonPickerHandler : MonoBehaviour
         _dataProvider = new RootsMagicFamilyHistoryDataProvider();
         var config = new Dictionary<string, string>
         {
-            { PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath }
+            			{ PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, CrossSceneInformation.rootsMagicDataFileNameWithFullPath }
         };
 
          _dataProvider.Initialize(config);
@@ -111,9 +111,9 @@ public class PersonPickerHandler : MonoBehaviour
     {
         nextButton.transform.Find("LoadingCircle").gameObject.SetActive(true);
         SaveBasePersonIdToPlayerPrefs(selectedPersonId, selectedPersonFullName);
-        Assets.Scripts.CrossSceneInformation.startingDataBaseId = selectedPersonId;
-        Assets.Scripts.CrossSceneInformation.numberOfGenerations = Int32.Parse(generationsDropdown.options[generationsDropdown.value].text);
-        Assets.Scripts.CrossSceneInformation.myTribeType = ancestryToggle.isOn ? TribeType.Ancestry
+        		CrossSceneInformation.startingDataBaseId = selectedPersonId;
+		CrossSceneInformation.numberOfGenerations = Int32.Parse(generationsDropdown.options[generationsDropdown.value].text);
+		CrossSceneInformation.myTribeType = ancestryToggle.isOn ? TribeType.Ancestry
             : descendancyToggle.isOn ? TribeType.Descendancy
             : rootPersonToggle.isOn ? TribeType.Centered : TribeType.AllPersons;
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex + 1);
@@ -275,8 +275,8 @@ public class PersonPickerHandler : MonoBehaviour
     /// <param name="digiKamRootFolder">The DigiKam root folder path to associate with the current RootsMagic database</param>
     public void CreateOrUpdateDigiKamConfig(string digiKamRootFolder)
     {
-        DigiKamConfigManager.CreateOrUpdateDigiKamConfig(
-            Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath, 
+        		DigiKamConfigManager.CreateOrUpdateDigiKamConfig(
+            CrossSceneInformation.rootsMagicDataFileNameWithFullPath, 
             digiKamRootFolder);
     }
 
@@ -285,9 +285,9 @@ public class PersonPickerHandler : MonoBehaviour
     /// </summary>
     public void CreateOrUpdateDigiKamConfigWithCurrentPaths()
     {
-        DigiKamConfigManager.CreateOrUpdateDigiKamConfigFromDatabasePath(
-            Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath,
-            Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath);
+        		DigiKamConfigManager.CreateOrUpdateDigiKamConfigFromDatabasePath(
+            				CrossSceneInformation.rootsMagicDataFileNameWithFullPath,
+				CrossSceneInformation.digiKamDataFileNameWithFullPath);
     }
 
     /// <summary>
@@ -296,8 +296,8 @@ public class PersonPickerHandler : MonoBehaviour
     /// <returns>The DigiKam root folder path if found, null otherwise</returns>
     public string GetDigiKamRootFolderFromConfig()
     {
-        return DigiKamConfigManager.GetDigiKamRootFolderFromConfig(
-            Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath);
+        		return DigiKamConfigManager.GetDigiKamRootFolderFromConfig(
+            				CrossSceneInformation.rootsMagicDataFileNameWithFullPath);
     }
 
     /// <summary>
@@ -305,13 +305,13 @@ public class PersonPickerHandler : MonoBehaviour
     /// </summary>
     private void LoadDigiKamPathFromConfigOrPlayerPrefs()
     {
-        string digiKamDatabasePath = DigiKamConfigManager.GetDigiKamDatabasePath(
-            Assets.Scripts.CrossSceneInformation.rootsMagicDataFileNameWithFullPath,
-            PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH);
+        		string digiKamDatabasePath = DigiKamConfigManager.GetDigiKamDatabasePath(
+            				CrossSceneInformation.rootsMagicDataFileNameWithFullPath,
+				PlayerPrefsConstants.LAST_USED_DIGIKAM_DATA_FILE_PATH);
         
         if (!string.IsNullOrEmpty(digiKamDatabasePath))
         {
-            Assets.Scripts.CrossSceneInformation.digiKamDataFileNameWithFullPath = digiKamDatabasePath;
+            		CrossSceneInformation.digiKamDataFileNameWithFullPath = digiKamDatabasePath;
         }
     }
 

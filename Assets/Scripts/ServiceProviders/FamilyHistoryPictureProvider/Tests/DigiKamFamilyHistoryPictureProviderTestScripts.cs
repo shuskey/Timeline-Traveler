@@ -4,7 +4,7 @@ using FluentAssertions;
 using System.IO;
 using System.Collections.Generic;
 using System.Collections;
-using Assets.Scripts.ServiceProviders;
+using Assets.Scripts.DataObjects;
 using Assets.Scripts.ServiceProviders.FamilyHistoryPictureProvider;
 using System.Linq;
 using Assets.Scripts.Utilities;
