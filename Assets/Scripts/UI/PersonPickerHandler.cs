@@ -15,10 +15,6 @@ public class PersonPickerHandler : MonoBehaviour
 {
     public Text searchStatusText;
     public InputField fullNameFilterField;
-    public Toggle ancestryToggle;
-    public Toggle descendancyToggle;
-    public Toggle rootPersonToggle;
-    public Dropdown generationsDropdown;
     public Button quitButton;
     public Button nextButton;
     public int numberOfPeopleInTribe = 1000;
@@ -35,8 +31,6 @@ public class PersonPickerHandler : MonoBehaviour
         nextButton.transform.Find("LoadingCircle").gameObject.SetActive(false);
         nextButton.interactable = false;
 
-        generationsDropdown.value = 0;
-
         quitButton.onClick.AddListener(delegate { quitClicked(); });
 
         nextButton.onClick.AddListener(delegate { NextClicked(); });
@@ -44,10 +38,6 @@ public class PersonPickerHandler : MonoBehaviour
         fullNameFilterField.onEndEdit.AddListener(delegate { FilterFieldEndEdit(); });
         fullNameFilterField.onSubmit.AddListener(delegate { FilterFieldEndEdit(); });
         fullNameFilterField.onValueChanged.AddListener(delegate { FilterFieldChanging(); });
-
-        ancestryToggle.onValueChanged.AddListener(delegate { ToggleControl(ancestryToggle); });
-        descendancyToggle.onValueChanged.AddListener(delegate { ToggleControl(descendancyToggle); });
-        rootPersonToggle.onValueChanged.AddListener(delegate { ToggleControl(rootPersonToggle); });
 
         transform.GetComponent<Dropdown>().onValueChanged.AddListener(delegate { DropDownItemSelected(transform.GetComponent<Dropdown>()); });
         ResetDropDown();
@@ -112,10 +102,6 @@ public class PersonPickerHandler : MonoBehaviour
         nextButton.transform.Find("LoadingCircle").gameObject.SetActive(true);
         SaveBasePersonIdToPlayerPrefs(selectedPersonId, selectedPersonFullName);
         		CrossSceneInformation.startingDataBaseId = selectedPersonId;
-		CrossSceneInformation.numberOfGenerations = Int32.Parse(generationsDropdown.options[generationsDropdown.value].text);
-		CrossSceneInformation.myTribeType = ancestryToggle.isOn ? TribeType.Ancestry
-            : descendancyToggle.isOn ? TribeType.Descendancy
-            : rootPersonToggle.isOn ? TribeType.Centered : TribeType.AllPersons;
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex + 1);
     }
 
@@ -124,28 +110,6 @@ public class PersonPickerHandler : MonoBehaviour
         PlayerPrefs.SetInt(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_ID, basePersonId);
         PlayerPrefs.SetString(PlayerPrefsConstants.LAST_SELECTED_ROOTS_MAGIC_BASE_PERSON_FULL_NAME, basePersonFullName);
         PlayerPrefs.Save();
-    }
-
-    void ToggleControl(Toggle toggleThatToggled)
-    {
-        if (toggleThatToggled.isOn)
-        {
-            if (toggleThatToggled.name.StartsWith("A"))
-            {
-                descendancyToggle.isOn = false;
-                rootPersonToggle.isOn = false;
-            }
-            if (toggleThatToggled.name.StartsWith("D"))
-            {
-                ancestryToggle.isOn = false;
-                rootPersonToggle.isOn = false;
-            }
-            if (toggleThatToggled.name.StartsWith("R"))
-            {
-                ancestryToggle.isOn = false;
-                descendancyToggle.isOn = false;
-            }
-        }
     }
 
     void FilterFieldChanging()

@@ -34,7 +34,13 @@ namespace Assets.Scripts.ServiceProviders
             Debug.Log($"Building DAG for person {rootPersonId} with ancestry depth {ancestryDepth} and descendancy depth {descendancyDepth}");
             
             // Load root person first
-            LoadPersonIntoDAG(rootPersonId);
+            var rootPerson = LoadPersonIntoDAG(rootPersonId);
+            
+            // Load spouses for root person (matches current system behavior)
+            if (rootPerson != null)
+            {
+                LoadSpousesForPerson(rootPersonId, rootPerson);
+            }
             
             // Load ancestry (parents, grandparents, etc.)
             LoadAncestryRecursive(rootPersonId, ancestryDepth);
@@ -79,10 +85,18 @@ namespace Assets.Scripts.ServiceProviders
 
         /// <summary>
         /// Recursively load ancestry and build parent-child relationships
+        /// Also includes spouse loading to match current system behavior
         /// </summary>
         private void LoadAncestryRecursive(int personId, int remainingDepth)
         {
             if (remainingDepth <= 0) return;
+
+            // Load spouses for this person (matches current system behavior)
+            var person = _familyDAG.People.ContainsKey(personId) ? _familyDAG.People[personId] : null;
+            if (person != null)
+            {
+                LoadSpousesForPerson(personId, person);
+            }
 
             var parentageList = _dataProvider.GetParents(personId);
             foreach (var parentage in parentageList)
@@ -96,6 +110,9 @@ namespace Assets.Scripts.ServiceProviders
                         AddRelationshipSafely(parentage.fatherId, personId, PersonRelationshipType.Child);
                         AddRelationshipSafely(personId, parentage.fatherId, PersonRelationshipType.Father);
                         
+                        // Always load spouses for father even if we don't recurse further
+                        LoadSpousesForPerson(parentage.fatherId, father);
+
                         // Continue ancestry from father
                         LoadAncestryRecursive(parentage.fatherId, remainingDepth - 1);
                     }
@@ -110,6 +127,9 @@ namespace Assets.Scripts.ServiceProviders
                         AddRelationshipSafely(parentage.motherId, personId, PersonRelationshipType.Child);
                         AddRelationshipSafely(personId, parentage.motherId, PersonRelationshipType.Mother);
                         
+                        // Always load spouses for mother even if we don't recurse further
+                        LoadSpousesForPerson(parentage.motherId, mother);
+
                         // Continue ancestry from mother
                         LoadAncestryRecursive(parentage.motherId, remainingDepth - 1);
                     }
@@ -131,6 +151,7 @@ namespace Assets.Scripts.ServiceProviders
 
         /// <summary>
         /// Recursively load descendants and build parent-child relationships
+        /// This matches the current Tribe system's approach including spouse loading at each generation
         /// </summary>
         private void LoadDescendantsRecursive(int personId, int remainingDepth)
         {
@@ -139,22 +160,14 @@ namespace Assets.Scripts.ServiceProviders
             var person = _familyDAG.People.ContainsKey(personId) ? _familyDAG.People[personId] : LoadPersonIntoDAG(personId);
             if (person == null) return;
 
+            // Load spouses for this person (matches AddSpousesAndFixUpDates behavior)
+            LoadSpousesForPerson(personId, person);
+
             bool isHusbandQuery = person.gender == PersonGenderType.Male;
             var marriages = _dataProvider.GetMarriages(personId, isHusbandQuery);
 
             foreach (var marriage in marriages)
             {
-                var spouseId = isHusbandQuery ? marriage.wifeId : marriage.husbandId;
-                
-                // Load spouse
-                var spouse = LoadPersonIntoDAG(spouseId);
-                if (spouse != null)
-                {
-                    // Add marriage relationships
-                    AddRelationshipSafely(personId, spouseId, PersonRelationshipType.Spouse, marriage.marriageYear);
-                    AddRelationshipSafely(spouseId, personId, PersonRelationshipType.Spouse, marriage.marriageYear);
-                }
-
                 // Load children of this marriage
                 var children = _dataProvider.GetChildren(marriage.familyId);
                 foreach (var childInfo in children)
@@ -162,6 +175,9 @@ namespace Assets.Scripts.ServiceProviders
                     var child = LoadPersonIntoDAG(childInfo.childId);
                     if (child != null)
                     {
+                        var spouseId = isHusbandQuery ? marriage.wifeId : marriage.husbandId;
+                        var spouse = _familyDAG.People.ContainsKey(spouseId) ? _familyDAG.People[spouseId] : null;
+                        
                         // Add parent-child relationships
                         AddRelationshipSafely(personId, childInfo.childId, PersonRelationshipType.Child);
                         AddRelationshipSafely(childInfo.childId, personId, 
@@ -174,9 +190,48 @@ namespace Assets.Scripts.ServiceProviders
                                 spouse.gender == PersonGenderType.Male ? PersonRelationshipType.Father : PersonRelationshipType.Mother);
                         }
 
+                        // Always load spouses for children even if we don't recurse further
+                        // This matches current system behavior where spouses are loaded at every generation
+                        LoadSpousesForPerson(childInfo.childId, child);
+
                         // Continue descendants from child
                         LoadDescendantsRecursive(childInfo.childId, remainingDepth - 1);
                     }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Load spouses for a person - matches the current Tribe system's AddSpousesAndFixUpDates method
+        /// </summary>
+        private void LoadSpousesForPerson(int personId, Person person)
+        {
+            bool isHusbandQuery = person.gender == PersonGenderType.Male;
+            var marriages = _dataProvider.GetMarriages(personId, isHusbandQuery);
+
+            Debug.Log($"Loading spouses for {person.givenName} {person.surName} (ID: {personId}) - found {marriages.Count} marriages");
+
+            foreach (var marriage in marriages)
+            {
+                var spouseId = isHusbandQuery ? marriage.wifeId : marriage.husbandId;
+                
+                // Load spouse if not already loaded
+                var spouse = LoadPersonIntoDAG(spouseId);
+                if (spouse != null)
+                {
+                    Debug.Log($"  -> Added spouse: {spouse.givenName} {spouse.surName} (ID: {spouseId})");
+                    
+                    // Add marriage relationships
+                    AddRelationshipSafely(personId, spouseId, PersonRelationshipType.Spouse, marriage.marriageYear);
+                    AddRelationshipSafely(spouseId, personId, PersonRelationshipType.Spouse, marriage.marriageYear);
+                    
+                    // Apply date fixing logic (matches current system)
+                    person.FixUpDatesForViewingWithMarriageDate(marriage.marriageYear, spouse);
+                    spouse.FixUpDatesForViewingWithMarriageDate(marriage.marriageYear, person);
+                }
+                else
+                {
+                    Debug.LogWarning($"  -> Could not load spouse with ID: {spouseId}");
                 }
             }
         }

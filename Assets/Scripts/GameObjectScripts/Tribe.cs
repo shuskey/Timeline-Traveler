@@ -58,6 +58,10 @@ public class Tribe : MonoBehaviour
 	private Dictionary<int, List<Person>> listOfPersonsPerGeneration = new Dictionary<int, List<Person>>();
 	const int PlatformChildIndex = 0;
 
+	// DAG system for testing alongside current system
+	private FamilyDAG _familyDAG;
+	private FamilyDAGBuilder _dagBuilder;
+
 	private ThirdPersonController thirdPersonController;
 	private bool controllerSubscribed = false;
 
@@ -77,8 +81,7 @@ public class Tribe : MonoBehaviour
 	{
 		dataLoadComplete = false;
 		updateFramesToWaist = 120;
-		tribeType = CrossSceneInformation.myTribeType;
-		numberOfGenerations = CrossSceneInformation.numberOfGenerations;
+		tribeType = TribeType.Centered;
 		startingIdForTree = CrossSceneInformation.startingDataBaseId;
 		rootsMagicFileName = CrossSceneInformation.rootsMagicDataFileNameWithFullPath;
 		digiKamFileName = CrossSceneInformation.digiKamDataFileNameWithFullPath;
@@ -90,6 +93,13 @@ public class Tribe : MonoBehaviour
 			{ PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, rootsMagicFileName }
 		};
 		_dataProvider.Initialize(config);
+
+		// Initialize DAG system for testing alongside current system
+		_dagBuilder = new FamilyDAGBuilder(_dataProvider);
+		_familyDAG = _dagBuilder.BuildDAGForPerson(startingIdForTree, numberOfGenerations, numberOfGenerations);
+		
+		// Verify DAG has same data as current system (will verify after current system loads)
+		Debug.Log($"DAG initialized with {_familyDAG.People.Count} persons");
 
 		// Find the PersonDetailsHandler component
 		personDetailsHandlerScript = FindFirstObjectByType<PersonDetailsHandler>();
@@ -150,6 +160,10 @@ public class Tribe : MonoBehaviour
 			}
 
 			var listOfFamilyIds = AddParentsAndFixUpDates(personWeAreAdding);
+			
+			// Also add spouses for this person during ancestry loading (matches DAG behavior)
+			AddSpousesAndFixUpDates(personWeAreAdding, depth, xOffSet, xRange);
+			
 			if (depth > 0)
 			{
 				var parentCount = listOfFamilyIds.Count;
@@ -565,6 +579,9 @@ public class Tribe : MonoBehaviour
 
 			PositionTimeBarrier();
 
+			// Verify DAG consistency with current system
+			VerifyDAGConsistency();
+
 			dataLoadComplete = true;
 		}
 		else if (tribeType == TribeType.Descendancy)
@@ -587,6 +604,9 @@ public class Tribe : MonoBehaviour
 			//Debug.Log("We are done adding children assignments.");
 
 			PositionTimeBarrier();
+
+			// Verify DAG consistency with current system
+			VerifyDAGConsistency();
 
 			dataLoadComplete = true;
 		}
@@ -617,6 +637,9 @@ public class Tribe : MonoBehaviour
 			//Debug.Log("We are done adding children assignments.");
 
 			PositionTimeBarrier();
+
+			// Verify DAG consistency with current system
+			VerifyDAGConsistency();
 
 			dataLoadComplete = true;
 		}
@@ -894,5 +917,93 @@ public class Tribe : MonoBehaviour
 		{
 			RefreshGenerationPositioning(parentGeneration);
 		}
+	}
+
+	/// <summary>
+	/// Verify that the DAG contains the same data as the current system for testing purposes
+	/// </summary>
+	private void VerifyDAGConsistency()
+	{
+		if (_familyDAG == null)
+		{
+			Debug.LogWarning("DAG is null - cannot verify consistency");
+			return;
+		}
+
+		int totalPersonsInCurrentSystem = listOfPersonsPerGeneration.Values.Sum(list => list.Count);
+		int totalPersonsInDAG = _familyDAG.People.Count;
+
+		Debug.Log($"=== DAG Consistency Verification ===");
+		Debug.Log($"Current system: {totalPersonsInCurrentSystem} persons across {listOfPersonsPerGeneration.Keys.Count} generations");
+		Debug.Log($"DAG system: {totalPersonsInDAG} persons");
+
+		int matchingPersons = 0;
+		int missingFromDAG = 0;
+		int extraInDAG = 0;
+
+		// Check each person in current system exists in DAG
+		foreach (var generation in listOfPersonsPerGeneration)
+		{
+			foreach (var person in generation.Value)
+			{
+				if (_familyDAG.People.ContainsKey(person.dataBaseOwnerId))
+				{
+					matchingPersons++;
+					
+					// Verify relationships
+					var dagPerson = _familyDAG.People[person.dataBaseOwnerId];
+					if (dagPerson != null)
+					{
+						// Check if basic data matches
+						if (dagPerson.givenName != person.givenName || dagPerson.surName != person.surName)
+						{
+							Debug.LogWarning($"Person data mismatch for ID {person.dataBaseOwnerId}: " +
+								$"Current='{person.givenName} {person.surName}' vs DAG='{dagPerson.givenName} {dagPerson.surName}'");
+						}
+					}
+				}
+				else
+				{
+					missingFromDAG++;
+					Debug.LogWarning($"Person {person.givenName} {person.surName} (ID: {person.dataBaseOwnerId}) found in current system but missing from DAG");
+				}
+			}
+		}
+
+		// Check for extra persons in DAG
+		var allPersonsInDAG = _familyDAG.People.Values;
+		foreach (var dagPerson in allPersonsInDAG)
+		{
+			bool foundInCurrentSystem = false;
+			foreach (var generation in listOfPersonsPerGeneration.Values)
+			{
+				if (generation.Any(p => p.dataBaseOwnerId == dagPerson.dataBaseOwnerId))
+				{
+					foundInCurrentSystem = true;
+					break;
+				}
+			}
+			
+			if (!foundInCurrentSystem)
+			{
+				extraInDAG++;
+				Debug.LogWarning($"Person {dagPerson.givenName} {dagPerson.surName} (ID: {dagPerson.dataBaseOwnerId}) found in DAG but missing from current system");
+			}
+		}
+
+		Debug.Log($"Matching persons: {matchingPersons}");
+		Debug.Log($"Missing from DAG: {missingFromDAG}");
+		Debug.Log($"Extra in DAG: {extraInDAG}");
+		
+		if (matchingPersons == totalPersonsInCurrentSystem && missingFromDAG == 0 && extraInDAG == 0)
+		{
+			Debug.Log("✅ DAG consistency verification PASSED - systems match perfectly!");
+		}
+		else
+		{
+			Debug.LogWarning("❌ DAG consistency verification FAILED - systems do not match");
+		}
+		
+		Debug.Log($"=== End DAG Verification ===");
 	}
 }

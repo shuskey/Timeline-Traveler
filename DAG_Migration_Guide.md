@@ -69,7 +69,7 @@ var relationship = familyDAG.GetRelationshipBetween(person1Id, person2Id);
    - `FamilyDAGBuilder.cs`
    - Updated `PersonRelationshipType.cs`
 
-2. **Test DAG loading** alongside current system:
+2. ✅ **Test DAG loading** alongside current system (in progress):
    ```csharp
    // In your Tribe class, add parallel DAG loading
    private FamilyDAG _familyDAG;
