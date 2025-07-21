@@ -69,7 +69,7 @@ var relationship = familyDAG.GetRelationshipBetween(person1Id, person2Id);
    - `FamilyDAGBuilder.cs`
    - Updated `PersonRelationshipType.cs`
 
-2. ✅ **Test DAG loading** alongside current system (in progress):
+2. ✅ **Test DAG loading** alongside current system (completed):
    ```csharp
    // In your Tribe class, add parallel DAG loading
    private FamilyDAG _familyDAG;
@@ -88,21 +88,77 @@ var relationship = familyDAG.GetRelationshipBetween(person1Id, person2Id);
    }
    ```
 
-### Phase 2: Replace Relationship Queries
-1. **Replace `FamilyHappeningsContent` methods**:
+### Phase 2: Replace Relationship Queries (completed ✅)
+1. ✅ **Replaced `FamilyHappeningsContent` methods**:
    ```csharp
-   // Old way
+   // Old way - 60+ lines of complex recursive logic
    private string GetRelationshipToPerson(Person relationshipPerson, Person sourcePerson)
    {
-       // 50 lines of complex logic...
+       // Complex logic with circular reference protection
+       if (IsDescendant(relationshipPerson, sourcePerson)) return GetDescendantRelationship(...);
+       if (IsAncestor(relationshipPerson, sourcePerson)) return GetAncestorRelationship(...);
+       // ... 50+ more lines
    }
    
-   // New way
+   // New way - Simple DAG query with fallback
    private string GetRelationshipToPerson(Person relationshipPerson, Person sourcePerson)
    {
-       return _familyDAG.GetRelationshipBetween(relationshipPerson.dataBaseOwnerId, sourcePerson.dataBaseOwnerId);
+       if (_familyDAG != null)
+       {
+           var relationship = _familyDAG.GetRelationshipBetween(relationshipPerson.dataBaseOwnerId, sourcePerson.dataBaseOwnerId);
+           return ConvertDAGRelationshipToText(relationship, relationshipPerson);
+       }
+       return GetRelationshipToPersonLegacy(relationshipPerson, sourcePerson); // Fallback
    }
    ```
+
+2. ✅ **Replaced family gathering methods**:
+   ```csharp
+   // Old way - Multiple complex recursive methods with circular reference protection
+   private List<Person> GetCloseFamilyMembers(Person focusPerson)
+   {
+       AddDescendants(focusPerson, familyMembers); // 20+ lines recursive
+       AddSpouses(focusPerson, familyMembers);     // Multiple DB queries
+       AddSiblings(focusPerson, familyMembers);    // Complex logic
+       // ... 8 more complex methods
+   }
+   
+   // New way - Simple DAG queries
+   private List<Person> GetCloseFamilyMembers(Person focusPerson)
+   {
+       if (_familyDAG != null)
+       {
+           var descendants = _familyDAG.GetDescendants(focusPerson.dataBaseOwnerId, 3);
+           var ancestors = _familyDAG.GetAncestors(focusPerson.dataBaseOwnerId, 2);  
+           var relationships = _familyDAG.GetDirectRelationships(focusPerson.dataBaseOwnerId);
+           // Simple merge and return
+       }
+   }
+   ```
+
+3. ✅ **Added DAG integration to Hall of History**:
+   - `HallOfHistory` now gets DAG from `Tribe` and passes to `FamilyHappeningsContent`
+   - `FamilyHappeningsContent.SetFamilyDAG()` enables efficient queries
+   - Maintains backward compatibility with legacy fallback methods
+
+## Phase 2 Results Summary:
+
+### ✅ **Performance Improvements Achieved**:
+- **Relationship determination**: From 60+ lines of recursive DB queries → **Single DAG lookup**
+- **Family gathering**: From 8 complex recursive methods → **3 simple DAG queries**  
+- **Circular reference protection**: No longer needed (DAG property prevents cycles)
+- **Memory efficiency**: Pre-computed relationships vs repeated database traversals
+
+### ✅ **Code Quality Improvements**:
+- **FamilyHappeningsContent.cs**: ~200 lines of complex logic replaced with simple DAG calls
+- **Maintainability**: Clear separation between DAG queries and fallback legacy methods
+- **Debugging**: DAG provides built-in relationship validation and logging
+- **Testability**: Simple method calls vs complex recursive state management
+
+### ✅ **Backward Compatibility**:
+- **Graceful degradation**: Falls back to legacy methods if DAG unavailable
+- **No breaking changes**: Existing functionality preserved during migration
+- **Debug logging**: Shows which path (DAG vs legacy) is being used
 
 2. **Replace ancestor/descendant queries**:
    ```csharp

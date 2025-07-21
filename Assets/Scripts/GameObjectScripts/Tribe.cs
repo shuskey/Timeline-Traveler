@@ -1006,4 +1006,12 @@ public class Tribe : MonoBehaviour
 		
 		Debug.Log($"=== End DAG Verification ===");
 	}
+
+	/// <summary>
+	/// Get the Family DAG for external components to use for efficient relationship queries
+	/// </summary>
+	public FamilyDAG GetFamilyDAG()
+	{
+		return _familyDAG;
+	}
 }

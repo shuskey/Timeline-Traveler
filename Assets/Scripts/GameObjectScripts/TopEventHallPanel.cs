@@ -107,7 +107,7 @@ public class TopEventHallPanel : MonoBehaviour, IInteractablePanel
         if (imageCache.ContainsKey(imageUrl))
         {
             setPanelTexture(imageCache[imageUrl]);
-            Debug.Log("Using cached image for: " + imageUrl);
+           // Debug.Log("Using cached image for: " + imageUrl);
             
             // Update details panel if this panel has focus
             UpdateDetailsPanel();
@@ -115,7 +115,7 @@ public class TopEventHallPanel : MonoBehaviour, IInteractablePanel
         }
         
         // Download the image for this event
-        Debug.Log("Downloading image from: " + imageUrl);
+        //Debug.Log("Downloading image from: " + imageUrl);
         StartCoroutine(DownloadImage(imageUrl));
     }
 
@@ -189,7 +189,7 @@ public class TopEventHallPanel : MonoBehaviour, IInteractablePanel
             secureUrl = "https://" + secureUrl;
         }
         
-        Debug.Log($"Downloading image from: {secureUrl}");
+        //Debug.Log($"Downloading image from: {secureUrl}");
         
         UnityWebRequest request = UnityWebRequestTexture.GetTexture(secureUrl);
         yield return request.SendWebRequest();
@@ -216,7 +216,7 @@ public class TopEventHallPanel : MonoBehaviour, IInteractablePanel
             }
             
             setPanelTexture(downloadedTexture);
-            Debug.Log("Image downloaded and cached successfully");
+            //Debug.Log("Image downloaded and cached successfully");
             
             // Update details panel if this panel has focus
             UpdateDetailsPanel();

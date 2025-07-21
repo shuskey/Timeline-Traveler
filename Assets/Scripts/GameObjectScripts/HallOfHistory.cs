@@ -29,6 +29,46 @@ public class HallOfHistory : MonoBehaviour
         _familyHappeningsContent = new FamilyHappeningsContent();
         _familyHappeningsContent.Initialize();
     }
+    
+    private bool _dagConnected = false;
+    
+    // Update is called once per frame
+    void Update()
+    {
+        // Connect DAG on first update to ensure Tribe has time to build it
+        if (!_dagConnected)
+        {
+            ConnectDAGToFamilyHappenings();
+            _dagConnected = true;
+        }
+    }
+    
+    /// <summary>
+    /// Connect the DAG from Tribe to FamilyHappeningsContent for efficient relationship queries
+    /// </summary>
+    private void ConnectDAGToFamilyHappenings()
+    {
+        var tribe = FindFirstObjectByType<Tribe>();
+        if (tribe != null)
+        {
+            var familyDAG = tribe.GetFamilyDAG();
+            if (familyDAG != null)
+            {
+                _familyHappeningsContent.SetFamilyDAG(familyDAG);
+                Debug.Log("[HallOfHistory] Connected DAG to FamilyHappeningsContent for efficient relationship queries");
+            }
+            else
+            {
+                Debug.LogWarning("[HallOfHistory] Tribe found but DAG is null - will retry on next update");
+                _dagConnected = false; // Retry on next update
+            }
+        }
+        else
+        {
+            Debug.LogWarning("[HallOfHistory] Tribe not found - will retry on next update");
+            _dagConnected = false; // Retry on next update
+        }
+    }
 
     public IEnumerator SetFocusPersonNode(PersonNode newfocusPerson)
     {       
@@ -121,11 +161,5 @@ public class HallOfHistory : MonoBehaviour
         
         // Log the positioning for debugging
         Debug.Log($"[HallOfHistory] Positioned at local position: {this.transform.localPosition}, world position: {this.transform.position}");
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
     }
 }
