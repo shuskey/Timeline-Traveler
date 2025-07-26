@@ -100,6 +100,17 @@ public class Tribe : MonoBehaviour
 		
 		// Verify DAG has same data as current system (will verify after current system loads)
 		Debug.Log($"DAG initialized with {_familyDAG.People.Count} persons");
+		
+		// Dump DAG structure for debugging
+		_familyDAG.DumpDAGStructure();
+		
+		// Test GetAncestors for the starting person
+		if (_familyDAG.People.ContainsKey(startingIdForTree))
+		{
+			Debug.Log($"[familyDAGDebugContent] Testing GetAncestors for starting person {startingIdForTree}");
+			var ancestors = _familyDAG.GetAncestors(startingIdForTree, 5);
+			Debug.Log($"[familyDAGDebugContent] GetAncestors returned {ancestors.Count} ancestors for person {startingIdForTree}");
+		}
 
 		// Find the PersonDetailsHandler component
 		personDetailsHandlerScript = FindFirstObjectByType<PersonDetailsHandler>();

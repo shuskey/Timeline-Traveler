@@ -31,8 +31,6 @@ namespace Assets.Scripts.ServiceProviders
         /// </summary>
         public FamilyDAG BuildDAGForPerson(int rootPersonId, int ancestryDepth = 5, int descendancyDepth = 5)
         {
-            Debug.Log($"Building DAG for person {rootPersonId} with ancestry depth {ancestryDepth} and descendancy depth {descendancyDepth}");
-            
             // Load root person first
             var rootPerson = LoadPersonIntoDAG(rootPersonId);
             
@@ -54,7 +52,6 @@ namespace Assets.Scripts.ServiceProviders
             // Build extended relationships (aunts, uncles, cousins, etc.)
             BuildExtendedRelationships();
             
-            Debug.Log($"DAG built with {_familyDAG.People.Count} people");
             return _familyDAG;
         }
 
@@ -79,7 +76,6 @@ namespace Assets.Scripts.ServiceProviders
             _familyDAG.AddPerson(person);
             _processedPeople.Add(personId);
             
-            Debug.Log($"Loaded person: {person.givenName} {person.surName} (ID: {personId})");
             return person;
         }
 
@@ -107,8 +103,7 @@ namespace Assets.Scripts.ServiceProviders
                     var father = LoadPersonIntoDAG(parentage.fatherId);
                     if (father != null)
                     {
-                        AddRelationshipSafely(parentage.fatherId, personId, PersonRelationshipType.Child);
-                        AddRelationshipSafely(personId, parentage.fatherId, PersonRelationshipType.Father);
+                        AddRelationshipSafely(parentage.fatherId, personId, PersonRelationshipType.Father);
                         
                         // Always load spouses for father even if we don't recurse further
                         LoadSpousesForPerson(parentage.fatherId, father);
@@ -124,8 +119,7 @@ namespace Assets.Scripts.ServiceProviders
                     var mother = LoadPersonIntoDAG(parentage.motherId);
                     if (mother != null)
                     {
-                        AddRelationshipSafely(parentage.motherId, personId, PersonRelationshipType.Child);
-                        AddRelationshipSafely(personId, parentage.motherId, PersonRelationshipType.Mother);
+                        AddRelationshipSafely(parentage.motherId, personId, PersonRelationshipType.Mother);
                         
                         // Always load spouses for mother even if we don't recurse further
                         LoadSpousesForPerson(parentage.motherId, mother);
@@ -180,14 +174,10 @@ namespace Assets.Scripts.ServiceProviders
                         
                         // Add parent-child relationships
                         AddRelationshipSafely(personId, childInfo.childId, PersonRelationshipType.Child);
-                        AddRelationshipSafely(childInfo.childId, personId, 
-                            person.gender == PersonGenderType.Male ? PersonRelationshipType.Father : PersonRelationshipType.Mother);
                         
                         if (spouse != null)
                         {
                             AddRelationshipSafely(spouseId, childInfo.childId, PersonRelationshipType.Child);
-                            AddRelationshipSafely(childInfo.childId, spouseId, 
-                                spouse.gender == PersonGenderType.Male ? PersonRelationshipType.Father : PersonRelationshipType.Mother);
                         }
 
                         // Always load spouses for children even if we don't recurse further
@@ -209,8 +199,6 @@ namespace Assets.Scripts.ServiceProviders
             bool isHusbandQuery = person.gender == PersonGenderType.Male;
             var marriages = _dataProvider.GetMarriages(personId, isHusbandQuery);
 
-            Debug.Log($"Loading spouses for {person.givenName} {person.surName} (ID: {personId}) - found {marriages.Count} marriages");
-
             foreach (var marriage in marriages)
             {
                 var spouseId = isHusbandQuery ? marriage.wifeId : marriage.husbandId;
@@ -219,8 +207,6 @@ namespace Assets.Scripts.ServiceProviders
                 var spouse = LoadPersonIntoDAG(spouseId);
                 if (spouse != null)
                 {
-                    Debug.Log($"  -> Added spouse: {spouse.givenName} {spouse.surName} (ID: {spouseId})");
-                    
                     // Add marriage relationships
                     AddRelationshipSafely(personId, spouseId, PersonRelationshipType.Spouse, marriage.marriageYear);
                     AddRelationshipSafely(spouseId, personId, PersonRelationshipType.Spouse, marriage.marriageYear);
@@ -345,7 +331,9 @@ namespace Assets.Scripts.ServiceProviders
         {
             var relationshipKey = (fromPersonId, toPersonId, relationshipType);
             if (_processedRelationships.Contains(relationshipKey))
+            {
                 return;
+            }
 
             _familyDAG.AddRelationship(fromPersonId, toPersonId, relationshipType, eventDate);
             _processedRelationships.Add(relationshipKey);

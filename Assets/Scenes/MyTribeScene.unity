@@ -2331,7 +2331,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8d4cc490207113000a9fc690bffcab7d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  numberOfGenerations: 1
+  numberOfGenerations: 3
   timeBarrierYear: 0
   personPrefab: {fileID: 5941765939252972054, guid: 5e0a7b6b97087d64ba65ee58eb6dedaa, type: 3}
   playerControllerPrefab: {fileID: 1436149188537377315, guid: d6c6db37bd8152b469b58389e1e93487, type: 3}
@@ -10730,8 +10730,8 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 430289268}
   m_HandleRect: {fileID: 430289267}
   m_Direction: 2
-  m_Value: 1
-  m_Size: 0.6692464
+  m_Value: 0.99999976
+  m_Size: 0.66924626
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:

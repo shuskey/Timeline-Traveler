@@ -26,92 +26,6 @@ namespace Assets.Scripts.ContentProviders
         public void SetFamilyDAG(FamilyDAG familyDAG)
         {
             _familyDAG = familyDAG;
-            Debug.Log($"[FamilyHappeningsContent] DAG set successfully. DAG contains {_familyDAG?.People?.Count ?? 0} people");
-            
-            // Validate DAG setup
-            ValidateDAGSetup();
-        }
-        
-        /// <summary>
-        /// Validate DAG setup and compare with legacy methods
-        /// </summary>
-        private void ValidateDAGSetup()
-        {
-            if (_familyDAG == null)
-            {
-                Debug.LogWarning("[FamilyHappeningsContent] DAG is null - will use legacy methods");
-                return;
-            }
-            
-            Debug.Log($"[FamilyHappeningsContent] === DAG VALIDATION ===");
-            Debug.Log($"[FamilyHappeningsContent] Total people in DAG: {_familyDAG.People.Count}");
-            
-            // Check if DAG has any relationships
-            int totalRelationships = 0;
-            foreach (var person in _familyDAG.People.Values)
-            {
-                var relationships = _familyDAG.GetDirectRelationships(person.dataBaseOwnerId);
-                totalRelationships += relationships.Count;
-            }
-            Debug.Log($"[FamilyHappeningsContent] Total relationships in DAG: {totalRelationships}");
-            
-            // Test a few sample relationships if we have people
-            if (_familyDAG.People.Count > 0)
-            {
-                var samplePerson = _familyDAG.People.Values.First();
-                Debug.Log($"[FamilyHappeningsContent] Sample person: {samplePerson.givenName} {samplePerson.surName} (ID: {samplePerson.dataBaseOwnerId})");
-                
-                var sampleRelationships = _familyDAG.GetDirectRelationships(samplePerson.dataBaseOwnerId);
-                Debug.Log($"[FamilyHappeningsContent] Sample person has {sampleRelationships.Count} direct relationships");
-                
-                foreach (var rel in sampleRelationships.Take(3)) // Show first 3 relationships
-                {
-                    var relatedPerson = _familyDAG.People.ContainsKey(rel.ToPersonId) 
-                        ? _familyDAG.People[rel.ToPersonId] 
-                        : null;
-                    if (relatedPerson != null)
-                    {
-                        Debug.Log($"[FamilyHappeningsContent]   -> {relatedPerson.givenName} {relatedPerson.surName} ({rel.RelationshipType})");
-                    }
-                }
-                
-                // Test relationship determination for a few sample pairs
-                TestRelationshipDetermination();
-            }
-            
-            Debug.Log($"[FamilyHappeningsContent] === END DAG VALIDATION ===");
-        }
-        
-        /// <summary>
-        /// Test relationship determination between sample people to validate DAG vs legacy
-        /// </summary>
-        private void TestRelationshipDetermination()
-        {
-            Debug.Log($"[FamilyHappeningsContent] === TESTING RELATIONSHIP DETERMINATION ===");
-            
-            var people = _familyDAG.People.Values.Take(5).ToList(); // Test first 5 people
-            
-            for (int i = 0; i < people.Count; i++)
-            {
-                for (int j = i + 1; j < people.Count; j++)
-                {
-                    var person1 = people[i];
-                    var person2 = people[j];
-                    
-                    // Test DAG relationship
-                    var dagRelationship = _familyDAG.GetRelationshipBetween(person1.dataBaseOwnerId, person2.dataBaseOwnerId);
-                    
-                    // Test legacy relationship (temporarily disable DAG to force legacy)
-                    var originalDAG = _familyDAG;
-                    _familyDAG = null;
-                    var legacyRelationship = GetRelationshipToPerson(person1, person2);
-                    _familyDAG = originalDAG;
-                    
-                    Debug.Log($"[FamilyHappeningsContent] {person1.givenName} -> {person2.givenName}: DAG='{dagRelationship}' vs Legacy='{legacyRelationship}' {(dagRelationship == legacyRelationship ? "✓" : "✗")}");
-                }
-            }
-            
-            Debug.Log($"[FamilyHappeningsContent] === END RELATIONSHIP TESTING ===");
         }
         
         public void Initialize()
@@ -132,8 +46,6 @@ namespace Assets.Scripts.ContentProviders
         /// <returns>Formatted Family Happenings report</returns>
         public string GetFamilyHappeningsContent(Person focusPerson, int year)
         {
-           // Debug.Log($"[FamilyHappeningsContent] Starting generation for {focusPerson.givenName} {focusPerson.surName} (ID: {focusPerson.dataBaseOwnerId}) for year {year}");
-            
             var sb = new StringBuilder();
             
             // Header
@@ -143,9 +55,7 @@ namespace Assets.Scripts.ContentProviders
             sb.AppendLine();
             
             // Get close family members
-            //Debug.Log($"[FamilyHappeningsContent] Getting close family members...");
             var closeFamilyMembers = GetCloseFamilyMembers(focusPerson);
-            //Debug.Log($"[FamilyHappeningsContent] Found {closeFamilyMembers.Count} close family members");
             
             // Generate each section
             sb.AppendLine("BIRTH ANNOUNCEMENTS");
@@ -182,7 +92,7 @@ namespace Assets.Scripts.ContentProviders
         }
 
         /// <summary>
-        /// Gets all close family members for the focus person
+        /// Gets all close family members for the focus person according to FamilyDefinitions.md
         /// </summary>
         private List<Person> GetCloseFamilyMembers(Person focusPerson)
         {
@@ -191,57 +101,181 @@ namespace Assets.Scripts.ContentProviders
             // Add the focus person themselves
             closeFamilyMembers.Add(focusPerson);
             
-            // Use DAG for efficient family gathering if available
+                        // Use DAG for efficient family gathering if available
             if (_familyDAG != null)
             {
-                Debug.Log($"[FamilyHappeningsContent] === USING DAG FOR FAMILY GATHERING ===");
-                Debug.Log($"[FamilyHappeningsContent] Focus person: {focusPerson.givenName} {focusPerson.surName} (ID: {focusPerson.dataBaseOwnerId})");
-                
-                // Get all descendants (children, grandchildren, etc.)
+                // 1. All descendants of the focus person
                 var descendants = _familyDAG.GetDescendants(focusPerson.dataBaseOwnerId, 3);
-                Debug.Log($"[FamilyHappeningsContent] DAG found {descendants.Count} descendants");
                 foreach (var descendant in descendants)
                 {
                     closeFamilyMembers.Add(descendant);
-                    Debug.Log($"[FamilyHappeningsContent]   + Descendant: {descendant.givenName} {descendant.surName} (ID: {descendant.dataBaseOwnerId})");
                 }
                 
-                // Get all ancestors (parents, grandparents, etc.)
-                var ancestors = _familyDAG.GetAncestors(focusPerson.dataBaseOwnerId, 2);
-                Debug.Log($"[FamilyHappeningsContent] DAG found {ancestors.Count} ancestors");
-                foreach (var ancestor in ancestors)
-                {
-                    closeFamilyMembers.Add(ancestor);
-                    Debug.Log($"[FamilyHappeningsContent]   + Ancestor: {ancestor.givenName} {ancestor.surName} (ID: {ancestor.dataBaseOwnerId})");
-                }
-                
-                // Get direct relationships (spouses, siblings, etc.)
+                // 2. The focus person's spouse
                 var directRelationships = _familyDAG.GetDirectRelationships(focusPerson.dataBaseOwnerId);
-                Debug.Log($"[FamilyHappeningsContent] DAG found {directRelationships.Count} direct relationships");
+                var spouses = new List<Person>();
                 foreach (var relationship in directRelationships)
                 {
-                    var relatedPerson = _familyDAG.People.ContainsKey(relationship.ToPersonId) 
-                        ? _familyDAG.People[relationship.ToPersonId] 
-                        : null;
-                    if (relatedPerson != null)
+                    if (relationship.RelationshipType == PersonRelationshipType.Spouse)
                     {
-                        closeFamilyMembers.Add(relatedPerson);
-                        Debug.Log($"[FamilyHappeningsContent]   + Direct: {relatedPerson.givenName} {relatedPerson.surName} ({relationship.RelationshipType})");
+                        var spouse = _familyDAG.People.ContainsKey(relationship.ToPersonId) 
+                            ? _familyDAG.People[relationship.ToPersonId] 
+                            : null;
+                        if (spouse != null)
+                        {
+                            spouses.Add(spouse);
+                            closeFamilyMembers.Add(spouse);
+                        }
                     }
                 }
                 
-                Debug.Log($"[FamilyHappeningsContent] DAG gathered {closeFamilyMembers.Count} total close family members");
-                Debug.Log($"[FamilyHappeningsContent] === END DAG FAMILY GATHERING ===");
+                // 3. Mother-in-law and Father-in-law (parents of spouses)
+                foreach (var spouse in spouses)
+                {
+                    var spouseParents = _familyDAG.GetAncestors(spouse.dataBaseOwnerId, 1);
+                    foreach (var inLaw in spouseParents)
+                    {
+                        closeFamilyMembers.Add(inLaw);
+                    }
+                }
+                
+                // 4. Brother and sister "in-laws" (siblings of spouses)
+                foreach (var spouse in spouses)
+                {
+                    var spouseSiblings = GetSiblingsFromDAG(spouse);
+                    foreach (var inLawSibling in spouseSiblings)
+                    {
+                        closeFamilyMembers.Add(inLawSibling);
+                    }
+                }
+                
+                // 5. All Siblings of the focus person, and their spouses
+                var siblings = GetSiblingsFromDAG(focusPerson);
+                foreach (var sibling in siblings)
+                {
+                    closeFamilyMembers.Add(sibling);
+                    
+                    // Add sibling's spouses
+                    var siblingSpouses = GetSpousesFromDAG(sibling);
+                    foreach (var siblingSpouse in siblingSpouses)
+                    {
+                        closeFamilyMembers.Add(siblingSpouse);
+                    }
+                }
+                
+                // 6. All the Nieces and Nephews of the Focus Person (children of focus person's siblings)
+                foreach (var sibling in siblings)
+                {
+                    var siblingChildren = _familyDAG.GetDescendants(sibling.dataBaseOwnerId, 1);
+                    foreach (var nieceNephew in siblingChildren)
+                    {
+                        closeFamilyMembers.Add(nieceNephew);
+                    }
+                }
+                
+                // 7. The Focus person's Mother and Father
+                var parents = _familyDAG.GetAncestors(focusPerson.dataBaseOwnerId, 1);
+                foreach (var parent in parents)
+                {
+                    closeFamilyMembers.Add(parent);
+                }
+                
+                // 8. The Focus person's Grand Parents
+                var grandparents = _familyDAG.GetAncestors(focusPerson.dataBaseOwnerId, 2);
+                var directGrandparents = grandparents.Except(parents).ToList();
+                foreach (var grandparent in directGrandparents)
+                {
+                    closeFamilyMembers.Add(grandparent);
+                }
+                
+                // 9. The Focus person's Aunts and Uncles (siblings of parents) plus their spouses
+                foreach (var parent in parents)
+                {
+                    var parentSiblings = GetSiblingsFromDAG(parent);
+                    foreach (var auntUncle in parentSiblings)
+                    {
+                        closeFamilyMembers.Add(auntUncle);
+                        
+                        // Add aunt/uncle's spouses
+                        var auntUncleSpouses = GetSpousesFromDAG(auntUncle);
+                        foreach (var auntUncleSpouse in auntUncleSpouses)
+                        {
+                            closeFamilyMembers.Add(auntUncleSpouse);
+                        }
+                    }
+                }
+                
+                // 10. All Cousins (children of aunts and uncles)
+                foreach (var parent in parents)
+                {
+                    var parentSiblings = GetSiblingsFromDAG(parent);
+                    foreach (var auntUncle in parentSiblings)
+                    {
+                        var cousins = _familyDAG.GetDescendants(auntUncle.dataBaseOwnerId, 1);
+                        foreach (var cousin in cousins)
+                        {
+                            closeFamilyMembers.Add(cousin);
+                        }
+                    }
+                }
             }
             else
             {
                 // Fallback to legacy complex method
-                Debug.Log($"[FamilyHappeningsContent] === USING LEGACY FAMILY GATHERING ===");
-                Debug.Log($"[FamilyHappeningsContent] DAG not available, using legacy methods");
                 return GetCloseFamilyMembersLegacy(focusPerson);
             }
             
             return closeFamilyMembers.ToList();
+        }
+
+        /// <summary>
+        /// Get siblings of a person using DAG
+        /// </summary>
+        private List<Person> GetSiblingsFromDAG(Person person)
+        {
+            var siblings = new List<Person>();
+            var directRelationships = _familyDAG.GetDirectRelationships(person.dataBaseOwnerId);
+            
+            foreach (var relationship in directRelationships)
+            {
+                if (relationship.RelationshipType == PersonRelationshipType.Sibling)
+                {
+                    var sibling = _familyDAG.People.ContainsKey(relationship.ToPersonId) 
+                        ? _familyDAG.People[relationship.ToPersonId] 
+                        : null;
+                    if (sibling != null)
+                    {
+                        siblings.Add(sibling);
+                    }
+                }
+            }
+            
+            return siblings;
+        }
+        
+        /// <summary>
+        /// Get spouses of a person using DAG
+        /// </summary>
+        private List<Person> GetSpousesFromDAG(Person person)
+        {
+            var spouses = new List<Person>();
+            var directRelationships = _familyDAG.GetDirectRelationships(person.dataBaseOwnerId);
+            
+            foreach (var relationship in directRelationships)
+            {
+                if (relationship.RelationshipType == PersonRelationshipType.Spouse)
+                {
+                    var spouse = _familyDAG.People.ContainsKey(relationship.ToPersonId) 
+                        ? _familyDAG.People[relationship.ToPersonId] 
+                        : null;
+                    if (spouse != null)
+                    {
+                        spouses.Add(spouse);
+                    }
+                }
+            }
+            
+            return spouses;
         }
 
         /// <summary>
@@ -716,44 +750,24 @@ namespace Assets.Scripts.ContentProviders
         // Helper methods for formatting and relationship calculation
         private string GetRelationshipToPerson(Person relationshipPerson, Person sourcePerson)
         {
-            Debug.Log($"[FamilyHappeningsContent] === RELATIONSHIP DETERMINATION ===");
-            Debug.Log($"[FamilyHappeningsContent] Finding relationship: {relationshipPerson.givenName} {relationshipPerson.surName} (ID: {relationshipPerson.dataBaseOwnerId}) to {sourcePerson.givenName} {sourcePerson.surName} (ID: {sourcePerson.dataBaseOwnerId})");
-            
             if (relationshipPerson.dataBaseOwnerId == sourcePerson.dataBaseOwnerId)
             {
-                Debug.Log($"[FamilyHappeningsContent] Same person - returning 'self'");
                 return "self";
             }
             
             // Use DAG for efficient relationship lookup if available
             if (_familyDAG != null)
             {
-                Debug.Log($"[FamilyHappeningsContent] Using DAG for relationship lookup");
                 var relationship = _familyDAG.GetRelationshipBetween(relationshipPerson.dataBaseOwnerId, sourcePerson.dataBaseOwnerId);
-                Debug.Log($"[FamilyHappeningsContent] DAG returned: '{relationship}'");
                 
                 if (relationship != "relative" && !string.IsNullOrEmpty(relationship))
                 {
-                    Debug.Log($"[FamilyHappeningsContent] DAG found relationship: {relationship}");
-                    Debug.Log($"[FamilyHappeningsContent] === END RELATIONSHIP DETERMINATION (DAG) ===");
                     return relationship;
                 }
-                else
-                {
-                    Debug.Log($"[FamilyHappeningsContent] DAG returned generic 'relative' - falling back to legacy");
-                }
-            }
-            else
-            {
-                Debug.Log($"[FamilyHappeningsContent] DAG not available - using legacy relationship determination");
             }
             
             // Fallback to legacy complex logic if DAG not available or relationship not found
-            Debug.Log($"[FamilyHappeningsContent] Using legacy relationship determination");
-            var legacyResult = GetRelationshipToPersonLegacy(relationshipPerson, sourcePerson);
-            Debug.Log($"[FamilyHappeningsContent] Legacy returned: {legacyResult}");
-            Debug.Log($"[FamilyHappeningsContent] === END RELATIONSHIP DETERMINATION (LEGACY) ===");
-            return legacyResult;
+            return GetRelationshipToPersonLegacy(relationshipPerson, sourcePerson);
         }
 
 
@@ -768,28 +782,24 @@ namespace Assets.Scripts.ContentProviders
             // Check if relationshipPerson is a descendant of sourcePerson
             if (IsDescendant(relationshipPerson, sourcePerson))
             {
-               // Debug.Log($"[FamilyHappeningsContent] Found descendant relationship");
                 return GetDescendantRelationship(relationshipPerson, sourcePerson);
             }
             
             // Check if relationshipPerson is an ancestor of sourcePerson
             if (IsAncestor(relationshipPerson, sourcePerson))
             {
-               // Debug.Log($"[FamilyHappeningsContent] Found ancestor relationship");
                 return GetAncestorRelationship(relationshipPerson, sourcePerson);
             }
             
             // Check if relationshipPerson is a sibling of sourcePerson
             if (IsSibling(relationshipPerson, sourcePerson))
             {
-               // Debug.Log($"[FamilyHappeningsContent] Found sibling relationship");
                 return GetSiblingRelationship(relationshipPerson, sourcePerson);
             }
             
             // Check if relationshipPerson is a spouse of sourcePerson
             if (IsSpouse(relationshipPerson, sourcePerson))
             {
-               // Debug.Log($"[FamilyHappeningsContent] Found spouse relationship");
                 return GetSpouseRelationship(relationshipPerson, sourcePerson);
             }
             
@@ -799,7 +809,6 @@ namespace Assets.Scripts.ContentProviders
             string inLawRelationship = GetInLawRelationship(relationshipPerson, sourcePerson);
             if (inLawRelationship != null)
             {
-                    Debug.Log($"[FamilyHappeningsContent] Found in-law relationship: {inLawRelationship}");
                 return inLawRelationship;
             }
             
@@ -807,30 +816,24 @@ namespace Assets.Scripts.ContentProviders
             string auntUncleRelationship = GetAuntUncleRelationship(relationshipPerson, sourcePerson);
             if (auntUncleRelationship != null)
             {
-               // Debug.Log($"[FamilyHappeningsContent] Found aunt/uncle relationship: {auntUncleRelationship}");
                 return auntUncleRelationship;
             }
             
             // Check for niece/nephew relationships
-            // Debug.Log($"[FamilyHappeningsContent] Checking niece/nephew relationship...");
             string nieceNephewRelationship = GetNieceNephewRelationship(relationshipPerson, sourcePerson);
             if (nieceNephewRelationship != null)
             {
-               // Debug.Log($"[FamilyHappeningsContent] Found niece/nephew relationship: {nieceNephewRelationship}");
                 return nieceNephewRelationship;
             }
             
             // Check for cousin relationships
-            //Debug.Log($"[FamilyHappeningsContent] Checking cousin relationship...");
             string cousinRelationship = GetCousinRelationship(relationshipPerson, sourcePerson);
             if (cousinRelationship != null)
             {
-               // Debug.Log($"[FamilyHappeningsContent] Found cousin relationship: {cousinRelationship}");
                 return cousinRelationship;
             }
             
             // Default to a generic relationship
-            Debug.Log($"[FamilyHappeningsContent] No specific relationship found, defaulting to 'relative'");
             return "relative";
         }
 
@@ -1038,20 +1041,15 @@ namespace Assets.Scripts.ContentProviders
         {
             // Check if relationshipPerson is child of sourcePerson's sibling (niece/nephew)
             var sourceSiblings = GetSiblings(sourcePerson);
-            //Debug.Log($"[FamilyHappeningsContent] GetNieceNephewRelationship: Checking {relationshipPerson.givenName} {relationshipPerson.surName} against {sourcePerson.givenName} {sourcePerson.surName}. Source has {sourceSiblings.Count} siblings.");
             
             foreach (var sibling in sourceSiblings)
             {
-                //Debug.Log($"[FamilyHappeningsContent] Checking sibling: {sibling.givenName} {sibling.surName}");
                 if (IsDescendant(relationshipPerson, sibling))
                 {
-                    //Debug.Log($"[FamilyHappeningsContent] {relationshipPerson.givenName} is descendant of {sibling.givenName}");
                     // Check if it's a direct child (niece/nephew) vs grandchild, etc.
                     var siblingChildren = GetChildrenOfPerson(sibling);
-                    //Debug.Log($"[FamilyHappeningsContent] Sibling {sibling.givenName} has {siblingChildren.Count} children");
                     if (siblingChildren.Any(c => c.dataBaseOwnerId == relationshipPerson.dataBaseOwnerId))
                     {
-                        //Debug.Log($"[FamilyHappeningsContent] Found niece/nephew relationship!");
                         return relationshipPerson.gender == PersonGenderType.Male ? "nephew" : "niece";
                     }
                 }
@@ -1064,23 +1062,17 @@ namespace Assets.Scripts.ContentProviders
         {
             // Check if relationshipPerson is child of sourcePerson's parent's sibling (cousin)
             var sourceParents = GetParentsOfPerson(sourcePerson);
-            //Debug.Log($"[FamilyHappeningsContent] GetCousinRelationship: Checking {relationshipPerson.givenName} {relationshipPerson.surName} against {sourcePerson.givenName} {sourcePerson.surName}. Source has {sourceParents.Count} parents.");
             
             foreach (var parent in sourceParents)
             {
-                //Debug.Log($"[FamilyHappeningsContent] Checking parent: {parent.givenName} {parent.surName}");
                 var parentSiblings = GetSiblings(parent);
-                //Debug.Log($"[FamilyHappeningsContent] Parent {parent.givenName} has {parentSiblings.Count} siblings");
                 
                 foreach (var parentSibling in parentSiblings)
                 {
-                    //Debug.Log($"[FamilyHappeningsContent] Checking parent sibling (aunt/uncle): {parentSibling.givenName} {parentSibling.surName}");
                     var parentSiblingChildren = GetChildrenOfPerson(parentSibling);
-                    //Debug.Log($"[FamilyHappeningsContent] Aunt/Uncle {parentSibling.givenName} has {parentSiblingChildren.Count} children");
                     
                     if (parentSiblingChildren.Any(c => c.dataBaseOwnerId == relationshipPerson.dataBaseOwnerId))
                     {
-                        //Debug.Log($"[FamilyHappeningsContent] Found cousin relationship!");
                         return "cousin";
                     }
                 }
@@ -1187,8 +1179,6 @@ namespace Assets.Scripts.ContentProviders
         /// </summary>
         public void TestDAGFunctionality()
         {
-            Debug.Log($"[FamilyHappeningsContent] === MANUAL DAG TEST ===");
-            
             if (_familyDAG == null)
             {
                 Debug.LogError("[FamilyHappeningsContent] DAG is null! Cannot test functionality.");
@@ -1203,11 +1193,9 @@ namespace Assets.Scripts.ContentProviders
             
             // Test with a sample person
             var testPerson = _familyDAG.People.Values.First();
-            Debug.Log($"[FamilyHappeningsContent] Testing with person: {testPerson.givenName} {testPerson.surName} (ID: {testPerson.dataBaseOwnerId})");
             
             // Test family gathering
             var familyMembers = GetCloseFamilyMembers(testPerson);
-            Debug.Log($"[FamilyHappeningsContent] Found {familyMembers.Count} family members for {testPerson.givenName}");
             
             // Test relationship determination with a few family members
             foreach (var familyMember in familyMembers.Take(3))
@@ -1215,11 +1203,8 @@ namespace Assets.Scripts.ContentProviders
                 if (familyMember.dataBaseOwnerId != testPerson.dataBaseOwnerId)
                 {
                     var relationship = GetRelationshipToPerson(familyMember, testPerson);
-                    Debug.Log($"[FamilyHappeningsContent] {familyMember.givenName} is {testPerson.givenName}'s {relationship}");
                 }
             }
-            
-            Debug.Log($"[FamilyHappeningsContent] === END MANUAL DAG TEST ===");
         }
         
         /// <summary>
@@ -1253,3 +1238,5 @@ namespace Assets.Scripts.ContentProviders
         }
     }
 }
+
+

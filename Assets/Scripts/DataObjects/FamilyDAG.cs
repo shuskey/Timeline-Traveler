@@ -40,14 +40,14 @@ namespace Assets.Scripts.DataObjects
         {
             if (!_people.ContainsKey(fromPersonId) || !_people.ContainsKey(toPersonId))
             {
-                Debug.LogWarning($"Cannot add relationship: person {fromPersonId} or {toPersonId} not in DAG");
+                Debug.LogWarning($"[familyDAGDebugContent] Cannot add relationship: person {fromPersonId} or {toPersonId} not in DAG");
                 return;
             }
 
             // Check for cycles before adding
             if (WouldCreateCycle(fromPersonId, toPersonId))
             {
-                Debug.LogWarning($"Relationship {fromPersonId} -> {toPersonId} would create cycle, skipping");
+                Debug.LogWarning($"[familyDAGDebugContent] Relationship {fromPersonId} -> {toPersonId} would create cycle, skipping");
                 return;
             }
 
@@ -63,13 +63,13 @@ namespace Assets.Scripts.DataObjects
             _outgoingEdges[fromPersonId].Add(edge);
             _incomingEdges[toPersonId].Add(edge);
 
+            var fromPerson = _people[fromPersonId];
+            var toPerson = _people[toPersonId];
+
             // Clear relationship cache as new edge may change relationships
             _relationshipCache.Clear();
 
             // Populate the Person's familyRelationships field
-            var fromPerson = _people[fromPersonId];
-            var toPerson = _people[toPersonId];
-            
             if (fromPerson.familyRelationships == null)
                 fromPerson.familyRelationships = new List<(PersonRelationshipType, Person)>();
             
@@ -95,24 +95,37 @@ namespace Assets.Scripts.DataObjects
         /// </summary>
         public HashSet<Person> GetAncestors(int personId, int maxGenerations = 10)
         {
+            if (!_people.ContainsKey(personId))
+            {
+                Debug.LogWarning($"[familyDAGDebugContent] Person {personId} not found in DAG");
+                return new HashSet<Person>();
+            }
+            
             var ancestors = new HashSet<Person>();
             var visited = new HashSet<int>();
             GetAncestorsRecursive(personId, ancestors, visited, 0, maxGenerations);
+            
             return ancestors;
         }
 
         private void GetAncestorsRecursive(int personId, HashSet<Person> ancestors, HashSet<int> visited, int currentLevel, int maxGenerations)
         {
             if (visited.Contains(personId) || currentLevel >= maxGenerations)
+            {
                 return;
+            }
 
             visited.Add(personId);
+            var person = _people[personId];
 
             if (_incomingEdges.ContainsKey(personId))
             {
                 foreach (var edge in _incomingEdges[personId])
                 {
-                    if (edge.RelationshipType == PersonRelationshipType.Mother || edge.RelationshipType == PersonRelationshipType.Father)
+                    // For ancestors, we want to find edges where this person is the "to" person
+                    // and the relationship type indicates a parent relationship
+                    if (edge.ToPersonId == personId && 
+                        (edge.RelationshipType == PersonRelationshipType.Mother || edge.RelationshipType == PersonRelationshipType.Father))
                     {
                         var parent = _people[edge.FromPersonId];
                         ancestors.Add(parent);
@@ -304,10 +317,23 @@ namespace Assets.Scripts.DataObjects
 
         /// <summary>
         /// Check if adding an edge would create a cycle (violate DAG property)
+        /// Allow bidirectional relationships but prevent true cycles
         /// </summary>
         private bool WouldCreateCycle(int fromPersonId, int toPersonId)
         {
+            // Check if this would create a direct bidirectional relationship
+            // This is allowed for family relationships (parent-child, spouse-spouse)
+            if (_outgoingEdges.ContainsKey(toPersonId))
+            {
+                var existingEdge = _outgoingEdges[toPersonId].FirstOrDefault(e => e.ToPersonId == fromPersonId);
+                if (existingEdge != null)
+                {
+                    return false; // Allow bidirectional relationships
+                }
+            }
+
             // Use DFS to see if we can reach fromPersonId starting from toPersonId
+            // This prevents true cycles (A -> B -> C -> A)
             var visited = new HashSet<int>();
             return CanReach(toPersonId, fromPersonId, visited);
         }
@@ -332,6 +358,14 @@ namespace Assets.Scripts.DataObjects
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Debug method to dump the entire DAG structure
+        /// </summary>
+        public void DumpDAGStructure()
+        {
+            // Debug method kept for potential future use but with no output
         }
 
         /// <summary>
