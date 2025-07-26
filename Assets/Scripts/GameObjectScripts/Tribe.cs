@@ -23,8 +23,8 @@ public class Tribe : MonoBehaviour
 	private int startingIdForTree;
 	//make this a SerializeField
 	[SerializeField]
-	[Tooltip("Number of generations to load on each side (dynamically expandable)")]
-	private int numberOfGenerations = 2;
+	[Tooltip("Number of generations to load on each side (dynamically expandable). Increased to 3 to support all Close Family relationships")]
+	private int numberOfGenerations = 3;
 	private PersonDetailsHandler personDetailsHandlerScript;
 	private Transform lastTeleportTransform;
 	private Vector3 lastTeleportOffset;

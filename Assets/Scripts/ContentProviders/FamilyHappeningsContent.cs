@@ -5,19 +5,16 @@ using UnityEngine;
 using Assets.Scripts.DataObjects;
 using Assets.Scripts.Enums;
 using Assets.Scripts.ServiceProviders;
-using Assets.Scripts.ServiceProviders.FamilyHistoryDataProvider;
 
 namespace Assets.Scripts.ContentProviders
 {
     public class FamilyHappeningsContent
     {
-        private RootsMagicFamilyHistoryDataProvider _dataProvider;
         private FamilyDAG _familyDAG;
         private bool showDataBaseOwnerId = false; // Flag to show database ID after names
         
         public FamilyHappeningsContent()
         {
-            _dataProvider = new RootsMagicFamilyHistoryDataProvider();
         }
 
         /// <summary>
@@ -30,12 +27,7 @@ namespace Assets.Scripts.ContentProviders
         
         public void Initialize()
         {
-                    string rootsMagicFileName = DataObjects.CrossSceneInformation.rootsMagicDataFileNameWithFullPath;
-        var config = new Dictionary<string, string>
-        {
-            { DataObjects.PlayerPrefsConstants.LAST_USED_ROOTS_MAGIC_DATA_FILE_PATH, rootsMagicFileName }
-            };
-            _dataProvider.Initialize(config);
+            // No longer needed - DAG is set via SetFamilyDAG
         }
 
         /// <summary>
@@ -46,6 +38,11 @@ namespace Assets.Scripts.ContentProviders
         /// <returns>Formatted Family Happenings report</returns>
         public string GetFamilyHappeningsContent(Person focusPerson, int year)
         {
+            if (_familyDAG == null)
+            {
+                return "Error: Family DAG not initialized. Please set the DAG before generating content.";
+            }
+
             var sb = new StringBuilder();
             
             // Header
@@ -101,128 +98,106 @@ namespace Assets.Scripts.ContentProviders
             // Add the focus person themselves
             closeFamilyMembers.Add(focusPerson);
             
-                        // Use DAG for efficient family gathering if available
-            if (_familyDAG != null)
+            // 1. All descendants of the focus person
+            var descendants = _familyDAG.GetDescendants(focusPerson.dataBaseOwnerId, 10);
+            foreach (var descendant in descendants)
             {
-                // 1. All descendants of the focus person
-                var descendants = _familyDAG.GetDescendants(focusPerson.dataBaseOwnerId, 3);
-                foreach (var descendant in descendants)
+                closeFamilyMembers.Add(descendant);
+            }
+            
+            // 2. Spouse of the focus person
+            var spouses = GetSpousesFromDAG(focusPerson);
+            foreach (var spouse in spouses)
+            {
+                closeFamilyMembers.Add(spouse);
+            }
+            
+            // 3. Mother-in-law and Father-in-law (parents of spouse)
+            foreach (var spouse in spouses)
+            {
+                var spouseParents = GetParentsFromDAG(spouse);
+                foreach (var spouseParent in spouseParents)
                 {
-                    closeFamilyMembers.Add(descendant);
+                    closeFamilyMembers.Add(spouseParent);
                 }
-                
-                // 2. The focus person's spouse
-                var directRelationships = _familyDAG.GetDirectRelationships(focusPerson.dataBaseOwnerId);
-                var spouses = new List<Person>();
-                foreach (var relationship in directRelationships)
+            }
+            
+            // 4. Brother and sister "in-laws" (siblings of spouse)
+            foreach (var spouse in spouses)
+            {
+                var spouseSiblings = GetSiblingsFromDAG(spouse);
+                foreach (var spouseSibling in spouseSiblings)
                 {
-                    if (relationship.RelationshipType == PersonRelationshipType.Spouse)
+                    closeFamilyMembers.Add(spouseSibling);
+                }
+            }
+            
+            // 5. All Siblings of the focus person, and their spouses
+            var siblings = GetSiblingsFromDAG(focusPerson);
+            foreach (var sibling in siblings)
+            {
+                closeFamilyMembers.Add(sibling);
+                var siblingSpouses = GetSpousesFromDAG(sibling);
+                foreach (var siblingSpouse in siblingSpouses)
+                {
+                    closeFamilyMembers.Add(siblingSpouse);
+                }
+            }
+            
+            // 6. All Nieces and Nephews (children of siblings)
+            foreach (var sibling in siblings)
+            {
+                var siblingChildren = GetChildrenFromDAG(sibling);
+                foreach (var nieceNephew in siblingChildren)
+                {
+                    closeFamilyMembers.Add(nieceNephew);
+                }
+            }
+            
+            // 7. Mother and Father
+            var parents = GetParentsFromDAG(focusPerson);
+            foreach (var parent in parents)
+            {
+                closeFamilyMembers.Add(parent);
+            }
+            
+            // 8. Grand Parents
+            foreach (var parent in parents)
+            {
+                var grandParents = GetParentsFromDAG(parent);
+                foreach (var grandParent in grandParents)
+                {
+                    closeFamilyMembers.Add(grandParent);
+                }
+            }
+            
+            // 9. Aunts and Uncles (siblings of parents) plus their spouses
+            foreach (var parent in parents)
+            {
+                var parentSiblings = GetSiblingsFromDAG(parent);
+                foreach (var auntUncle in parentSiblings)
+                {
+                    closeFamilyMembers.Add(auntUncle);
+                    var auntUncleSpouses = GetSpousesFromDAG(auntUncle);
+                    foreach (var auntUncleSpouse in auntUncleSpouses)
                     {
-                        var spouse = _familyDAG.People.ContainsKey(relationship.ToPersonId) 
-                            ? _familyDAG.People[relationship.ToPersonId] 
-                            : null;
-                        if (spouse != null)
-                        {
-                            spouses.Add(spouse);
-                            closeFamilyMembers.Add(spouse);
-                        }
-                    }
-                }
-                
-                // 3. Mother-in-law and Father-in-law (parents of spouses)
-                foreach (var spouse in spouses)
-                {
-                    var spouseParents = _familyDAG.GetAncestors(spouse.dataBaseOwnerId, 1);
-                    foreach (var inLaw in spouseParents)
-                    {
-                        closeFamilyMembers.Add(inLaw);
-                    }
-                }
-                
-                // 4. Brother and sister "in-laws" (siblings of spouses)
-                foreach (var spouse in spouses)
-                {
-                    var spouseSiblings = GetSiblingsFromDAG(spouse);
-                    foreach (var inLawSibling in spouseSiblings)
-                    {
-                        closeFamilyMembers.Add(inLawSibling);
-                    }
-                }
-                
-                // 5. All Siblings of the focus person, and their spouses
-                var siblings = GetSiblingsFromDAG(focusPerson);
-                foreach (var sibling in siblings)
-                {
-                    closeFamilyMembers.Add(sibling);
-                    
-                    // Add sibling's spouses
-                    var siblingSpouses = GetSpousesFromDAG(sibling);
-                    foreach (var siblingSpouse in siblingSpouses)
-                    {
-                        closeFamilyMembers.Add(siblingSpouse);
-                    }
-                }
-                
-                // 6. All the Nieces and Nephews of the Focus Person (children of focus person's siblings)
-                foreach (var sibling in siblings)
-                {
-                    var siblingChildren = _familyDAG.GetDescendants(sibling.dataBaseOwnerId, 1);
-                    foreach (var nieceNephew in siblingChildren)
-                    {
-                        closeFamilyMembers.Add(nieceNephew);
-                    }
-                }
-                
-                // 7. The Focus person's Mother and Father
-                var parents = _familyDAG.GetAncestors(focusPerson.dataBaseOwnerId, 1);
-                foreach (var parent in parents)
-                {
-                    closeFamilyMembers.Add(parent);
-                }
-                
-                // 8. The Focus person's Grand Parents
-                var grandparents = _familyDAG.GetAncestors(focusPerson.dataBaseOwnerId, 2);
-                var directGrandparents = grandparents.Except(parents).ToList();
-                foreach (var grandparent in directGrandparents)
-                {
-                    closeFamilyMembers.Add(grandparent);
-                }
-                
-                // 9. The Focus person's Aunts and Uncles (siblings of parents) plus their spouses
-                foreach (var parent in parents)
-                {
-                    var parentSiblings = GetSiblingsFromDAG(parent);
-                    foreach (var auntUncle in parentSiblings)
-                    {
-                        closeFamilyMembers.Add(auntUncle);
-                        
-                        // Add aunt/uncle's spouses
-                        var auntUncleSpouses = GetSpousesFromDAG(auntUncle);
-                        foreach (var auntUncleSpouse in auntUncleSpouses)
-                        {
-                            closeFamilyMembers.Add(auntUncleSpouse);
-                        }
-                    }
-                }
-                
-                // 10. All Cousins (children of aunts and uncles)
-                foreach (var parent in parents)
-                {
-                    var parentSiblings = GetSiblingsFromDAG(parent);
-                    foreach (var auntUncle in parentSiblings)
-                    {
-                        var cousins = _familyDAG.GetDescendants(auntUncle.dataBaseOwnerId, 1);
-                        foreach (var cousin in cousins)
-                        {
-                            closeFamilyMembers.Add(cousin);
-                        }
+                        closeFamilyMembers.Add(auntUncleSpouse);
                     }
                 }
             }
-            else
+            
+            // 10. All Cousins (children of aunts and uncles)
+            foreach (var parent in parents)
             {
-                // Fallback to legacy complex method
-                return GetCloseFamilyMembersLegacy(focusPerson);
+                var parentSiblings = GetSiblingsFromDAG(parent);
+                foreach (var auntUncle in parentSiblings)
+                {
+                    var cousins = GetChildrenFromDAG(auntUncle);
+                    foreach (var cousin in cousins)
+                    {
+                        closeFamilyMembers.Add(cousin);
+                    }
+                }
             }
             
             return closeFamilyMembers.ToList();
@@ -234,25 +209,24 @@ namespace Assets.Scripts.ContentProviders
         private List<Person> GetSiblingsFromDAG(Person person)
         {
             var siblings = new List<Person>();
-            var directRelationships = _familyDAG.GetDirectRelationships(person.dataBaseOwnerId);
+            var parents = GetParentsFromDAG(person);
             
-            foreach (var relationship in directRelationships)
+            foreach (var parent in parents)
             {
-                if (relationship.RelationshipType == PersonRelationshipType.Sibling)
+                var children = GetChildrenFromDAG(parent);
+                foreach (var child in children)
                 {
-                    var sibling = _familyDAG.People.ContainsKey(relationship.ToPersonId) 
-                        ? _familyDAG.People[relationship.ToPersonId] 
-                        : null;
-                    if (sibling != null)
+                    if (child.dataBaseOwnerId != person.dataBaseOwnerId && 
+                        !siblings.Any(s => s.dataBaseOwnerId == child.dataBaseOwnerId))
                     {
-                        siblings.Add(sibling);
+                        siblings.Add(child);
                     }
                 }
             }
             
             return siblings;
         }
-        
+
         /// <summary>
         /// Get spouses of a person using DAG
         /// </summary>
@@ -279,62 +253,56 @@ namespace Assets.Scripts.ContentProviders
         }
 
         /// <summary>
-        /// Legacy close family member gathering - kept as fallback
+        /// Get parents of a person using DAG
         /// </summary>
-        private List<Person> GetCloseFamilyMembersLegacy(Person focusPerson)
+        private List<Person> GetParentsFromDAG(Person person)
         {
-            var closeFamilyMembers = new HashSet<Person>();
+            var parents = new List<Person>();
+            var directRelationships = _familyDAG.GetDirectRelationships(person.dataBaseOwnerId);
             
-            // Add the focus person themselves
-            closeFamilyMembers.Add(focusPerson);
+            foreach (var relationship in directRelationships)
+            {
+                if ((relationship.RelationshipType == PersonRelationshipType.Father || 
+                     relationship.RelationshipType == PersonRelationshipType.Mother) &&
+                    relationship.ToPersonId == person.dataBaseOwnerId)
+                {
+                    var parent = _familyDAG.People.ContainsKey(relationship.FromPersonId) 
+                        ? _familyDAG.People[relationship.FromPersonId] 
+                        : null;
+                    if (parent != null)
+                    {
+                        parents.Add(parent);
+                    }
+                }
+            }
             
-            // Get all descendants of the focus person
-            AddDescendants(focusPerson, closeFamilyMembers);
-            
-            // Get spouse(s) of the focus person
-            AddSpouses(focusPerson, closeFamilyMembers);
-            
-            // Get in-laws (spouse's family)
-            AddInLaws(focusPerson, closeFamilyMembers);
-            
-            // Get siblings and their spouses
-            AddSiblingsAndTheirSpouses(focusPerson, closeFamilyMembers);
-            
-            // Get nieces and nephews
-            AddNiecesAndNephews(focusPerson, closeFamilyMembers);
-            
-            // Get parents
-            AddParents(focusPerson, closeFamilyMembers);
-            
-            // Get grandparents
-            AddGrandparents(focusPerson, closeFamilyMembers);
-            
-            // Get aunts, uncles, and cousins
-            AddAuntsUnclesAndCousins(focusPerson, closeFamilyMembers);
-            
-            return closeFamilyMembers.ToList();
+            return parents;
         }
 
         /// <summary>
-        /// Gets tight family members for the focus person (descendants, siblings, parents)
+        /// Get children of a person using DAG
         /// </summary>
-        private List<Person> GetTightFamilyMembers(Person focusPerson)
+        private List<Person> GetChildrenFromDAG(Person person)
         {
-            var tightFamilyMembers = new HashSet<Person>();
+            var children = new List<Person>();
+            var directRelationships = _familyDAG.GetDirectRelationships(person.dataBaseOwnerId);
             
-            // Add the focus person themselves
-            tightFamilyMembers.Add(focusPerson);
+            foreach (var relationship in directRelationships)
+            {
+                if (relationship.RelationshipType == PersonRelationshipType.Child &&
+                    relationship.FromPersonId == person.dataBaseOwnerId)
+                {
+                    var child = _familyDAG.People.ContainsKey(relationship.ToPersonId) 
+                        ? _familyDAG.People[relationship.ToPersonId] 
+                        : null;
+                    if (child != null)
+                    {
+                        children.Add(child);
+                    }
+                }
+            }
             
-            // Get all descendants of the focus person
-            AddDescendants(focusPerson, tightFamilyMembers);
-            
-            // Get siblings
-            AddSiblings(focusPerson, tightFamilyMembers);
-            
-            // Get parents
-            AddParents(focusPerson, tightFamilyMembers);
-            
-            return tightFamilyMembers.ToList();
+            return children;
         }
 
         /// <summary>
@@ -356,7 +324,7 @@ namespace Assets.Scripts.ContentProviders
             
             foreach (var child in birthsThisYear)
             {
-                var parents = GetParentsOfPerson(child);
+                var parents = GetParentsFromDAG(child);
                 var relationship = GetRelationshipToPerson(child, focusPerson);
                 
                 // Check if focus person is one of the parents
@@ -392,23 +360,41 @@ namespace Assets.Scripts.ContentProviders
         private string GenerateMarriageAnnouncements(Person focusPerson, List<Person> closeFamilyMembers, int year)
         {
             var sb = new StringBuilder();
-            var marriagesThisYear = new List<Marriage>();
+            var marriagesThisYear = new List<(Person bride, Person groom, int marriageYear)>();
             
-            // Get all marriages for close family members in this year
+            // Get all marriages for close family members in this year from DAG
             foreach (var person in closeFamilyMembers)
             {
-                var marriages = _dataProvider.GetMarriages(person.dataBaseOwnerId, true);
-                marriagesThisYear.AddRange(marriages.Where(m => m.marriageYear == year));
-                
-                var marriagesAsWife = _dataProvider.GetMarriages(person.dataBaseOwnerId, false);
-                marriagesThisYear.AddRange(marriagesAsWife.Where(m => m.marriageYear == year));
+                var relationships = _familyDAG.GetDirectRelationships(person.dataBaseOwnerId);
+                foreach (var relationship in relationships)
+                {
+                    if (relationship.RelationshipType == PersonRelationshipType.Spouse && 
+                        relationship.EventDate.HasValue && 
+                        relationship.EventDate.Value == year)
+                    {
+                        var spouse = _familyDAG.People.ContainsKey(relationship.ToPersonId) 
+                            ? _familyDAG.People[relationship.ToPersonId] 
+                            : null;
+                        
+                        if (spouse != null)
+                        {
+                            // Determine bride and groom based on gender
+                            var bride = person.gender == PersonGenderType.Female ? person : spouse;
+                            var groom = person.gender == PersonGenderType.Male ? person : spouse;
+                            
+                            // Avoid duplicates by checking if this marriage is already recorded
+                            var existingMarriage = marriagesThisYear.FirstOrDefault(m => 
+                                (m.bride.dataBaseOwnerId == bride.dataBaseOwnerId && m.groom.dataBaseOwnerId == groom.dataBaseOwnerId) ||
+                                (m.bride.dataBaseOwnerId == groom.dataBaseOwnerId && m.groom.dataBaseOwnerId == bride.dataBaseOwnerId));
+                            
+                            if (existingMarriage.bride == null)
+                            {
+                                marriagesThisYear.Add((bride, groom, year));
+                            }
+                        }
+                    }
+                }
             }
-            
-            // Remove duplicates - group by both husband and wife IDs to ensure no duplicate marriages
-            marriagesThisYear = marriagesThisYear
-                .GroupBy(m => new { m.husbandId, m.wifeId })
-                .Select(g => g.First())
-                .ToList();
             
             if (!marriagesThisYear.Any())
             {
@@ -418,31 +404,28 @@ namespace Assets.Scripts.ContentProviders
             
             foreach (var marriage in marriagesThisYear)
             {
-                var bride = _dataProvider.GetPerson(marriage.wifeId).FirstOrDefault();
-                var groom = _dataProvider.GetPerson(marriage.husbandId).FirstOrDefault();
+                var bride = marriage.bride;
+                var groom = marriage.groom;
                 
-                if (bride != null && groom != null)
-                {
-                    var brideRelationship = GetRelationshipToPerson(bride, focusPerson);
-                    var groomRelationship = GetRelationshipToPerson(groom, focusPerson);
-                    
-                    var brideAge = CalculateAge(bride.originalBirthEventDateYear, marriage.marriageYear);
-                    var groomAge = CalculateAge(groom.originalBirthEventDateYear, marriage.marriageYear);
-                    
-                    sb.AppendLine($"{FormatPersonName(bride)}, {brideAge}, {brideRelationship} of {FormatPersonName(focusPerson)}, was united in marriage to {FormatPersonName(groom)}, {groomAge}, {groomRelationship} of {FormatPersonName(focusPerson)}.");
-                    sb.AppendLine($"The ceremony took place on {FormatDate(marriage.marriageMonth, marriage.marriageDay, marriage.marriageYear)}.");
-                    
-                    // Add parents information
-                    var brideParents = GetParentsOfPerson(bride);
-                    var groomParents = GetParentsOfPerson(groom);
-                    
-                    if (brideParents.Any())
-                        sb.AppendLine($"The bride is the daughter of {GetParentsNames(brideParents)}.");
-                    if (groomParents.Any())
-                        sb.AppendLine($"The groom is the son of {GetParentsNames(groomParents)}.");
-                    
-                    sb.AppendLine();
-                }
+                var brideRelationship = GetRelationshipToPerson(bride, focusPerson);
+                var groomRelationship = GetRelationshipToPerson(groom, focusPerson);
+                
+                var brideAge = CalculateAge(bride.originalBirthEventDateYear, marriage.marriageYear);
+                var groomAge = CalculateAge(groom.originalBirthEventDateYear, marriage.marriageYear);
+                
+                sb.AppendLine($"{FormatPersonName(bride)}, {brideAge}, {brideRelationship} of {FormatPersonName(focusPerson)}, was united in marriage to {FormatPersonName(groom)}, {groomAge}, {groomRelationship} of {FormatPersonName(focusPerson)}.");
+                sb.AppendLine($"The ceremony took place in {marriage.marriageYear}.");
+                
+                // Add parents information
+                var brideParents = GetParentsFromDAG(bride);
+                var groomParents = GetParentsFromDAG(groom);
+                
+                if (brideParents.Any())
+                    sb.AppendLine($"The bride is the daughter of {GetParentsNames(brideParents)}.");
+                if (groomParents.Any())
+                    sb.AppendLine($"The groom is the son of {GetParentsNames(groomParents)}.");
+                
+                sb.AppendLine();
             }
             
             return sb.ToString();
@@ -454,7 +437,7 @@ namespace Assets.Scripts.ContentProviders
         private string GenerateDeathAnnouncements(Person focusPerson, List<Person> closeFamilyMembers, int year)
         {
             var sb = new StringBuilder();
-            var deathsThisYear = closeFamilyMembers.Where(p => p.originalDeathEventDateYear == year && !p.isLiving)
+            var deathsThisYear = closeFamilyMembers.Where(p => p.originalDeathEventDateYear == year)
                 .GroupBy(p => p.dataBaseOwnerId)
                 .Select(g => g.First())
                 .ToList();
@@ -465,778 +448,154 @@ namespace Assets.Scripts.ContentProviders
                 return sb.ToString();
             }
             
-            foreach (var deceased in deathsThisYear)
+            foreach (var person in deathsThisYear)
             {
-                var relationship = GetRelationshipToPerson(deceased, focusPerson);
-                var age = CalculateAge(deceased.originalBirthEventDateYear, deceased.originalDeathEventDateYear);
+                var relationship = GetRelationshipToPerson(person, focusPerson);
+                var age = CalculateAge(person.originalBirthEventDateYear, person.originalDeathEventDateYear);
                 
-                sb.AppendLine($"{FormatPersonName(deceased)}, {age}, {relationship} of {FormatPersonName(focusPerson)}, passed away on {FormatDate(deceased.originalDeathEventDateMonth, deceased.originalDeathEventDateDay, deceased.originalDeathEventDateYear)}.");
-                sb.AppendLine($"Born: {FormatDate(deceased.originalBirthEventDateMonth, deceased.originalBirthEventDateDay, deceased.originalBirthEventDateYear)}");
-                
-                // Get tight family of the deceased
-                var tightFamily = GetTightFamilyMembers(deceased);
-                
-                // Those who preceded them in death
-                var preceded = tightFamily.Where(p => !p.isLiving && p.originalDeathEventDateYear < deceased.originalDeathEventDateYear && p.dataBaseOwnerId != deceased.dataBaseOwnerId)
-                    .GroupBy(p => p.dataBaseOwnerId)
-                    .Select(g => g.First())
-                    .ToList();
-                if (preceded.Any())
-                {
-                    sb.AppendLine();
-                    sb.AppendLine($"Preceded in death by: {string.Join(", ", preceded.Select(p => $"{FormatPersonName(p)} ({GetRelationshipToPerson(p, deceased)}, {p.originalDeathEventDateYear})"))}");
-                }
-                
-                // Those who survived them
-                var survived = tightFamily.Where(p => p.isLiving && 
-                    p.dataBaseOwnerId != deceased.dataBaseOwnerId &&
-                    (p.originalBirthEventDateYear == 0 || p.originalBirthEventDateYear <= deceased.originalDeathEventDateYear))
-                    .GroupBy(p => p.dataBaseOwnerId)
-                    .Select(g => g.First())
-                    .ToList();
-                if (survived.Any())
-                {
-                    sb.AppendLine();
-                    sb.AppendLine($"Survived by: {string.Join(", ", survived.Select(p => $"{FormatPersonName(p)} ({GetRelationshipToPerson(p, deceased)})"))}");
-                }
-                
+                sb.AppendLine($"{FormatPersonName(person)}, {age}, {relationship} of {FormatPersonName(focusPerson)}, passed away.");
+                sb.AppendLine($"Died: {FormatDate(person.originalDeathEventDateMonth, person.originalDeathEventDateDay, person.originalDeathEventDateYear)}");
                 sb.AppendLine();
             }
             
             return sb.ToString();
         }
 
-        // Helper methods for adding family members
-        private void AddDescendants(Person person, HashSet<Person> familyMembers)
-        {
-            AddDescendants(person, familyMembers, new HashSet<int>());
-        }
-        
-        private void AddDescendants(Person person, HashSet<Person> familyMembers, HashSet<int> visitedPersonIds, int maxDepth = 10)
-        {
-            // Prevent circular references and limit recursion depth
-            if (visitedPersonIds.Contains(person.dataBaseOwnerId) || maxDepth <= 0)
-                return;
-                
-            visitedPersonIds.Add(person.dataBaseOwnerId);
-            
-            var marriages = _dataProvider.GetMarriages(person.dataBaseOwnerId, true);
-            marriages.AddRange(_dataProvider.GetMarriages(person.dataBaseOwnerId, false));
-            
-            foreach (var marriage in marriages)
-            {
-                var children = _dataProvider.GetChildren(marriage.familyId);
-                foreach (var child in children)
-                {
-                    var childPerson = _dataProvider.GetPerson(child.childId).FirstOrDefault();
-                    if (childPerson != null && familyMembers.Add(childPerson))
-                    {
-                        // Recursively add descendants with circular reference protection and depth limiting
-                        AddDescendants(childPerson, familyMembers, visitedPersonIds, maxDepth - 1);
-                    }
-                }
-            }
-        }
-
-        private void AddSpouses(Person person, HashSet<Person> familyMembers)
-        {
-            var marriages = _dataProvider.GetMarriages(person.dataBaseOwnerId, true);
-            foreach (var marriage in marriages)
-            {
-                var spouse = _dataProvider.GetPerson(marriage.wifeId).FirstOrDefault();
-                if (spouse != null) familyMembers.Add(spouse);
-            }
-            
-            marriages = _dataProvider.GetMarriages(person.dataBaseOwnerId, false);
-            foreach (var marriage in marriages)
-            {
-                var spouse = _dataProvider.GetPerson(marriage.husbandId).FirstOrDefault();
-                if (spouse != null) familyMembers.Add(spouse);
-            }
-        }
-
-        private void AddInLaws(Person person, HashSet<Person> familyMembers)
-        {
-            // Get person's spouse(s)
-            var spouses = new List<Person>();
-            var marriages = _dataProvider.GetMarriages(person.dataBaseOwnerId, true);
-            foreach (var marriage in marriages)
-            {
-                var spouse = _dataProvider.GetPerson(marriage.wifeId).FirstOrDefault();
-                if (spouse != null) spouses.Add(spouse);
-            }
-            
-            marriages = _dataProvider.GetMarriages(person.dataBaseOwnerId, false);
-            foreach (var marriage in marriages)
-            {
-                var spouse = _dataProvider.GetPerson(marriage.husbandId).FirstOrDefault();
-                if (spouse != null) spouses.Add(spouse);
-            }
-            
-            // For each spouse, add their parents and siblings
-            foreach (var spouse in spouses)
-            {
-                AddParents(spouse, familyMembers);
-                AddSiblings(spouse, familyMembers);
-            }
-        }
-
-        private void AddSiblingsAndTheirSpouses(Person person, HashSet<Person> familyMembers)
-        {
-            AddSiblings(person, familyMembers);
-            
-            // Add spouses of siblings
-            var siblings = GetSiblings(person);
-            foreach (var sibling in siblings)
-            {
-                AddSpouses(sibling, familyMembers);
-            }
-        }
-
-        private void AddSiblings(Person person, HashSet<Person> familyMembers)
-        {
-            var siblings = GetSiblings(person);
-            foreach (var sibling in siblings)
-            {
-                familyMembers.Add(sibling);
-            }
-        }
-
-        private void AddNiecesAndNephews(Person person, HashSet<Person> familyMembers)
-        {
-            var siblings = GetSiblings(person);
-            foreach (var sibling in siblings)
-            {
-                AddDescendants(sibling, familyMembers);
-            }
-        }
-
-        private void AddParents(Person person, HashSet<Person> familyMembers)
-        {
-            var parents = GetParentsOfPerson(person);
-            foreach (var parent in parents)
-            {
-                familyMembers.Add(parent);
-            }
-        }
-
-        private void AddGrandparents(Person person, HashSet<Person> familyMembers)
-        {
-            var parents = GetParentsOfPerson(person);
-            foreach (var parent in parents)
-            {
-                var grandparents = GetParentsOfPerson(parent);
-                foreach (var grandparent in grandparents)
-                {
-                    familyMembers.Add(grandparent);
-                }
-            }
-        }
-
-        private void AddAuntsUnclesAndCousins(Person person, HashSet<Person> familyMembers)
-        {
-            var parents = GetParentsOfPerson(person);
-            foreach (var parent in parents)
-            {
-                // Get parent's siblings (aunts and uncles)
-                var auntsUncles = GetSiblings(parent);
-                foreach (var auntUncle in auntsUncles)
-                {
-                    familyMembers.Add(auntUncle);
-                    // Add their spouses
-                    AddSpouses(auntUncle, familyMembers);
-                    // Add their children (cousins)
-                    AddDescendants(auntUncle, familyMembers);
-                }
-            }
-        }
-
-        // Helper methods for getting family relationships
-        private List<Person> GetSiblings(Person person)
-        {
-            return GetSiblings(person, new HashSet<int>());
-        }
-        
-        private List<Person> GetSiblings(Person person, HashSet<int> visitedPersonIds)
-        {
-            var siblings = new List<Person>();
-            
-            // Prevent circular references
-            if (visitedPersonIds.Contains(person.dataBaseOwnerId))
-            {
-                Debug.LogWarning($"[FamilyHappeningsContent] Circular reference detected getting siblings for {person.givenName} {person.surName} (ID: {person.dataBaseOwnerId})");
-                return siblings;
-            }
-            
-            visitedPersonIds.Add(person.dataBaseOwnerId);
-            
-            try
-            {
-                var parentage = _dataProvider.GetParents(person.dataBaseOwnerId);
-                
-                foreach (var parent in parentage)
-                {
-                    var children = _dataProvider.GetChildren(parent.familyId);
-                    foreach (var child in children)
-                    {
-                        // Skip self and prevent circular references
-                        if (child.childId != person.dataBaseOwnerId && !visitedPersonIds.Contains(child.childId))
-                        {
-                            var siblingPerson = _dataProvider.GetPerson(child.childId).FirstOrDefault();
-                            if (siblingPerson != null && !siblings.Any(s => s.dataBaseOwnerId == siblingPerson.dataBaseOwnerId))
-                            {
-                                siblings.Add(siblingPerson);
-                            }
-                        }
-                    }
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogError($"[FamilyHappeningsContent] Error getting siblings for {person.givenName} {person.surName} (ID: {person.dataBaseOwnerId}): {ex.Message}");
-            }
-            
-            return siblings;
-        }
-
-        private List<Person> GetParentsOfPerson(Person person)
-        {
-            return GetParentsOfPerson(person, new HashSet<int>());
-        }
-        
-        private List<Person> GetParentsOfPerson(Person person, HashSet<int> visitedPersonIds)
-        {
-            var parents = new List<Person>();
-            
-            // Prevent circular references - if we're already looking up this person's parents, stop
-            if (visitedPersonIds.Contains(person.dataBaseOwnerId))
-            {
-                Debug.LogWarning($"[FamilyHappeningsContent] Circular reference detected for person {person.givenName} {person.surName} (ID: {person.dataBaseOwnerId})");
-                return parents;
-            }
-            
-            visitedPersonIds.Add(person.dataBaseOwnerId);
-            
-            try
-            {
-                var parentage = _dataProvider.GetParents(person.dataBaseOwnerId);
-                
-                foreach (var parent in parentage)
-                {
-                    // Prevent person from being their own parent
-                    if (parent.fatherId == person.dataBaseOwnerId || parent.motherId == person.dataBaseOwnerId)
-                    {
-                        Debug.LogWarning($"[FamilyHappeningsContent] Self-parent relationship detected for person {person.givenName} {person.surName} (ID: {person.dataBaseOwnerId})");
-                        continue;
-                    }
-                    
-                    var father = _dataProvider.GetPerson(parent.fatherId).FirstOrDefault();
-                    var mother = _dataProvider.GetPerson(parent.motherId).FirstOrDefault();
-                    
-                    if (father != null && !parents.Any(p => p.dataBaseOwnerId == father.dataBaseOwnerId))
-                        parents.Add(father);
-                    if (mother != null && !parents.Any(p => p.dataBaseOwnerId == mother.dataBaseOwnerId))
-                        parents.Add(mother);
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogError($"[FamilyHappeningsContent] Error getting parents for {person.givenName} {person.surName} (ID: {person.dataBaseOwnerId}): {ex.Message}");
-            }
-            
-            return parents;
-        }
-
-        // Helper methods for formatting and relationship calculation
+        /// <summary>
+        /// Gets the relationship between two people using DAG
+        /// </summary>
         private string GetRelationshipToPerson(Person relationshipPerson, Person sourcePerson)
         {
-            if (relationshipPerson.dataBaseOwnerId == sourcePerson.dataBaseOwnerId)
-            {
-                return "self";
-            }
-            
-            // Use DAG for efficient relationship lookup if available
             if (_familyDAG != null)
             {
                 var relationship = _familyDAG.GetRelationshipBetween(relationshipPerson.dataBaseOwnerId, sourcePerson.dataBaseOwnerId);
-                
-                if (relationship != "relative" && !string.IsNullOrEmpty(relationship))
-                {
-                    return relationship;
-                }
+                return relationship; // GetRelationshipBetween already returns a human-readable string
             }
             
-            // Fallback to legacy complex logic if DAG not available or relationship not found
-            return GetRelationshipToPersonLegacy(relationshipPerson, sourcePerson);
-        }
-
-
-
-        /// <summary>
-        /// Legacy complex relationship determination - kept as fallback
-        /// </summary>
-        private string GetRelationshipToPersonLegacy(Person relationshipPerson, Person sourcePerson)
-        {
-            // Check direct relationships first
-            
-            // Check if relationshipPerson is a descendant of sourcePerson
-            if (IsDescendant(relationshipPerson, sourcePerson))
-            {
-                return GetDescendantRelationship(relationshipPerson, sourcePerson);
-            }
-            
-            // Check if relationshipPerson is an ancestor of sourcePerson
-            if (IsAncestor(relationshipPerson, sourcePerson))
-            {
-                return GetAncestorRelationship(relationshipPerson, sourcePerson);
-            }
-            
-            // Check if relationshipPerson is a sibling of sourcePerson
-            if (IsSibling(relationshipPerson, sourcePerson))
-            {
-                return GetSiblingRelationship(relationshipPerson, sourcePerson);
-            }
-            
-            // Check if relationshipPerson is a spouse of sourcePerson
-            if (IsSpouse(relationshipPerson, sourcePerson))
-            {
-                return GetSpouseRelationship(relationshipPerson, sourcePerson);
-            }
-            
-            // Check extended relationships
-            
-            // Check for in-laws
-            string inLawRelationship = GetInLawRelationship(relationshipPerson, sourcePerson);
-            if (inLawRelationship != null)
-            {
-                return inLawRelationship;
-            }
-            
-            // Check for aunt/uncle relationships
-            string auntUncleRelationship = GetAuntUncleRelationship(relationshipPerson, sourcePerson);
-            if (auntUncleRelationship != null)
-            {
-                return auntUncleRelationship;
-            }
-            
-            // Check for niece/nephew relationships
-            string nieceNephewRelationship = GetNieceNephewRelationship(relationshipPerson, sourcePerson);
-            if (nieceNephewRelationship != null)
-            {
-                return nieceNephewRelationship;
-            }
-            
-            // Check for cousin relationships
-            string cousinRelationship = GetCousinRelationship(relationshipPerson, sourcePerson);
-            if (cousinRelationship != null)
-            {
-                return cousinRelationship;
-            }
-            
-            // Default to a generic relationship
             return "relative";
         }
 
-        // Basic relationship checking methods (simplified)
-        private bool IsDescendant(Person person, Person ancestor)
-        {
-            return IsDescendant(person, ancestor, new HashSet<int>());
-        }
-        
-        private bool IsDescendant(Person person, Person ancestor, HashSet<int> visitedPersonIds, int maxDepth = 10)
-        {
-            // Prevent circular references and limit recursion depth
-            if (visitedPersonIds.Contains(person.dataBaseOwnerId) || maxDepth <= 0)
-                return false;
-                
-            visitedPersonIds.Add(person.dataBaseOwnerId);
-            
-            // Check if person is a child, grandchild, etc. of ancestor
-            var parents = GetParentsOfPerson(person, visitedPersonIds);
-            foreach (var parent in parents)
-            {
-                if (parent.dataBaseOwnerId == ancestor.dataBaseOwnerId)
-                    return true;
-                if (IsDescendant(parent, ancestor, visitedPersonIds, maxDepth - 1))
-                    return true;
-            }
-            return false;
-        }
-
-        private bool IsAncestor(Person person, Person descendant)
-        {
-            return IsDescendant(descendant, person);
-        }
-
-        private bool IsSibling(Person person, Person otherPerson)
-        {
-            var person1Parents = GetParentsOfPerson(person);
-            var person2Parents = GetParentsOfPerson(otherPerson);
-            
-            return person1Parents.Any(p1 => person2Parents.Any(p2 => p1.dataBaseOwnerId == p2.dataBaseOwnerId));
-        }
-
-        private bool IsSpouse(Person person, Person otherPerson)
-        {
-            var marriages = _dataProvider.GetMarriages(person.dataBaseOwnerId, true);
-            if (marriages.Any(m => m.wifeId == otherPerson.dataBaseOwnerId))
-                return true;
-            
-            marriages = _dataProvider.GetMarriages(person.dataBaseOwnerId, false);
-            if (marriages.Any(m => m.husbandId == otherPerson.dataBaseOwnerId))
-                return true;
-            
-            return false;
-        }
-
-        private string GetDescendantRelationship(Person descendant, Person ancestor)
-        {
-            return GetDescendantRelationship(descendant, ancestor, new HashSet<int>());
-        }
-        
-        private string GetDescendantRelationship(Person descendant, Person ancestor, HashSet<int> visitedPersonIds)
-        {
-            // Prevent circular references
-            if (visitedPersonIds.Contains(descendant.dataBaseOwnerId))
-                return "descendant";
-                
-            visitedPersonIds.Add(descendant.dataBaseOwnerId);
-            
-            var parents = GetParentsOfPerson(descendant, visitedPersonIds);
-            if (parents.Any(p => p.dataBaseOwnerId == ancestor.dataBaseOwnerId))
-            {
-                return descendant.gender == PersonGenderType.Male ? "son" : "daughter";
-            }
-            
-            // Check for grandchild, great-grandchild, etc.
-            foreach (var parent in parents)
-            {
-                if (IsDescendant(parent, ancestor))
-                {
-                    var parentRelationship = GetDescendantRelationship(parent, ancestor, visitedPersonIds);
-                    if (parentRelationship == "son" || parentRelationship == "daughter")
-                    {
-                        return descendant.gender == PersonGenderType.Male ? "grandson" : "granddaughter";
-                    }
-                }
-            }
-            
-            return "descendant";
-        }
-
-        private string GetAncestorRelationship(Person ancestor, Person descendant)
-        {
-            return GetAncestorRelationship(ancestor, descendant, new HashSet<int>());
-        }
-        
-        private string GetAncestorRelationship(Person ancestor, Person descendant, HashSet<int> visitedPersonIds)
-        {
-            // Prevent circular references
-            if (visitedPersonIds.Contains(descendant.dataBaseOwnerId))
-                return "ancestor";
-                
-            visitedPersonIds.Add(descendant.dataBaseOwnerId);
-            
-            var parents = GetParentsOfPerson(descendant, visitedPersonIds);
-            if (parents.Any(p => p.dataBaseOwnerId == ancestor.dataBaseOwnerId))
-            {
-                return ancestor.gender == PersonGenderType.Male ? "father" : "mother";
-            }
-            
-            // Check for grandfather, grandmother, etc.
-            foreach (var parent in parents)
-            {
-                if (IsAncestor(ancestor, parent))
-                {
-                    var parentRelationship = GetAncestorRelationship(ancestor, parent, visitedPersonIds);
-                    if (parentRelationship == "father" || parentRelationship == "mother")
-                    {
-                        return ancestor.gender == PersonGenderType.Male ? "grandfather" : "grandmother";
-                    }
-                }
-            }
-            
-            return "ancestor";
-        }
-
-        private string GetSiblingRelationship(Person sibling, Person person)
-        {
-            return sibling.gender == PersonGenderType.Male ? "brother" : "sister";
-        }
-
-        private string GetSpouseRelationship(Person spouse, Person person)
-        {
-            return spouse.gender == PersonGenderType.Male ? "husband" : "wife";
-        }
-
-        // Extended relationship methods
-        private string GetInLawRelationship(Person relationshipPerson, Person sourcePerson)
-        {
-            // Check if relationshipPerson is parent of sourcePerson's spouse (mother/father-in-law)
-            var sourceSpouses = GetSpousesOfPerson(sourcePerson);
-            foreach (var spouse in sourceSpouses)
-            {
-                var spouseParents = GetParentsOfPerson(spouse);
-                if (spouseParents.Any(p => p.dataBaseOwnerId == relationshipPerson.dataBaseOwnerId))
-                {
-                    return relationshipPerson.gender == PersonGenderType.Male ? "father-in-law" : "mother-in-law";
-                }
-            }
-            
-            // Check if relationshipPerson is sibling of sourcePerson's spouse (sister/brother-in-law)
-            foreach (var spouse in sourceSpouses)
-            {
-                var spouseSiblings = GetSiblings(spouse);
-                if (spouseSiblings.Any(s => s.dataBaseOwnerId == relationshipPerson.dataBaseOwnerId))
-                {
-                    return relationshipPerson.gender == PersonGenderType.Male ? "brother-in-law" : "sister-in-law";
-                }
-            }
-            
-            // Check if relationshipPerson is spouse of sourcePerson's sibling (sister/brother-in-law)
-            var sourceSiblings = GetSiblings(sourcePerson);
-            foreach (var sibling in sourceSiblings)
-            {
-                var siblingSpouses = GetSpousesOfPerson(sibling);
-                if (siblingSpouses.Any(s => s.dataBaseOwnerId == relationshipPerson.dataBaseOwnerId))
-                {
-                    return relationshipPerson.gender == PersonGenderType.Male ? "brother-in-law" : "sister-in-law";
-                }
-            }
-            
-            return null;
-        }
-
-        private string GetAuntUncleRelationship(Person relationshipPerson, Person sourcePerson)
-        {
-            // Check if relationshipPerson is sibling of sourcePerson's parent (aunt/uncle)
-            var sourceParents = GetParentsOfPerson(sourcePerson);
-            foreach (var parent in sourceParents)
-            {
-                var parentSiblings = GetSiblings(parent);
-                if (parentSiblings.Any(s => s.dataBaseOwnerId == relationshipPerson.dataBaseOwnerId))
-                {
-                    return relationshipPerson.gender == PersonGenderType.Male ? "uncle" : "aunt";
-                }
-            }
-            
-            // Check if relationshipPerson is spouse of sourcePerson's parent's sibling (aunt/uncle by marriage)
-            foreach (var parent in sourceParents)
-            {
-                var parentSiblings = GetSiblings(parent);
-                foreach (var parentSibling in parentSiblings)
-                {
-                    var parentSiblingSpouses = GetSpousesOfPerson(parentSibling);
-                    if (parentSiblingSpouses.Any(s => s.dataBaseOwnerId == relationshipPerson.dataBaseOwnerId))
-                    {
-                        return relationshipPerson.gender == PersonGenderType.Male ? "uncle" : "aunt";
-                    }
-                }
-            }
-            
-            return null;
-        }
-
-        private string GetNieceNephewRelationship(Person relationshipPerson, Person sourcePerson)
-        {
-            // Check if relationshipPerson is child of sourcePerson's sibling (niece/nephew)
-            var sourceSiblings = GetSiblings(sourcePerson);
-            
-            foreach (var sibling in sourceSiblings)
-            {
-                if (IsDescendant(relationshipPerson, sibling))
-                {
-                    // Check if it's a direct child (niece/nephew) vs grandchild, etc.
-                    var siblingChildren = GetChildrenOfPerson(sibling);
-                    if (siblingChildren.Any(c => c.dataBaseOwnerId == relationshipPerson.dataBaseOwnerId))
-                    {
-                        return relationshipPerson.gender == PersonGenderType.Male ? "nephew" : "niece";
-                    }
-                }
-            }
-            
-            return null;
-        }
-
-        private string GetCousinRelationship(Person relationshipPerson, Person sourcePerson)
-        {
-            // Check if relationshipPerson is child of sourcePerson's parent's sibling (cousin)
-            var sourceParents = GetParentsOfPerson(sourcePerson);
-            
-            foreach (var parent in sourceParents)
-            {
-                var parentSiblings = GetSiblings(parent);
-                
-                foreach (var parentSibling in parentSiblings)
-                {
-                    var parentSiblingChildren = GetChildrenOfPerson(parentSibling);
-                    
-                    if (parentSiblingChildren.Any(c => c.dataBaseOwnerId == relationshipPerson.dataBaseOwnerId))
-                    {
-                        return "cousin";
-                    }
-                }
-            }
-            
-            return null;
-        }
-
-        // Helper method to get spouses of a person
-        private List<Person> GetSpousesOfPerson(Person person)
-        {
-            var spouses = new List<Person>();
-            
-            var marriages = _dataProvider.GetMarriages(person.dataBaseOwnerId, true);
-            foreach (var marriage in marriages)
-            {
-                var spouse = _dataProvider.GetPerson(marriage.wifeId).FirstOrDefault();
-                if (spouse != null) spouses.Add(spouse);
-            }
-            
-            marriages = _dataProvider.GetMarriages(person.dataBaseOwnerId, false);
-            foreach (var marriage in marriages)
-            {
-                var spouse = _dataProvider.GetPerson(marriage.husbandId).FirstOrDefault();
-                if (spouse != null) spouses.Add(spouse);
-            }
-            
-            return spouses;
-        }
-
-        // Helper method to get children of a person
-        private List<Person> GetChildrenOfPerson(Person person)
-        {
-            var children = new List<Person>();
-            
-            var marriages = _dataProvider.GetMarriages(person.dataBaseOwnerId, true);
-            marriages.AddRange(_dataProvider.GetMarriages(person.dataBaseOwnerId, false));
-            
-            foreach (var marriage in marriages)
-            {
-                var marriageChildren = _dataProvider.GetChildren(marriage.familyId);
-                foreach (var child in marriageChildren)
-                {
-                    var childPerson = _dataProvider.GetPerson(child.childId).FirstOrDefault();
-                    if (childPerson != null && !children.Any(c => c.dataBaseOwnerId == childPerson.dataBaseOwnerId))
-                    {
-                        children.Add(childPerson);
-                    }
-                }
-            }
-            
-            return children;
-        }
-
-        // Utility methods
+        /// <summary>
+        /// Formats parent names for announcements
+        /// </summary>
         private string GetParentsNames(List<Person> parents)
         {
-            if (parents.Count == 0) return "Unknown";
-            if (parents.Count == 1) return FormatPersonName(parents[0]);
+            if (!parents.Any())
+                return "Unknown";
+            
+            if (parents.Count == 1)
+                return FormatPersonName(parents[0]);
             
             var father = parents.FirstOrDefault(p => p.gender == PersonGenderType.Male);
             var mother = parents.FirstOrDefault(p => p.gender == PersonGenderType.Female);
             
             if (father != null && mother != null)
-            {
-                if (showDataBaseOwnerId)
-                    return $"{father.givenName} ({father.dataBaseOwnerId}) and {mother.givenName} ({mother.dataBaseOwnerId}) {father.surName}";
-                else
-                    return $"{father.givenName} and {mother.givenName} {father.surName}";
-            }
-            
-            return string.Join(" and ", parents.Select(p => FormatPersonName(p)));
-        }
-
-        private string GetGenderText(PersonGenderType gender)
-        {
-            return gender == PersonGenderType.Male ? "son" : (gender == PersonGenderType.Female ? "daughter" : "child");
-        }
-
-        private string FormatDate(int month, int day, int year)
-        {
-            if (year == 0) return "Unknown";
-            if (month == 0 || day == 0) return year.ToString();
-            
-            return $"{GetMonthName(month)} {day}, {year}";
-        }
-
-        private string GetMonthName(int month)
-        {
-            string[] months = { "", "January", "February", "March", "April", "May", "June",
-                               "July", "August", "September", "October", "November", "December" };
-            return month >= 1 && month <= 12 ? months[month] : "";
-        }
-
-        private string CalculateAge(int birthYear, int currentYear)
-        {
-            if (birthYear == 0 || currentYear == 0) return "unknown age";
-            int age = currentYear - birthYear;
-            return age > 0 ? $"{age} years old" : "infant";
+                return $"{FormatPersonName(father)} and {FormatPersonName(mother)}";
+            else if (father != null)
+                return FormatPersonName(father);
+            else if (mother != null)
+                return FormatPersonName(mother);
+            else
+                return string.Join(" and ", parents.Select(p => FormatPersonName(p)));
         }
 
         /// <summary>
-        /// Public method to test DAG functionality - call this from Unity Inspector or other scripts
+        /// Gets gender text for announcements
+        /// </summary>
+        private string GetGenderText(PersonGenderType gender)
+        {
+            return gender == PersonGenderType.Male ? "son" : "daughter";
+        }
+
+        /// <summary>
+        /// Formats a date for display
+        /// </summary>
+        private string FormatDate(int month, int day, int year)
+        {
+            if (month > 0 && day > 0)
+                return $"{GetMonthName(month)} {day}, {year}";
+            else if (month > 0)
+                return $"{GetMonthName(month)} {year}";
+            else
+                return year.ToString();
+        }
+
+        /// <summary>
+        /// Gets month name from number
+        /// </summary>
+        private string GetMonthName(int month)
+        {
+            string[] months = { "", "January", "February", "March", "April", "May", "June", 
+                               "July", "August", "September", "October", "November", "December" };
+            return month >= 1 && month <= 12 ? months[month] : "Unknown";
+        }
+
+        /// <summary>
+        /// Calculates age from birth year to current year
+        /// </summary>
+        private string CalculateAge(int birthYear, int currentYear)
+        {
+            if (birthYear <= 0 || currentYear <= 0)
+                return "unknown age";
+            
+            int age = currentYear - birthYear;
+            if (age < 0)
+                return "unknown age";
+            else if (age == 0)
+                return "infant";
+            else if (age == 1)
+                return "1 year old";
+            else
+                return $"{age} years old";
+        }
+
+        /// <summary>
+        /// Test DAG functionality
         /// </summary>
         public void TestDAGFunctionality()
         {
             if (_familyDAG == null)
             {
-                Debug.LogError("[FamilyHappeningsContent] DAG is null! Cannot test functionality.");
+                Debug.LogError("Family DAG is not initialized!");
                 return;
             }
+
+            Debug.Log($"DAG contains {_familyDAG.People.Count} people");
             
-            if (_familyDAG.People.Count == 0)
+            // Count total relationships by summing all direct relationships
+            int totalRelationships = 0;
+            foreach (var person in _familyDAG.People.Values)
             {
-                Debug.LogWarning("[FamilyHappeningsContent] DAG has no people! Check if DAG was built properly.");
-                return;
+                totalRelationships += _familyDAG.GetDirectRelationships(person.dataBaseOwnerId).Count;
             }
-            
-            // Test with a sample person
-            var testPerson = _familyDAG.People.Values.First();
-            
-            // Test family gathering
-            var familyMembers = GetCloseFamilyMembers(testPerson);
-            
-            // Test relationship determination with a few family members
-            foreach (var familyMember in familyMembers.Take(3))
-            {
-                if (familyMember.dataBaseOwnerId != testPerson.dataBaseOwnerId)
-                {
-                    var relationship = GetRelationshipToPerson(familyMember, testPerson);
-                }
-            }
+            // Divide by 2 since each relationship is counted twice (once for each person)
+            totalRelationships /= 2;
+            Debug.Log($"DAG contains {totalRelationships} relationships");
         }
-        
+
         /// <summary>
-        /// Get DAG statistics for debugging
+        /// Get DAG statistics
         /// </summary>
         public string GetDAGStatistics()
         {
             if (_familyDAG == null)
-                return "DAG is null";
-                
-            var stats = new System.Text.StringBuilder();
-            stats.AppendLine($"DAG Statistics:");
-            stats.AppendLine($"  Total People: {_familyDAG.People.Count}");
+                return "DAG not initialized";
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"DAG Statistics:");
+            sb.AppendLine($"- People: {_familyDAG.People.Count}");
             
+            // Count total relationships by summing all direct relationships
             int totalRelationships = 0;
-            int peopleWithRelationships = 0;
-            
             foreach (var person in _familyDAG.People.Values)
             {
-                var relationships = _familyDAG.GetDirectRelationships(person.dataBaseOwnerId);
-                totalRelationships += relationships.Count;
-                if (relationships.Count > 0)
-                    peopleWithRelationships++;
+                totalRelationships += _familyDAG.GetDirectRelationships(person.dataBaseOwnerId).Count;
             }
+            // Divide by 2 since each relationship is counted twice (once for each person)
+            totalRelationships /= 2;
+            sb.AppendLine($"- Relationships: {totalRelationships}");
             
-            stats.AppendLine($"  Total Relationships: {totalRelationships}");
-            stats.AppendLine($"  People with Relationships: {peopleWithRelationships}");
-            stats.AppendLine($"  Average Relationships per Person: {(peopleWithRelationships > 0 ? (double)totalRelationships / peopleWithRelationships : 0):F1}");
-            
-            return stats.ToString();
+            return sb.ToString();
         }
     }
-}
-
-
+} 

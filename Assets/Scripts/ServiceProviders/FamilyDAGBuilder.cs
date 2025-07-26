@@ -28,6 +28,7 @@ namespace Assets.Scripts.ServiceProviders
         /// <summary>
         /// Build a complete family DAG starting from a root person
         /// This replaces the current generation-based loading approach
+        /// Enhanced to support all "Close Family" relationships from FamilyDefinitions.md
         /// </summary>
         public FamilyDAG BuildDAGForPerson(int rootPersonId, int ancestryDepth = 5, int descendancyDepth = 5)
         {
@@ -45,6 +46,9 @@ namespace Assets.Scripts.ServiceProviders
             
             // Load descendants (children, grandchildren, etc.)
             LoadDescendantsRecursive(rootPersonId, descendancyDepth);
+            
+            // Load additional people needed for "Close Family" relationships
+            LoadCloseFamilyMembers(rootPersonId);
             
             // Build sibling relationships
             BuildSiblingRelationships();
@@ -218,6 +222,159 @@ namespace Assets.Scripts.ServiceProviders
                 else
                 {
                     Debug.LogWarning($"  -> Could not load spouse with ID: {spouseId}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Load additional people needed for "Close Family" relationships as defined in FamilyDefinitions.md
+        /// This ensures all siblings, aunts/uncles, cousins, nieces/nephews are available in the DAG
+        /// </summary>
+        private void LoadCloseFamilyMembers(int rootPersonId)
+        {
+            var rootPerson = _familyDAG.People.ContainsKey(rootPersonId) ? _familyDAG.People[rootPersonId] : null;
+            if (rootPerson == null) return;
+
+            Debug.Log($"[FamilyDAGBuilder] Loading Close Family members for {rootPerson.givenName} {rootPerson.surName} (ID: {rootPersonId})");
+
+            // 1. Load siblings of the focus person (and their spouses and children)
+            LoadSiblingsAndFamily(rootPersonId);
+
+            // 2. Load aunts and uncles (siblings of parents) and their families
+            LoadAuntsUnclesAndFamily(rootPersonId);
+
+            // 3. Load nieces and nephews (children of siblings)
+            LoadNiecesNephews(rootPersonId);
+
+            // 4. Load cousins (children of aunts and uncles)
+            LoadCousins(rootPersonId);
+
+            Debug.Log($"[FamilyDAGBuilder] Close Family loading complete. DAG now contains {_familyDAG.People.Count} people");
+        }
+
+        /// <summary>
+        /// Load siblings of a person and their families
+        /// </summary>
+        private void LoadSiblingsAndFamily(int personId)
+        {
+            var parentageList = _dataProvider.GetParents(personId);
+            int siblingsLoaded = 0;
+            
+            foreach (var parentage in parentageList)
+            {
+                // Load siblings through father
+                if (parentage.fatherId != 0)
+                {
+                    siblingsLoaded += LoadSiblingsOfParent(parentage.fatherId, personId);
+                }
+                
+                // Load siblings through mother
+                if (parentage.motherId != 0)
+                {
+                    siblingsLoaded += LoadSiblingsOfParent(parentage.motherId, personId);
+                }
+            }
+            
+            Debug.Log($"[FamilyDAGBuilder] Loaded {siblingsLoaded} siblings and their families for person {personId}");
+        }
+
+        /// <summary>
+        /// Load siblings of a specific parent (excluding the focus person)
+        /// </summary>
+        private int LoadSiblingsOfParent(int parentId, int excludePersonId)
+        {
+            var parent = _familyDAG.People.ContainsKey(parentId) ? _familyDAG.People[parentId] : LoadPersonIntoDAG(parentId);
+            if (parent == null) return 0;
+
+            int siblingsLoaded = 0;
+            
+            // Get all children of this parent
+            var marriages = _dataProvider.GetMarriages(parentId, parent.gender == PersonGenderType.Male);
+            foreach (var marriage in marriages)
+            {
+                var children = _dataProvider.GetChildren(marriage.familyId);
+                foreach (var childInfo in children)
+                {
+                    if (childInfo.childId != excludePersonId) // Don't reload the focus person
+                    {
+                        var sibling = LoadPersonIntoDAG(childInfo.childId);
+                        if (sibling != null)
+                        {
+                            siblingsLoaded++;
+                            
+                            // Load spouse(s) of this sibling
+                            LoadSpousesForPerson(childInfo.childId, sibling);
+                            
+                            // Load children of this sibling (nieces/nephews)
+                            LoadChildrenOfPerson(childInfo.childId);
+                        }
+                    }
+                }
+            }
+            
+            return siblingsLoaded;
+        }
+
+        /// <summary>
+        /// Load aunts and uncles (siblings of parents) and their families
+        /// </summary>
+        private void LoadAuntsUnclesAndFamily(int personId)
+        {
+            var parentageList = _dataProvider.GetParents(personId);
+            foreach (var parentage in parentageList)
+            {
+                // Load aunts/uncles through father
+                if (parentage.fatherId != 0)
+                {
+                    LoadSiblingsOfParent(parentage.fatherId, parentage.fatherId); // Load father's siblings
+                }
+                
+                // Load aunts/uncles through mother
+                if (parentage.motherId != 0)
+                {
+                    LoadSiblingsOfParent(parentage.motherId, parentage.motherId); // Load mother's siblings
+                }
+            }
+        }
+
+        /// <summary>
+        /// Load nieces and nephews (children of siblings)
+        /// </summary>
+        private void LoadNiecesNephews(int personId)
+        {
+            // This is already handled in LoadSiblingsAndFamily when we load children of siblings
+            // No additional loading needed here
+        }
+
+        /// <summary>
+        /// Load cousins (children of aunts and uncles)
+        /// </summary>
+        private void LoadCousins(int personId)
+        {
+            // This is already handled in LoadAuntsUnclesAndFamily when we load children of aunts/uncles
+            // No additional loading needed here
+        }
+
+        /// <summary>
+        /// Load all children of a person
+        /// </summary>
+        private void LoadChildrenOfPerson(int personId)
+        {
+            var person = _familyDAG.People.ContainsKey(personId) ? _familyDAG.People[personId] : null;
+            if (person == null) return;
+
+            var marriages = _dataProvider.GetMarriages(personId, person.gender == PersonGenderType.Male);
+            foreach (var marriage in marriages)
+            {
+                var children = _dataProvider.GetChildren(marriage.familyId);
+                foreach (var childInfo in children)
+                {
+                    var child = LoadPersonIntoDAG(childInfo.childId);
+                    if (child != null)
+                    {
+                        // Load spouse(s) of this child
+                        LoadSpousesForPerson(childInfo.childId, child);
+                    }
                 }
             }
         }
