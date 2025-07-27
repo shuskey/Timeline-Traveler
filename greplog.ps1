@@ -6,7 +6,13 @@
 
 param(
     [Parameter(Mandatory=$true, Position=0)]
-    [string]$SearchTerm
+    [string]$SearchTerm,
+    
+    [Parameter(Mandatory=$false)]
+    [int]$Start,
+    
+    [Parameter(Mandatory=$false)]
+    [int]$Count
 )
 
 # Path to Unity Editor.log file
@@ -18,9 +24,29 @@ if (-not (Test-Path $logPath)) {
     exit 1
 }
 
-# Search for the term in the log file (case-insensitive)
+# Search for the term in the log file (case-insensitive) with line numbers
 try {
-    Get-Content $logPath | Where-Object { $_ -match $SearchTerm }
+    $lineNumber = 0
+    $outputCount = 0
+    
+    Get-Content $logPath | ForEach-Object { 
+        $lineNumber++
+        
+        # Skip if we haven't reached the start line yet
+        if ($Start -and $lineNumber -lt $Start) {
+            return
+        }
+        
+        # Stop if we've reached the count limit
+        if ($Count -and $outputCount -ge $Count) {
+            return
+        }
+        
+        if ($_ -match $SearchTerm) {
+            Write-Output "$lineNumber`: $_"
+            $outputCount++
+        }
+    }
 } catch {
     Write-Error "Error reading log file: $($_.Exception.Message)"
     exit 1

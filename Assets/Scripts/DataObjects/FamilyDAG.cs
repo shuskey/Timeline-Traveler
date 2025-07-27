@@ -45,7 +45,7 @@ namespace Assets.Scripts.DataObjects
             }
 
             // Check for cycles before adding
-            if (WouldCreateCycle(fromPersonId, toPersonId))
+            if (WouldCreateCycle(fromPersonId, toPersonId, relationshipType))
             {
                 Debug.LogWarning($"[familyDAGDebugContent] Relationship {fromPersonId} -> {toPersonId} would create cycle, skipping");
                 return;
@@ -169,6 +169,8 @@ namespace Assets.Scripts.DataObjects
 
         /// <summary>
         /// Efficiently determine the relationship between any two people
+        /// The returned string is the relationship of person1 to person2
+        /// For example, if person1 is the parent of person2, the returned string will be "parent"
         /// </summary>
         public string GetRelationshipBetween(int person1Id, int person2Id)
         {
@@ -333,7 +335,7 @@ namespace Assets.Scripts.DataObjects
             {
                 PersonRelationshipType.Mother => _people[edge.ToPersonId].gender == PersonGenderType.Male ? "son" : "daughter",
                 PersonRelationshipType.Father => _people[edge.ToPersonId].gender == PersonGenderType.Male ? "son" : "daughter",
-                PersonRelationshipType.Child => _people[edge.ToPersonId].gender == PersonGenderType.Male ? "son" : "daughter",
+                PersonRelationshipType.Child => _people[edge.FromPersonId].gender == PersonGenderType.Male ? "father" : "mother",
                 PersonRelationshipType.Spouse => _people[edge.FromPersonId].gender == PersonGenderType.Male ? "husband" : "wife",
                 PersonRelationshipType.Sibling => _people[edge.ToPersonId].gender == PersonGenderType.Male ? "brother" : "sister",
                 PersonRelationshipType.NieceNephew => _people[edge.FromPersonId].gender == PersonGenderType.Male ? "uncle" : "aunt",
@@ -349,8 +351,17 @@ namespace Assets.Scripts.DataObjects
         /// Check if adding an edge would create a cycle (violate DAG property)
         /// Allow bidirectional relationships but prevent true cycles
         /// </summary>
-        private bool WouldCreateCycle(int fromPersonId, int toPersonId)
+        private bool WouldCreateCycle(int fromPersonId, int toPersonId, PersonRelationshipType relationshipType)
         {
+            // Allow aunt/uncle and niece/nephew relationships - these naturally create "cycles" in family trees
+            // but are legitimate relationships that don't violate the family DAG structure
+            if (relationshipType == PersonRelationshipType.AuntUncle || 
+                relationshipType == PersonRelationshipType.NieceNephew ||
+                relationshipType == PersonRelationshipType.Cousin)
+            {
+                return false;
+            }
+
             // Check if this would create a direct bidirectional relationship
             // This is allowed for family relationships (parent-child, spouse-spouse)
             if (_outgoingEdges.ContainsKey(toPersonId))

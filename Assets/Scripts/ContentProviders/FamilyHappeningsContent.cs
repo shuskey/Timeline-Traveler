@@ -68,8 +68,7 @@ namespace Assets.Scripts.ContentProviders
             sb.AppendLine("DEATH ANNOUNCEMENTS");
             sb.AppendLine("===================");
             sb.AppendLine(GenerateDeathAnnouncements(focusPerson, closeFamilyMembers, year));
-
-            _familyDAG.GetRelationshipBetween(1, 1340);  // Temp Debug only
+            
             
             return sb.ToString();
         }
@@ -96,6 +95,8 @@ namespace Assets.Scripts.ContentProviders
         private List<Person> GetCloseFamilyMembers(Person focusPerson)
         {
             var closeFamilyMembers = new HashSet<Person>();
+            
+
             
             // Add the focus person themselves
             closeFamilyMembers.Add(focusPerson);
@@ -216,6 +217,7 @@ namespace Assets.Scripts.ContentProviders
             foreach (var parent in parents)
             {
                 var children = GetChildrenFromDAG(parent);
+                
                 foreach (var child in children)
                 {
                     if (child.dataBaseOwnerId != person.dataBaseOwnerId && 
@@ -291,13 +293,16 @@ namespace Assets.Scripts.ContentProviders
             
             foreach (var relationship in directRelationships)
             {
-                if (relationship.RelationshipType == PersonRelationshipType.Child &&
+                // Look for Child, Father, or Mother relationships from this person to a child
+                if ((relationship.RelationshipType == PersonRelationshipType.Child ||
+                     relationship.RelationshipType == PersonRelationshipType.Father ||
+                     relationship.RelationshipType == PersonRelationshipType.Mother) &&
                     relationship.FromPersonId == person.dataBaseOwnerId)
                 {
                     var child = _familyDAG.People.ContainsKey(relationship.ToPersonId) 
                         ? _familyDAG.People[relationship.ToPersonId] 
                         : null;
-                    if (child != null)
+                    if (child != null && !children.Any(c => c.dataBaseOwnerId == child.dataBaseOwnerId))
                     {
                         children.Add(child);
                     }
