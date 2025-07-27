@@ -100,9 +100,8 @@ public class Tribe : MonoBehaviour
 		
 		// Verify DAG has same data as current system (will verify after current system loads)
 		Debug.Log($"DAG initialized with {_familyDAG.People.Count} persons");
-		
-		// Dump DAG structure for debugging
-		_familyDAG.DumpDAGStructure();
+		// Log the DAG showing each person and their relationship to the starting person
+		_familyDAG.DumpDAGStructure(startingIdForTree);
 		
 		// Test GetAncestors for the starting person
 		if (_familyDAG.People.ContainsKey(startingIdForTree))

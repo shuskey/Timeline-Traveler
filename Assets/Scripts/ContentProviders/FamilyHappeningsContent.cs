@@ -68,6 +68,8 @@ namespace Assets.Scripts.ContentProviders
             sb.AppendLine("DEATH ANNOUNCEMENTS");
             sb.AppendLine("===================");
             sb.AppendLine(GenerateDeathAnnouncements(focusPerson, closeFamilyMembers, year));
+
+            _familyDAG.GetRelationshipBetween(1, 1340);  // Temp Debug only
             
             return sb.ToString();
         }

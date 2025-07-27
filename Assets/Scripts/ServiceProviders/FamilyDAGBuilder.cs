@@ -255,7 +255,8 @@ namespace Assets.Scripts.ServiceProviders
         /// <summary>
         /// Load siblings of a person and their families
         /// </summary>
-        private void LoadSiblingsAndFamily(int personId)
+        private void 
+        LoadSiblingsAndFamily(int personId)
         {
             var parentageList = _dataProvider.GetParents(personId);
             int siblingsLoaded = 0;
@@ -265,13 +266,13 @@ namespace Assets.Scripts.ServiceProviders
                 // Load siblings through father
                 if (parentage.fatherId != 0)
                 {
-                    siblingsLoaded += LoadSiblingsOfParent(parentage.fatherId, personId);
+                    siblingsLoaded += LoadSiblingsFromParent(parentage.fatherId, personId);
                 }
                 
                 // Load siblings through mother
                 if (parentage.motherId != 0)
                 {
-                    siblingsLoaded += LoadSiblingsOfParent(parentage.motherId, personId);
+                    siblingsLoaded += LoadSiblingsFromParent(parentage.motherId, personId);
                 }
             }
             
@@ -281,7 +282,7 @@ namespace Assets.Scripts.ServiceProviders
         /// <summary>
         /// Load siblings of a specific parent (excluding the focus person)
         /// </summary>
-        private int LoadSiblingsOfParent(int parentId, int excludePersonId)
+        private int LoadSiblingsFromParent(int parentId, int excludePersonId)
         {
             var parent = _familyDAG.People.ContainsKey(parentId) ? _familyDAG.People[parentId] : LoadPersonIntoDAG(parentId);
             if (parent == null) return 0;
@@ -326,13 +327,13 @@ namespace Assets.Scripts.ServiceProviders
                 // Load aunts/uncles through father
                 if (parentage.fatherId != 0)
                 {
-                    LoadSiblingsOfParent(parentage.fatherId, parentage.fatherId); // Load father's siblings
+                    LoadSiblingsFromParent(parentage.fatherId, parentage.fatherId); // Load father's siblings
                 }
                 
                 // Load aunts/uncles through mother
                 if (parentage.motherId != 0)
                 {
-                    LoadSiblingsOfParent(parentage.motherId, parentage.motherId); // Load mother's siblings
+                    LoadSiblingsFromParent(parentage.motherId, parentage.motherId); // Load mother's siblings
                 }
             }
         }
@@ -384,6 +385,7 @@ namespace Assets.Scripts.ServiceProviders
         /// </summary>
         private void BuildSiblingRelationships()
         {
+            Debug.Log("[FamilyDAGBuilder] Building sibling relationships...");
             var peopleByParents = new Dictionary<string, List<int>>();
 
             // Group people by their parents
@@ -400,18 +402,29 @@ namespace Assets.Scripts.ServiceProviders
                 }
             }
 
+            Debug.Log($"[FamilyDAGBuilder] Found {peopleByParents.Count} parent groups");
+
             // Create sibling relationships
+            int siblingRelationshipsAdded = 0;
             foreach (var siblings in peopleByParents.Values)
             {
-                for (int i = 0; i < siblings.Count; i++)
+                if (siblings.Count > 1)
                 {
-                    for (int j = i + 1; j < siblings.Count; j++)
+                    Debug.Log($"[FamilyDAGBuilder] Processing sibling group with {siblings.Count} siblings: {string.Join(", ", siblings)}");
+                    for (int i = 0; i < siblings.Count; i++)
                     {
-                        AddRelationshipSafely(siblings[i], siblings[j], PersonRelationshipType.Sibling);
-                        AddRelationshipSafely(siblings[j], siblings[i], PersonRelationshipType.Sibling);
+                        for (int j = i + 1; j < siblings.Count; j++)
+                        {
+                            AddRelationshipSafely(siblings[i], siblings[j], PersonRelationshipType.Sibling);
+                            AddRelationshipSafely(siblings[j], siblings[i], PersonRelationshipType.Sibling);
+                            siblingRelationshipsAdded += 2;
+                            Debug.Log($"[FamilyDAGBuilder] Added sibling relationship: {siblings[i]} <-> {siblings[j]}");
+                        }
                     }
                 }
             }
+            
+            Debug.Log($"[FamilyDAGBuilder] Added {siblingRelationshipsAdded} sibling relationships total");
         }
 
         /// <summary>

@@ -192,20 +192,26 @@ namespace Assets.Scripts.DataObjects
             {
                 var directEdge = _outgoingEdges[person1Id].FirstOrDefault(e => e.ToPersonId == person2Id);
                 if (directEdge != null)
+                {
                     return GetDirectRelationshipString(directEdge);
+                }
             }
 
             if (_incomingEdges.ContainsKey(person1Id))
             {
                 var directEdge = _incomingEdges[person1Id].FirstOrDefault(e => e.FromPersonId == person2Id);
                 if (directEdge != null)
+                {
                     return GetInverseRelationshipString(directEdge);
+                }
             }
 
             // Find path between persons using BFS
             var path = FindShortestPath(person1Id, person2Id);
             if (path != null && path.Count > 0)
-                return InterpretRelationshipPath(path);
+            {
+                return InterpretRelationshipPath(path, person1Id, person2Id);
+            }
 
             return "relative"; // Default fallback
         }
@@ -266,7 +272,7 @@ namespace Assets.Scripts.DataObjects
             return null; // No path found
         }
 
-        private string InterpretRelationshipPath(List<FamilyEdge> path)
+        private string InterpretRelationshipPath(List<FamilyEdge> path, int person1Id, int person2Id)
         {
             // Simple interpretation - this can be expanded for more complex relationships
             if (path.Count == 1)
@@ -278,13 +284,25 @@ namespace Assets.Scripts.DataObjects
                 // Handle grandparent/grandchild relationships
                 if (path.All(e => e.RelationshipType == PersonRelationshipType.Mother || e.RelationshipType == PersonRelationshipType.Father))
                 {
-                    var lastEdge = path.Last();
-                    return lastEdge.RelationshipType == PersonRelationshipType.Mother ? "grandmother" : "grandfather";
+                    // For grandparent relationships, we want the gender of the person being described (person1Id)
+                    // person1Id is the grandparent whose relationship we're describing
+                    var person = _people[person1Id];
+                    return person.gender == PersonGenderType.Male ? "grandfather" : "grandmother";
                 }
                 if (path.All(e => e.RelationshipType == PersonRelationshipType.Child))
                 {
-                    var person = _people[path.Last().ToPersonId];
+                    // For grandchild relationships, we want the gender of the person being described (person1Id)
+                    // person1Id is the one whose relationship we're describing
+                    var person = _people[person1Id];
                     return person.gender == PersonGenderType.Male ? "grandson" : "granddaughter";
+                }
+                
+                // Handle sibling relationships (should be 2 edges: person1 -> parent -> person2)
+                if (path.Any(e => e.RelationshipType == PersonRelationshipType.Mother || e.RelationshipType == PersonRelationshipType.Father) &&
+                    path.Any(e => e.RelationshipType == PersonRelationshipType.Child))
+                {
+                    var person = _people[person1Id];
+                    return person.gender == PersonGenderType.Male ? "brother" : "sister";
                 }
             }
 
@@ -298,7 +316,13 @@ namespace Assets.Scripts.DataObjects
                 PersonRelationshipType.Mother => "mother",
                 PersonRelationshipType.Father => "father",
                 PersonRelationshipType.Child => _people[edge.ToPersonId].gender == PersonGenderType.Male ? "son" : "daughter",
-                PersonRelationshipType.Spouse => _people[edge.ToPersonId].gender == PersonGenderType.Male ? "husband" : "wife",
+                PersonRelationshipType.Spouse => _people[edge.FromPersonId].gender == PersonGenderType.Male ? "husband" : "wife",
+                PersonRelationshipType.Sibling => _people[edge.FromPersonId].gender == PersonGenderType.Male ? "brother" : "sister",
+                PersonRelationshipType.NieceNephew => _people[edge.ToPersonId].gender == PersonGenderType.Male ? "nephew" : "niece",
+                PersonRelationshipType.AuntUncle => _people[edge.ToPersonId].gender == PersonGenderType.Male ? "uncle" : "aunt",
+                PersonRelationshipType.Cousin => _people[edge.ToPersonId].gender == PersonGenderType.Male ? "cousin" : "cousin",
+                PersonRelationshipType.GrandParent => _people[edge.ToPersonId].gender == PersonGenderType.Male ? "grandfather" : "grandmother",
+                PersonRelationshipType.GrandChild => _people[edge.ToPersonId].gender == PersonGenderType.Male ? "grandson" : "granddaughter",
                 _ => "relative"
             };
         }
@@ -309,8 +333,14 @@ namespace Assets.Scripts.DataObjects
             {
                 PersonRelationshipType.Mother => _people[edge.ToPersonId].gender == PersonGenderType.Male ? "son" : "daughter",
                 PersonRelationshipType.Father => _people[edge.ToPersonId].gender == PersonGenderType.Male ? "son" : "daughter",
-                PersonRelationshipType.Child => _people[edge.FromPersonId].gender == PersonGenderType.Male ? "father" : "mother",
+                PersonRelationshipType.Child => _people[edge.ToPersonId].gender == PersonGenderType.Male ? "son" : "daughter",
                 PersonRelationshipType.Spouse => _people[edge.FromPersonId].gender == PersonGenderType.Male ? "husband" : "wife",
+                PersonRelationshipType.Sibling => _people[edge.ToPersonId].gender == PersonGenderType.Male ? "brother" : "sister",
+                PersonRelationshipType.NieceNephew => _people[edge.FromPersonId].gender == PersonGenderType.Male ? "uncle" : "aunt",
+                PersonRelationshipType.AuntUncle => _people[edge.FromPersonId].gender == PersonGenderType.Male ? "nephew" : "niece",
+                PersonRelationshipType.Cousin => _people[edge.ToPersonId].gender == PersonGenderType.Male ? "cousin" : "cousin",
+                PersonRelationshipType.GrandParent => _people[edge.FromPersonId].gender == PersonGenderType.Male ? "grandson" : "granddaughter",
+                PersonRelationshipType.GrandChild => _people[edge.FromPersonId].gender == PersonGenderType.Male ? "grandfather" : "grandmother",
                 _ => "relative"
             };
         }
@@ -363,9 +393,17 @@ namespace Assets.Scripts.DataObjects
         /// <summary>
         /// Debug method to dump the entire DAG structure
         /// </summary>
-        public void DumpDAGStructure()
+        public void DumpDAGStructure(int startingPersonId)
         {
-            // Debug method kept for potential future use but with no output
+            Debug.Log($"Dumping DAG structure for starting person {startingPersonId}");
+            // Log the starting person
+            Debug.Log($"Starting person: {_people[startingPersonId].givenName} {_people[startingPersonId].surName}");
+            
+            foreach (var person in _people)
+            {
+                // Log the person's name and their relationship to the starting person
+                Debug.Log($"Person {person.Key}: {person.Value.givenName} {person.Value.surName} - {GetRelationshipBetween(person.Key, startingPersonId)}");
+            }
         }
 
         /// <summary>
