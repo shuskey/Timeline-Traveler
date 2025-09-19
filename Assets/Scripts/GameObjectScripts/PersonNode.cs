@@ -16,11 +16,6 @@ public class PersonNode : MonoBehaviour
     public Person person;
     private PersonDetailsHandler personDetailsHandlerScript;
     private GlobalSpringType globalSpringType;
-    private string rootsMagicFileName;
-    private string digiKamFileName;
-    //private PrimaryPhotoForPersonRM primaryPhotoForPersonRM;
-
-    
     public float lifeSpan;
     public int birthDate;
     public int endOfPlatformDate;
@@ -40,12 +35,12 @@ public class PersonNode : MonoBehaviour
     GameObject marriageConnectionPrefabObject;
     GameObject hallOfHistoryGameObject;
     GameObject hallOfFamilyPhotosGameObject;
-
-    float marriageConnectionXScale;
     GameObject bubblePrefabObject;
     GameObject parentPlatformBirthBubble;
     GameObject childPlatformReturnToParent;
     GameObject parentBirthConnectionPoint;
+    GameObject myMarriageConnectionPoint;
+    GameObject spouseMarriageConnectionPoint;
     GameObject returnToMotherBirthConnectionPoint;
     GameObject returnToFatherBirthConnectionPoint;
     GameObject childBirthConnectionPoint;
@@ -125,11 +120,10 @@ public class PersonNode : MonoBehaviour
         personDetailsHandlerScript.DisplayThisPerson(null);
     }
 
-    public void SetEdgePrefab(GameObject birthConnectionPrefab, GameObject marriageConnectionPrefab, GameObject bubble, GameObject parentPlatformBirthBubble, GameObject childPlatformReturnToParent, float edgeXScale)
+    public void SetEdgePrefab(GameObject birthConnectionPrefab, GameObject marriageConnectionPrefab, GameObject bubble, GameObject parentPlatformBirthBubble, GameObject childPlatformReturnToParent)
     {
         this.birthConnectionPrefabObject = birthConnectionPrefab;
         this.marriageConnectionPrefabObject = marriageConnectionPrefab;
-        this.marriageConnectionXScale = edgeXScale;
         this.bubblePrefabObject = bubble;
         this.parentPlatformBirthBubble = parentPlatformBirthBubble;
         this.childPlatformReturnToParent = childPlatformReturnToParent;
@@ -238,15 +232,15 @@ public class PersonNode : MonoBehaviour
         renderer.material.SetColor("_BaseColor", personGenderPlatformColors[(int)personGender]);
     }
 
-    public void AddBirthEdge(PersonNode childPersonNode, float myAgeConnectionPointPercent = 0f,
-        ChildRelationshipType childRelationshipType = ChildRelationshipType.Biological, int birthDate = 0)
+    /// <summary>
+    /// Sets up the physics connection between parent and child platforms using SpringJoint
+    /// </summary>
+    private void SetupPhysicsConnection(PersonNode childPersonNode, float myAgeConnectionPointPercent)
     {
-        var foo = new Color(0.3f, 0.4f, 0.6f);
         var childAgeConnectionPointPercent = 0f;
-        var parentPlatformTransform = gameObject.transform;
-        var parentRidgidbodyComponent = parentPlatformTransform.transform.GetComponent<Rigidbody>();
-        var childPlatformTransform = childPersonNode.transform;
-        var childRidgidbodyComponent = childPlatformTransform.transform.GetComponent<Rigidbody>();
+        var parentRidgidbodyComponent = gameObject.transform.GetComponent<Rigidbody>();
+        var childRidgidbodyComponent = childPersonNode.transform.GetComponent<Rigidbody>();
+        
         if (globalSpringType != GlobalSpringType.Freeze)
         {
             SpringJoint sj = parentRidgidbodyComponent.gameObject.AddComponent<SpringJoint>();
@@ -255,146 +249,239 @@ public class PersonNode : MonoBehaviour
             sj.connectedAnchor = new Vector3(0, 0.5f, childAgeConnectionPointPercent);
             sj.enableCollision = true;
             sj.connectedBody = childRidgidbodyComponent;
-            sj.spring = 0.01f; // 10.0f;
-                               //sj.minDistance = 10.0f;
-                               //sj.maxDistance = 500.0f;
+            sj.spring = 0.01f;
         }
-        parentBirthConnectionPoint = 
-            Instantiate(this.parentPlatformBirthBubble, Vector3.zero, Quaternion.identity);
-        //TODO Twins born at the same time are not handled well if one is a boy and the other a girl
-        var renderer = parentBirthConnectionPoint.GetComponentInChildren<Renderer>(); //.Where(r => r.CompareTag("GenderColor")).ToArray()[0];
-        renderer.material.SetColor("_BaseColor",
-            personGenderCapsuleBubbleColors[(int)childPersonNode.personGender]);
+    }
 
-        //parentBirthConnectionPoint.transform.localScale = new Vector3(2.0f, 2.0f, 2.0f);
-        //leftConnection.transform.localScale = Vector3.one * 2f;
-        parentBirthConnectionPoint.transform.parent = parentPlatformTransform.GetChild(0);  // Point to the ScaleThis Section
-        parentBirthConnectionPoint.transform.localPosition = new Vector3(0, 0.5f, myAgeConnectionPointPercent);  // 0.5 top of platform
-
-        var textMeshProItem = parentBirthConnectionPoint.transform.GetComponentsInChildren<TextMeshPro>().First();
+    /// <summary>
+    /// Creates and configures the parent connection point (birth bubble)
+    /// </summary>
+    private void CreateParentConnectionPoint(PersonNode childPersonNode, float myAgeConnectionPointPercent)
+    {
+        parentBirthConnectionPoint = Instantiate(this.parentPlatformBirthBubble, Vector3.zero, Quaternion.identity);
         
+        // Set visual appearance based on child's gender
+        var renderer = parentBirthConnectionPoint.GetComponentInChildren<Renderer>();
+        renderer.material.SetColor("_BaseColor", personGenderCapsuleBubbleColors[(int)childPersonNode.personGender]);
+
+        // Position the bubble on the parent platform
+        parentBirthConnectionPoint.transform.parent = gameObject.transform.GetChild(0);  // Point to the ScaleThis Section
+        parentBirthConnectionPoint.transform.localPosition = new Vector3(0, 0.5f, myAgeConnectionPointPercent);
+
+        // Set up child name display
+        var textMeshProItem = parentBirthConnectionPoint.transform.GetComponentsInChildren<TextMeshPro>().First();
         if (textMeshProItem.tag.Contains("ChildName"))
             textMeshProItem.text = childPersonNode.person.givenName.Split(' ')[0];
-        
 
+        // Set up teleportation to child
         var triggerTeleportToChildScript = parentBirthConnectionPoint.transform.GetChild(0).GetComponent<TriggerTeleportToChild>();
-        triggerTeleportToChildScript.teleportTargetChild = childPlatformTransform;
+        triggerTeleportToChildScript.teleportTargetChild = childPersonNode.transform;
         triggerTeleportToChildScript.teleportOffset = new Vector3(0, 2.5f, 0);
         triggerTeleportToChildScript.hallOfHistoryGameObject = hallOfHistoryGameObject;
         triggerTeleportToChildScript.hallOfFamilyPhotosGameObject = hallOfFamilyPhotosGameObject;
+    }
 
-        childBirthConnectionPoint = //GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            Instantiate(this.bubblePrefabObject, Vector3.zero, Quaternion.identity);
-        renderer = childBirthConnectionPoint.GetComponentInChildren<Renderer>(); //.Where(r => r.CompareTag("GenderColor")).ToArray()[0];
+    /// <summary>
+    /// Creates and configures the child connection point
+    /// </summary>
+    private void CreateChildConnectionPoint(PersonNode childPersonNode)
+    {
+        var childAgeConnectionPointPercent = 0f;
+        
+        childBirthConnectionPoint = Instantiate(this.bubblePrefabObject, Vector3.zero, Quaternion.identity);
+        var renderer = childBirthConnectionPoint.GetComponentInChildren<Renderer>();
         renderer.material.SetColor("_BaseColor", clearWhite);
         childBirthConnectionPoint.transform.localScale = Vector3.one * 2f;
-        childBirthConnectionPoint.transform.parent = childPlatformTransform.GetChild(0); // Point to the ScaleThis Section
+        childBirthConnectionPoint.transform.parent = childPersonNode.transform.GetChild(0); // Point to the ScaleThis Section
         childBirthConnectionPoint.transform.localPosition = new Vector3(0, 0, childAgeConnectionPointPercent);
+    }
 
-        // Mom and Dad Return transportes
+    /// <summary>
+    /// Sets up return navigation from child back to parent
+    /// </summary>
+    private void SetupReturnNavigation(PersonNode childPersonNode, float myAgeConnectionPointPercent)
+    {
         if (this.personGender == PersonGenderType.Male)
         {
-            returnToFatherBirthConnectionPoint =
-                Instantiate(this.childPlatformReturnToParent, Vector3.zero, Quaternion.identity);
+            returnToFatherBirthConnectionPoint = Instantiate(this.childPlatformReturnToParent, Vector3.zero, Quaternion.identity);
             var returnToFatherRenderer = returnToFatherBirthConnectionPoint.GetComponentInChildren<Renderer>(); 
             returnToFatherRenderer.material.SetColor("_BaseColor", blue);
             var triggerTeleportToFatherScript = returnToFatherBirthConnectionPoint.transform.GetChild(0).GetComponent<TriggerTeleportToChild>();
-            triggerTeleportToFatherScript.teleportTargetChild = parentPlatformTransform;
+            triggerTeleportToFatherScript.teleportTargetChild = gameObject.transform;
             triggerTeleportToFatherScript.teleportOffset = new Vector3(-3f, 2.5f, myAgeConnectionPointPercent * this.lifeSpan * 5);
             triggerTeleportToFatherScript.hallOfHistoryGameObject = hallOfHistoryGameObject;
             triggerTeleportToFatherScript.hallOfFamilyPhotosGameObject = hallOfFamilyPhotosGameObject;
 
-            //returnToFatherBirthConnectionPoint.transform.localScale = Vector3.one * 2f;
-            returnToFatherBirthConnectionPoint.transform.parent = childPlatformTransform.GetChild(0); // Point to the ScaleThis Section
+            returnToFatherBirthConnectionPoint.transform.parent = childPersonNode.transform.GetChild(0); // Point to the ScaleThis Section
             returnToFatherBirthConnectionPoint.transform.localPosition = new Vector3(-3f, 0, 0);
         }
         else if (this.personGender == PersonGenderType.Female)
         {
-            returnToMotherBirthConnectionPoint =
-                Instantiate(this.childPlatformReturnToParent, Vector3.zero, Quaternion.identity);
+            returnToMotherBirthConnectionPoint = Instantiate(this.childPlatformReturnToParent, Vector3.zero, Quaternion.identity);
             var returnToMotherRenderer = returnToMotherBirthConnectionPoint.GetComponentInChildren<Renderer>();
             returnToMotherRenderer.material.SetColor("_BaseColor", pink);
             var triggerTeleportToMotherScript = returnToMotherBirthConnectionPoint.transform.GetChild(0).GetComponent<TriggerTeleportToChild>();
-            triggerTeleportToMotherScript.teleportTargetChild = parentPlatformTransform;
+            triggerTeleportToMotherScript.teleportTargetChild = gameObject.transform;
             triggerTeleportToMotherScript.teleportOffset = new Vector3(3f, 2.5f, myAgeConnectionPointPercent * this.lifeSpan * 5);
             triggerTeleportToMotherScript.hallOfHistoryGameObject = hallOfHistoryGameObject;
             triggerTeleportToMotherScript.hallOfFamilyPhotosGameObject = hallOfFamilyPhotosGameObject;
 
-            //returnToMotherBirthConnectionPoint.transform.localScale = Vector3.one * 2f;
-            returnToMotherBirthConnectionPoint.transform.parent = childPlatformTransform.GetChild(0); // Point to the ScaleThis Section
+            returnToMotherBirthConnectionPoint.transform.parent = childPersonNode.transform.GetChild(0); // Point to the ScaleThis Section
             returnToMotherBirthConnectionPoint.transform.localPosition = new Vector3(3f, 0, 0);
         }
+    }
 
+    /// <summary>
+    /// Creates the visual edge connection between parent and child
+    /// </summary>
+    private void CreateChildVisualEdge(PersonNode childPersonNode, ChildRelationshipType childRelationshipType, int birthDate)
+    {
         GameObject edge = Instantiate(this.birthConnectionPrefabObject, Vector3.zero, Quaternion.identity);
-        edge.name = $"Birth {birthDate} {childPersonNode.name}";
-        // I am getting an occasional NULL reference on the next line.  I think it is because the edge is not fully instantiated yet.   
-        // I think I need to wait for the edge to be fully instantiated before calling CreateEdge.  I will try that next.
-        // I will use a coroutine to do this.
-        StartCoroutine(CreateEdge(edge, parentBirthConnectionPoint, childBirthConnectionPoint, 0, transform));
+        edge.name = $"Edge Connector forBirth {birthDate} {childPersonNode.name}";
 
+        // Use coroutine to handle edge creation (avoiding null reference issues)
+        StartCoroutine(CreateBirthEdge(edge, parentBirthConnectionPoint, childBirthConnectionPoint, personGenderPlatformColors[(int)childPersonNode.personGender]));
+
+        // Set edge color based on relationship type
         edge.transform.GetChild(ScaleThisChildIndex).GetComponent<Renderer>().material.SetColor("_BaseColor",
             childRelationshipColors[(int)childRelationshipType]);
-
-        edge.transform.parent = transform;
     }
+    
+    /// <summary>
+    /// Creates the visual marriage edge connection between spouses
+    /// </summary>
+    private void CreateMarriageVisualEdge(PersonNode spousePersonNode, int marriageEventDate, int marriageLength)
+    {
+        GameObject edge = Instantiate(this.marriageConnectionPrefabObject, Vector3.zero, Quaternion.identity);
+        edge.name = $"Edge Connector for Marriage {marriageEventDate}, to {spousePersonNode.name}, duration {marriageLength}.";
+                
+        // add logic so that I can do a conditional breakpoint for debugging only if the edge name is "Birth 1956 Arabella Kennedy"
+        if (this.person.dataBaseOwnerId == 16)
+        {
+            Debug.Log("CreateMarriageVisualEdge called for edge: " + edge.name);
+        }
+    
+        // Use coroutine to handle edge creation (avoiding null reference issues)
+        StartCoroutine(CreateMarriageEdge(edge, myMarriageConnectionPoint, spouseMarriageConnectionPoint, marriageLength));
+    }
+
+    public void AddBirthEdge(PersonNode childPersonNode, float myAgeConnectionPointPercent = 0f,
+        ChildRelationshipType childRelationshipType = ChildRelationshipType.Biological, int birthDate = 0)
+    {
+        // Set up physics connection between platforms
+        SetupPhysicsConnection(childPersonNode, myAgeConnectionPointPercent);
+        
+        // Create parent connection point (birth bubble)
+        CreateParentConnectionPoint(childPersonNode, myAgeConnectionPointPercent);
+        
+        // Create child connection point
+        CreateChildConnectionPoint(childPersonNode);
+        
+        // Set up return navigation from child to parent
+        SetupReturnNavigation(childPersonNode, myAgeConnectionPointPercent);
+        
+        // Create the visual edge connection
+        CreateChildVisualEdge(childPersonNode, childRelationshipType, birthDate);
+    }
+
+    /// <summary>
+    /// Sets up the physics connection between spouse platforms using SpringJoint
+    /// </summary>
+    private void SetupMarriagePhysicsConnection(PersonNode spousePersonNode, float myAgeConnectionPointPercent, float spouseAgeConnectionPointPercent)
+    {
+        var myRidgidbodyComponent = gameObject.transform.GetComponent<Rigidbody>();
+        var spouseRidgidbodyComponent = spousePersonNode.transform.GetComponent<Rigidbody>();
+        
+        if (globalSpringType != GlobalSpringType.Freeze)
+        {
+            SpringJoint sj = myRidgidbodyComponent.gameObject.AddComponent<SpringJoint>();
+            sj.autoConfigureConnectedAnchor = false;
+            sj.anchor = new Vector3(0, 0.5f, myAgeConnectionPointPercent);
+            sj.connectedAnchor = new Vector3(0, 0.5f, spouseAgeConnectionPointPercent);
+            sj.enableCollision = true;
+            sj.connectedBody = spouseRidgidbodyComponent;
+            sj.spring = 5f;
+            sj.minDistance = 20.0f;
+            sj.maxDistance = 80.0f;
+        }
+    }
+
+    /// <summary>
+    /// Creates connection points for both spouses in the marriage
+    /// </summary>
+    private void CreateMarriageConnectionPoints(PersonNode spousePersonNode, float myAgeConnectionPointPercent, float spouseAgeConnectionPointPercent)
+    {
+        // Create connection point for this person (spouse 1)
+        myMarriageConnectionPoint = new GameObject();
+        myMarriageConnectionPoint.transform.localScale = Vector3.one * 2f;
+        myMarriageConnectionPoint.transform.parent = gameObject.transform.GetChild(0);  // Point to the ScaleThis Section
+        myMarriageConnectionPoint.transform.localPosition = new Vector3(0, 0, myAgeConnectionPointPercent);
+
+        // Create connection point for spouse (spouse 2)
+        spouseMarriageConnectionPoint = new GameObject();
+        spouseMarriageConnectionPoint.transform.localScale = Vector3.one * 2f;
+        spouseMarriageConnectionPoint.transform.parent = spousePersonNode.transform.GetChild(0);  // Point to the ScaleThis Section
+        spouseMarriageConnectionPoint.transform.localPosition = new Vector3(0, 0, spouseAgeConnectionPointPercent);
+    }
+
 
     public void AddMarriageEdge(PersonNode spousePersonNode,
         float myAgeConnectionPointPercent = 0f,
         float spouseAgeConnectionPointPercent = 0f, int marriageEventDate = 0, int marriageLength = 0)
     {
-        var myPositionThisPlatformTransform = gameObject.transform;
-        var myRidgidbodyComponent = myPositionThisPlatformTransform.GetComponent<Rigidbody>();
-        var spousePositionThisPlatformTransform = spousePersonNode.transform;
-        var spouseRidgidbodyComponent = spousePositionThisPlatformTransform.GetComponent<Rigidbody>();
-        if (globalSpringType != GlobalSpringType.Freeze)
-        {
-            SpringJoint sj = myRidgidbodyComponent.gameObject.AddComponent<SpringJoint>();
-            sj.autoConfigureConnectedAnchor = false;
-            sj.anchor = new Vector3(0, 0.5f, myAgeConnectionPointPercent);   // - 0.5f
-            sj.connectedAnchor = new Vector3(0, 0.5f, spouseAgeConnectionPointPercent);  // - 0.5f
-            sj.enableCollision = true;
-            sj.connectedBody = spouseRidgidbodyComponent;
-            sj.spring = 5f; // 50.0f;
-            sj.minDistance = 20.0f;
-            sj.maxDistance = 80.0f;
-        }
-        parentBirthConnectionPoint = new GameObject(); // GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        //leftConnection.GetComponent<Renderer>().material.SetColor("_BaseColor", Color.yellow);
-
-        parentBirthConnectionPoint.transform.localScale = Vector3.one * 2f;
-        parentBirthConnectionPoint.transform.parent = myPositionThisPlatformTransform.GetChild(0);  // Point to the ScaleThis Section
-        parentBirthConnectionPoint.transform.localPosition = new Vector3(0, 0, myAgeConnectionPointPercent);
-
-        childBirthConnectionPoint = new GameObject(); // GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        //rightConnection.GetComponent<Renderer>().material.SetColor("_BaseColor", Color.yellow);
-        childBirthConnectionPoint.transform.localScale = Vector3.one * 2f;
-        childBirthConnectionPoint.transform.parent = spousePositionThisPlatformTransform.GetChild(0);  // Point to the ScaleThis Section
-        childBirthConnectionPoint.transform.localPosition = new Vector3(0, 0, spouseAgeConnectionPointPercent);
-
-        GameObject edge = Instantiate(this.marriageConnectionPrefabObject, Vector3.zero, Quaternion.identity);
-        edge.name = $"Marriage {marriageEventDate}, to {spousePersonNode.name}, duration {marriageLength}.";
-        // I am getting an occasional NULL reference on the next line.  I think it is because the edge is not fully instantiated yet.
-        // I think I need to wait for the edge to be fully instantiated before calling CreateEdge.  I will try that next.
-        // I will use a coroutine to do this.
-        StartCoroutine(CreateEdge(edge, parentBirthConnectionPoint, childBirthConnectionPoint, marriageLength, myPositionThisPlatformTransform));
+        // Set up physics connection between spouse platforms
+        SetupMarriagePhysicsConnection(spousePersonNode, myAgeConnectionPointPercent, spouseAgeConnectionPointPercent);
+        
+        // Create connection points for both spouses
+        CreateMarriageConnectionPoints(spousePersonNode, myAgeConnectionPointPercent, spouseAgeConnectionPointPercent);
+        
+        // Create the visual marriage edge connection
+        CreateMarriageVisualEdge(spousePersonNode, marriageEventDate, marriageLength);
     }
 
-    private IEnumerator CreateEdge(GameObject edge, GameObject parentBirthConnectionPoint, GameObject childBirthConnectionPoint, int marriageLength, Transform myPositionThisPlatformTransform)
+    /// <summary>
+    /// Creates and configures a birth edge connection between parent and child
+    /// </summary>
+    private IEnumerator CreateBirthEdge(GameObject edge, GameObject parentBirthConnectionPoint, GameObject childBirthConnectionPoint, Color genderColor)
     {
         yield return new WaitForSeconds(0.5f);  // Wait longer for edge to be fully instantiated
         
         var edgeComponent = edge?.GetComponent<Edge>();
         if (edgeComponent == null || parentBirthConnectionPoint == null || childBirthConnectionPoint == null)
         {
-            Debug.LogError("Null reference in CreateEdge - skipping edge creation");
+            Debug.LogError("Null reference in CreateBirthEdge - skipping edge creation");
             yield break;
         }
-        
+
         edgeComponent.CreateEdge(parentBirthConnectionPoint, childBirthConnectionPoint);
-        if (marriageLength > 0)
+        
+        var childRenderer = edge.transform.childCount > 0 ? edge.transform.GetChild(0)?.GetComponent<Renderer>() : null;
+        if (childRenderer != null)
         {
-            edgeComponent.SetEdgeEventLength(marriageLength * 5, marriageConnectionXScale);
+            childRenderer.material.SetColor("_BaseColor", genderColor);
         }
+
+        //edge.transform.parent = myPositionThisPlatformTransform;
+    }
+
+    /// <summary>
+    /// Creates and configures a marriage edge connection between spouses
+    /// </summary>
+    private IEnumerator CreateMarriageEdge(GameObject edge, GameObject myMarriegeConnectionPoint, GameObject spouseMarriageConnectionPoint, int marriageLength)
+    {
+        yield return new WaitForSeconds(0.5f);  // Wait longer for edge to be fully instantiated
+        
+        var edgeComponent = edge?.GetComponent<Edge>();
+        if (edgeComponent == null || myMarriegeConnectionPoint == null || spouseMarriageConnectionPoint == null)
+        {
+            Debug.LogError("Null reference in CreateMarriageEdge - skipping edge creation");
+            yield break;
+        }
+     
+        edgeComponent.CreateEdge(myMarriegeConnectionPoint, spouseMarriageConnectionPoint);
+        
+        // Set edge length for marriage duration
+        edgeComponent.SetEdgeEventLength(marriageLength * 5);
         
         var childRenderer = edge.transform.childCount > 0 ? edge.transform.GetChild(0)?.GetComponent<Renderer>() : null;
         if (childRenderer != null)
@@ -402,7 +489,7 @@ public class PersonNode : MonoBehaviour
             childRenderer.material.SetColor("_BaseColor", new Color(1.0f, 0.92f, 0.01f, 0.6f));
         }
 
-        edge.transform.parent = myPositionThisPlatformTransform;
+        //edge.transform.parent = myPositionThisPlatformTransform;
     }
 
     public void SetDebugAddMotionSetting(bool newDebugAddMotionSetting)

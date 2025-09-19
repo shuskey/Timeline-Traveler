@@ -43,7 +43,6 @@ public class Tribe : MonoBehaviour
 	[SerializeField]
 	[Tooltip("Enable Hall of History feature on person platforms")]
 	private bool EnableHallOfHistory = true;
-	public float marriageEdgepfXScale = 0.4f;
 	public GameObject bubblepf;
 	public GameObject parentPlatformBirthBubble;
 	public GameObject childPlatformReturnToParent;
@@ -406,7 +405,7 @@ public class Tribe : MonoBehaviour
 		personObjectScript.SetLifeSpan(birthEventDate, age, isLiving);
 		personObjectScript.AddDateQualityInformation((birthEventDate, originalBirthDate), (deathEventDate, originalDeathDate), dateQualityInformationString);
 		personObjectScript.SetPersonGender(personGender);
-		personObjectScript.SetEdgePrefab(birthConnectionPrefab, marriageConnectionPrefab, bubblepf, parentPlatformBirthBubble, childPlatformReturnToParent, marriageEdgepfXScale);
+		personObjectScript.SetEdgePrefab(birthConnectionPrefab, marriageConnectionPrefab, bubblepf, parentPlatformBirthBubble, childPlatformReturnToParent);
 		personObjectScript.addMyBirthQualityBubble();
 		personObjectScript.SetGlobalSpringType(globalSpringType);
 		//personObjectScript.SetThumbnailForPerson(rootsMagicFileName, digiKamFileName);
