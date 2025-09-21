@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Assets.Scripts.DataObjects;
+using UnityEngine.UIElements;
 
 public class Edge : MonoBehaviour
 {
@@ -86,12 +87,18 @@ public class Edge : MonoBehaviour
     
     public void SetEdgeEventLength(int length)
     {
-
-       eventLength = length;
+        eventLength = length + 5;  // Starting at the beginning of the year, need to extend to the end of the last year
         
-        // Apply the xScale to the edge width/thickness
-        var currentScale = transform.localScale;
-        transform.localScale = new Vector3(currentScale.x * eventLength, currentScale.y, currentScale.z);
+        // Check if Y rotation is positive (90 degrees)
+        float yRotation = transform.rotation.eulerAngles.y;
+        bool isPositiveYRotation = (yRotation > 0 && yRotation < 180);
+        
+        // Use negative eventLength for positive Y rotation, positive otherwise
+        float scaledLength = isPositiveYRotation ? -eventLength : eventLength;
+        
+        // Apply the scaling to the parent transform
+        Vector3 currentScale = transform.localScale;
+        transform.localScale = new Vector3(scaledLength, currentScale.y, currentScale.z);
     }
     
 

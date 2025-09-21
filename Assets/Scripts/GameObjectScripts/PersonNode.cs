@@ -184,7 +184,7 @@ public class PersonNode : MonoBehaviour
         // We want to scale the platform to the age of the person, with a minimum length of 5
         // Add 1 to include the current year (age represents completed years, but we want to include the current year)
         // Subtract 0.5 to prevent walking to the very end from triggering the next year
-        float platformLength = (age + 1) * 5 - 0.5f;
+        float platformLength = (age + 1) * 5; // FOR NOW remove- 0.5f;
         myScaleThisPlatformComponent.transform.localScale = new Vector3(1.0f, 1.0f, Mathf.Max(5.0f, platformLength));
         //myPlatformComponent.transform.localPosition = new Vector3(0, 0, age / 2f);
         lifeSpan = age;
@@ -409,19 +409,30 @@ public class PersonNode : MonoBehaviour
     /// <summary>
     /// Creates connection points for both spouses in the marriage
     /// </summary>
-    private void CreateMarriageConnectionPoints(PersonNode spousePersonNode, float myAgeConnectionPointPercent, float spouseAgeConnectionPointPercent)
+    private void CreateMarriageConnectionPoints(PersonNode spousePersonNode, int marriageEventDate)
     {
+        // Calculate world Z position for the marriage date
+        float marriageWorldZ = marriageEventDate * 5f;
+        
+        // Calculate local Z positions relative to each person's platform
+        float myLocalZ = (marriageWorldZ - this.birthDate * 5f) / this.transform.GetChild(0).localScale.z;
+        float spouseLocalZ = (marriageWorldZ - spousePersonNode.birthDate * 5f) / spousePersonNode.transform.GetChild(0).localScale.z;
+        
         // Create connection point for this person (spouse 1)
         myMarriageConnectionPoint = new GameObject();
         myMarriageConnectionPoint.transform.localScale = Vector3.one * 2f;
         myMarriageConnectionPoint.transform.parent = gameObject.transform.GetChild(0);  // Point to the ScaleThis Section
-        myMarriageConnectionPoint.transform.localPosition = new Vector3(0, 0, myAgeConnectionPointPercent);
+        myMarriageConnectionPoint.transform.localPosition = new Vector3(0, 0, myLocalZ);
 
         // Create connection point for spouse (spouse 2)
         spouseMarriageConnectionPoint = new GameObject();
         spouseMarriageConnectionPoint.transform.localScale = Vector3.one * 2f;
         spouseMarriageConnectionPoint.transform.parent = spousePersonNode.transform.GetChild(0);  // Point to the ScaleThis Section
-        spouseMarriageConnectionPoint.transform.localPosition = new Vector3(0, 0, spouseAgeConnectionPointPercent);
+        spouseMarriageConnectionPoint.transform.localPosition = new Vector3(0, 0, spouseLocalZ);
+
+        Debug.Log($"Marriage Z Debug - Marriage Date: {marriageEventDate}, World Z: {marriageWorldZ}");
+        Debug.Log($"My Local Z: {myLocalZ}, My World Z: {myMarriageConnectionPoint.transform.position.z}");
+        Debug.Log($"Spouse Local Z: {spouseLocalZ}, Spouse World Z: {spouseMarriageConnectionPoint.transform.position.z}");
     }
 
 
@@ -432,8 +443,8 @@ public class PersonNode : MonoBehaviour
         // Set up physics connection between spouse platforms
         SetupMarriagePhysicsConnection(spousePersonNode, myAgeConnectionPointPercent, spouseAgeConnectionPointPercent);
         
-        // Create connection points for both spouses
-        CreateMarriageConnectionPoints(spousePersonNode, myAgeConnectionPointPercent, spouseAgeConnectionPointPercent);
+        // Create connection points for both spouses using the marriage date
+        CreateMarriageConnectionPoints(spousePersonNode, marriageEventDate);
         
         // Create the visual marriage edge connection
         CreateMarriageVisualEdge(spousePersonNode, marriageEventDate, marriageLength);

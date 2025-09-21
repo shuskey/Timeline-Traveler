@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 2006701754031461411}
   - component: {fileID: -2303787907306076844}
   - component: {fileID: 5042821271612269227}
+  - component: {fileID: 3910054317277222323}
   m_Layer: 0
   m_Name: BirthConnectionPrefab
   m_TagString: Untagged
@@ -59,6 +60,54 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d0732aebe77ac3c44b888d123662d70e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &3910054317277222323
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2006701754031461468}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9da418a736fc530428ae3be13a72f163, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  description: 'BirthConnectionPrefab Description & Structure:
+
+    Parent Object:
+    Contains the Edge script and controls overall positioning
+
+    Cylinder (Child
+    1): The visual connecting line/cylinder that represents the birth connection
+
+    OtherConnectionPoint
+    (Child 2): A simple marker object that indicates the endpoint
+
+    Key Behaviors:
+
+    Translation
+    & Position: Only applied to the parent object, which positions itself at the
+    midpoint between connected nodes
+
+    Rotation: Applied to the parent object
+    to orient the connection. The Edge script calculates the direction vector between
+    nodes and uses Quaternion.LookRotation(direction) to rotate the entire prefab
+    so the cylinder faces the correct direction
+
+    Scaling: Applied only to the
+    Cylider. Note that scling the cylinder has a 2x effect because the origin is
+    in the middle and it scales both ways equally. Used to set the length of the
+    connecting cylinder. The Edge script dynamically scales the cylinder''s Y-axis
+    to match the distance between connected nodes
+
+    OtherConnectionPoint: Serves
+    only as an endpoint marker and is positioned at the target node''s location.
+    It has no visual components and minimal functionality
+
+    Usage: This prefab
+    creates visual connections between family tree nodes, with the cylinder automatically
+    sizing itself to span the distance between connected points while maintaining
+    proper orientation through rotation of the parent object.'
 --- !u!1 &8396976620227365930
 GameObject:
   m_ObjectHideFlags: 0

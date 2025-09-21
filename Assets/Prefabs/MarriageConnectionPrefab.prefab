@@ -10,8 +10,8 @@ GameObject:
   m_Component:
   - component: {fileID: 2006701754031461411}
   - component: {fileID: -2303787907306076844}
-  - component: {fileID: 3223995992192689628}
   - component: {fileID: -4897477839617419101}
+  - component: {fileID: 6227441165845899143}
   m_Layer: 0
   m_Name: MarriageConnectionPrefab
   m_TagString: Untagged
@@ -48,27 +48,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 60d8b5f6dbbe26b49be849aaf00b7872, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!65 &3223995992192689628
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2006701754031461468}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 1, y: 0.4, z: 1}
-  m_Center: {x: 0.5, y: 0, z: 0}
 --- !u!114 &-4897477839617419101
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -81,6 +60,34 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d0732aebe77ac3c44b888d123662d70e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &6227441165845899143
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2006701754031461468}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9da418a736fc530428ae3be13a72f163, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  description: "MarriageConnectionPrefab Description & Structure:\r\nParent Object:
+    Controls overall positioning, and the scaling\r\nCube (Child 1): The visual connecting
+    rectangle/cube & BocCollider that represents the marriage connection\r\nOtherConnectionPoint
+    (Child 2): A simple marker object that indicates the endpoint\r\nKey Behaviors:\r\nTranslation
+    & Position: Only applied to the parent object, which positions itself at the
+    start Year of the marriage\r\nRotation: Applied to the parent object to orient
+    the connection. The Edge script calculates the direction vector between spouse
+    nodes and uses Quaternion.LookRotation(direction) to rotate the entire prefab
+    so the cube faces the correct direction to connect the two spouse platforms\r\nScaling:
+    Only applied to the Parent Object.  Used to set the length (enough to connect
+    the two platforms)  and thickness of the connecting cube. The Edge script dynamically
+    scales the X-axis scaling is modified by the marriage duration length in years. 
+    The origin of the cube is set so that scaling only grows the cube (not in the
+    middle like the Birth Cylinder)\r\nOtherConnectionPoint: Serves only as an endpoint
+    marker and is positioned at the target spouse node's location. It has no visual
+    components and minimal functionality\r"
 --- !u!1 &5807859081519181607
 GameObject:
   m_ObjectHideFlags: 0
@@ -123,6 +130,7 @@ GameObject:
   - component: {fileID: 7186868216596285158}
   - component: {fileID: 3555412295534080030}
   - component: {fileID: 4463557370892074985}
+  - component: {fileID: 6347662773267594254}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -198,3 +206,24 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!65 &6347662773267594254
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8029072532089073705}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1.0000002, z: 1.0000002}
+  m_Center: {x: 0, y: 0, z: 0}
