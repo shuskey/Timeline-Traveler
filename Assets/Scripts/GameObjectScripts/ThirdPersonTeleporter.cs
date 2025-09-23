@@ -42,15 +42,23 @@ public class ThirdPersonTeleporter : MonoBehaviour
     
     void Update()
     {
+        float currentY = transform.position.y;
+        
         // Check if player fell too far
-        if (transform.position.y < depthOfFallWhenIDie)
+        if (currentY < depthOfFallWhenIDie)
         {
             TeleportToSafePosition();
         }
-        else if (transform.position.y > depthOfFallWhenIDie + 5f) // Only update safe position when well above death line
+        else if (currentY > depthOfFallWhenIDie + 10f && 
+                 _controller != null && _controller.Grounded && 
+                 transform.parent != null && 
+                 _characterController != null && _characterController.velocity.y > -2f) // Only update safe position when truly safe
         {
-            _lastSafePosition = transform.position;
-            _hasLastSafePosition = true;
+            if (!_hasLastSafePosition || Vector3.Distance(_lastSafePosition, transform.position) > 1f)
+            {
+                _lastSafePosition = transform.position;
+                _hasLastSafePosition = true;
+            }
         }
     }
     

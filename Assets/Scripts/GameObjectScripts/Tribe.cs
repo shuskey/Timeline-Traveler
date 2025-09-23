@@ -28,6 +28,7 @@ public class Tribe : MonoBehaviour
 	private PersonDetailsHandler personDetailsHandlerScript;
 	private Transform lastTeleportTransform;
 	private Vector3 lastTeleportOffset;
+	private int _lastLoadedPersonId = -1; // Track last person to prevent duplicate loading
 	[SerializeField]
 	[Tooltip("Time Barrier year, 0 for current year")]
 	private int timeBarrierYear = 0;
@@ -694,8 +695,18 @@ public class Tribe : MonoBehaviour
 		Debug.Log("OnStart canceled");
 	}
 
+
 	public void LoadNextLevelOfDescendancyForPerson(int personId, int currentGeneration, PersonGenderType personGender)
 	{
+		// Check if we're already loading the same person to prevent duplicates
+		if (_lastLoadedPersonId == personId)
+		{
+			Debug.Log($"Tribe: Skipping duplicate loading for person ID {personId} - already loaded");
+			return;
+		}
+		
+		_lastLoadedPersonId = personId;
+		
 		bool thisIsAHusbandQuery = personGender == PersonGenderType.Male;
 		// Get the person's marriages
 		var marriages = _dataProvider.GetMarriages(personId, useHusbandQuery: thisIsAHusbandQuery);
@@ -853,6 +864,9 @@ public class Tribe : MonoBehaviour
 	/// </summary>
 	public void LoadNextLevelOfAncestryForPerson(int personId, int currentGeneration)
 	{
+		// Note: We don't need to check for duplicates here since it's called together with LoadNextLevelOfDescendancyForPerson
+		// and the duplicate check is already handled there
+		
 		// Get the parents of the specified person
 		var parentsList = _dataProvider.GetParents(personId);
 		

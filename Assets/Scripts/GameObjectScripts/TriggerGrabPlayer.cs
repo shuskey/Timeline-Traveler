@@ -4,12 +4,24 @@ using UnityEngine;
 
 public class TriggerGrabPlayer : MonoBehaviour
 {
+    private PersonNode _lastPersonNode = null;
+    
     private void OnTriggerEnter(Collider other)
     {
         if (other.gameObject.tag == "Player")
         {
             other.transform.parent = gameObject.transform.parent;
             var personNodeScript = GetComponentInParent<PersonNode>();
+            
+            // Check if we're already on the same person's platform
+            if (_lastPersonNode != null && _lastPersonNode == personNodeScript)
+            {
+                Debug.Log("TriggerGrabPlayer: Player already on same platform - skipping duplicate processing");
+                return;
+            }
+            
+            _lastPersonNode = personNodeScript;
+            
             // log this trigger grab player
             Debug.Log("TriggerGrabPlayer: " + gameObject.name + 
             "Parent: " + gameObject.transform.parent.name +
@@ -28,6 +40,10 @@ public class TriggerGrabPlayer : MonoBehaviour
             var personNodeScript = GetComponentInParent<PersonNode>();
             personNodeScript.ClearPersonDetails();
             **/
+            
+            // Clear the last person tracking when exiting
+            _lastPersonNode = null;
+            
             // log this trigger exit player
             Debug.Log("TriggerGrabPlayer: " + gameObject.name + 
             "Parent: " + gameObject.transform.parent.name +
